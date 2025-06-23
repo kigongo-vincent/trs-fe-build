@@ -396,6 +396,7 @@ export default function TasksPage() {
                   <TableHead>Task Title</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead>Owner</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -412,6 +413,7 @@ export default function TasksPage() {
                     </TableCell>
                     <TableCell>{task.project.name}</TableCell>
                     <TableCell>{task.project.department.name}</TableCell>
+                    <TableCell>{task.user?.fullName || "No name"}</TableCell>
                     <TableCell>{formatDuration(task.duration)}</TableCell>
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell className="text-right">
@@ -474,6 +476,16 @@ export default function TasksPage() {
                       </div>
                       <p className="text-sm font-medium">{formatDuration(selectedTask.duration)}</p>
                     </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span>Task Owner</span>
+                    </div>
+                    <p className="text-sm font-medium">{selectedTask.user?.fullName || "No name"}</p>
                   </div>
 
                   <Separator />
