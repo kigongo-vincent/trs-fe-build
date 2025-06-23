@@ -214,9 +214,8 @@ export default function EmployeeDashboard() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{formatMinutesToHours(log.minutes)}</span>
                         <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            log.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                            }`}
                         >
                           {log.status}
                         </div>
@@ -268,9 +267,8 @@ export default function EmployeeDashboard() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{formatMinutesToHours(log.minutes)}</span>
                         <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            log.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                          }`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                            }`}
                         >
                           {log.status}
                         </div>

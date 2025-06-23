@@ -351,7 +351,21 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   </Link>
                 </div>
               </div>
-
+              {/* My Project link for employees */}
+              <div className="px-3 py-2">
+                <div className="space-y-1">
+                  <Link
+                    href="/dashboard/employee/projects/1"
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                      isActive("/dashboard/employee/projects/1") && "bg-accent text-accent-foreground",
+                    )}
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>My Project</span>
+                  </Link>
+                </div>
+              </div>
               <div className="px-3 py-2">
                 <div
                   className="flex items-center justify-between py-2 cursor-pointer"
@@ -392,7 +406,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
                         isActive("/dashboard/employee/invoices") ||
-                          (pathname.includes("/dashboard/employee/invoices/") && "bg-accent text-accent-foreground"),
+                        (pathname.includes("/dashboard/employee/invoices/") && "bg-accent text-accent-foreground"),
                       )}
                     >
                       <Receipt className="h-4 w-4" />
