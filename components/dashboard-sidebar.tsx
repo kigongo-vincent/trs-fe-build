@@ -355,14 +355,14 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
               <div className="px-3 py-2">
                 <div className="space-y-1">
                   <Link
-                    href="/dashboard/employee/projects/1"
+                    href="/dashboard/employee/projects"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/employee/projects/1") && "bg-accent text-accent-foreground",
+                      isActive("/dashboard/employee/projects") && "bg-accent text-accent-foreground",
                     )}
                   >
                     <FileText className="h-4 w-4" />
-                    <span>My Project</span>
+                    <span>Projects</span>
                   </Link>
                 </div>
               </div>
