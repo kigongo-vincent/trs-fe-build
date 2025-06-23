@@ -174,6 +174,11 @@ export default function ConsultantsPage() {
   const todayTrend = dashboardData ? getTrendIndicator(dashboardData.hoursToday.percentage) : null
   const weekTrend = dashboardData ? getTrendIndicator(dashboardData.hoursWeek.percentage) : null
   const monthTrend = dashboardData ? getTrendIndicator(dashboardData.hoursMonth.percentage) : null
+  const lastMonthTrend = dashboardData?.hoursLastMonth ? getTrendIndicator(dashboardData.hoursLastMonth.percentage) : null
+
+  // Default values for missing data
+  const lastMonthHours = dashboardData?.hoursLastMonth?.count ?? 0
+  const lastMonthMinutes = dashboardData?.hoursLastMonth?.count ?? 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -509,7 +514,7 @@ export default function ConsultantsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid gap-4 md:grid-cols-3">
-                          {[1, 2, 3].map((i) => (
+                          {[1, 2, 3, 4].map((i) => (
                             <Card key={i}>
                               <CardContent className="pt-6">
                                 <Skeleton className="h-8 w-20" />
@@ -540,7 +545,7 @@ export default function ConsultantsPage() {
                         <CardDescription>Time tracked across different periods</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
                           {/* Today */}
                           <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -601,6 +606,27 @@ export default function ConsultantsPage() {
                                 {formatMinutesToHours(dashboardData.hoursMonth.count)}
                               </div>
                               <p className="text-xs text-muted-foreground">{dashboardData.hoursMonth.count} minutes</p>
+                            </CardContent>
+                          </Card>
+
+                          {/* Last Month */}
+                          <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <CardTitle className="text-sm font-medium">Last Month</CardTitle>
+                              {lastMonthTrend && (
+                                <div className={`flex items-center gap-1 ${lastMonthTrend.color}`}>
+                                  {lastMonthTrend.icon === "up" && <TrendingUp className="h-4 w-4" />}
+                                  {lastMonthTrend.icon === "down" && <TrendingDown className="h-4 w-4" />}
+                                  {lastMonthTrend.icon === "neutral" && <Minus className="h-4 w-4" />}
+                                  <span className="text-xs">{lastMonthTrend.text}</span>
+                                </div>
+                              )}
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-2xl font-bold">
+                                {formatMinutesToHours(dashboardData?.hoursLastMonth?.count ?? 0)}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{dashboardData?.hoursLastMonth?.count ?? 0} minutes</p>
                             </CardContent>
                           </Card>
                         </div>
