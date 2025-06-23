@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Slider } from '@/components/ui/slider';
 
 const dummyProject = {
     id: 1,
@@ -16,22 +17,44 @@ const dummyProject = {
 
 const statuses = ['Not Started', 'In Progress', 'Completed', 'On Hold'];
 
+type ProjectStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
+const statusToCompletion: Record<ProjectStatus, number> = {
+    'Not Started': 0,
+    'In Progress': 50,
+    'Completed': 100,
+    'On Hold': 0,
+};
+const completionToStatus = (value: number): ProjectStatus => {
+    if (value === 0) return 'Not Started';
+    if (value === 100) return 'Completed';
+    if (value > 0 && value < 100) return 'In Progress';
+    return 'Not Started';
+};
+
 const ProjectDetailPage = () => {
     // In a real app, fetch project by ID from params
-    const [status, setStatus] = useState(dummyProject.status);
+    const [status, setStatus] = useState<ProjectStatus>(dummyProject.status as ProjectStatus);
+    const [completion, setCompletion] = useState<number>(statusToCompletion[dummyProject.status as ProjectStatus] ?? 0);
     const router = useRouter();
     const { toast } = useToast();
 
-    const handleStatusChange = (value: string) => {
+    const handleStatusChange = (value: ProjectStatus) => {
         setStatus(value);
+        setCompletion(statusToCompletion[value]);
+    };
+
+    const handleCompletionChange = (value: number[]) => {
+        const percent = value[0];
+        setCompletion(percent);
+        setStatus(completionToStatus(percent));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Here you would call an API to update the project status
+        // Here you would call an API to update the project status and completion
         toast({
-            title: 'Status Updated',
-            description: `Project status updated to: ${status}`,
+            title: 'Project Updated',
+            description: `Status: ${status}, Completion: ${completion}%`,
         });
     };
 
@@ -57,9 +80,24 @@ const ProjectDetailPage = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="completion">Completion</Label>
+                            <div className="flex items-center gap-4">
+                                <Slider
+                                    id="completion"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={[completion]}
+                                    onValueChange={handleCompletionChange}
+                                    className="w-full"
+                                />
+                                <span className="w-12 text-right font-mono">{completion}%</span>
+                            </div>
+                        </div>
                     </CardContent>
                     <CardFooter>
-                        <Button type="submit" className="w-full">Update Status</Button>
+                        <Button type="submit" className="w-full">Update Project</Button>
                     </CardFooter>
                 </form>
             </Card>
