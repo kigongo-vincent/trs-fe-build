@@ -26,6 +26,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [projectFilter, setProjectFilter] = useState("all")
+  const [durationFilter, setDurationFilter] = useState("all")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
 
@@ -94,8 +95,29 @@ export default function TasksPage() {
       filtered = filtered.filter((task) => task.project.name === projectFilter)
     }
 
+    // Duration filter
+    if (durationFilter !== "all") {
+      filtered = filtered.filter((task) => {
+        const minutes = Number.parseFloat(task.duration)
+        switch (durationFilter) {
+          case "lt1":
+            return minutes < 60
+          case "1to2":
+            return minutes >= 60 && minutes <= 120
+          case "2to5":
+            return minutes >= 120 && minutes <= 300
+          case "5to8":
+            return minutes >= 300 && minutes <= 480
+          case "gt8":
+            return minutes > 480
+          default:
+            return true
+        }
+      })
+    }
+
     setFilteredTasks(filtered)
-  }, [tasks, searchTerm, statusFilter, departmentFilter, projectFilter])
+  }, [tasks, searchTerm, statusFilter, departmentFilter, projectFilter, durationFilter])
 
   const formatDuration = (duration: string) => {
     const minutes = Number.parseFloat(duration)
@@ -360,6 +382,19 @@ export default function TasksPage() {
                   {project}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select value={durationFilter} onValueChange={setDurationFilter}>
+            <SelectTrigger className="h-9 w-[180px]">
+              <SelectValue placeholder="Duration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Durations</SelectItem>
+              <SelectItem value="lt1">Less than 1 hour</SelectItem>
+              <SelectItem value="1to2">1–2 hours</SelectItem>
+              <SelectItem value="2to5">2–5 hours</SelectItem>
+              <SelectItem value="5to8">5–8 hours</SelectItem>
+              <SelectItem value="gt8">More than 8 hours</SelectItem>
             </SelectContent>
           </Select>
         </div>
