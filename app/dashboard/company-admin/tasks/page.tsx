@@ -227,8 +227,8 @@ export default function TasksPage() {
               <>
                 <div className="text-2xl font-bold">{summaryData?.activeTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summaryData?.totalTasks > 0
-                    ? `${Math.round(((summaryData?.activeTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
+                  {summaryData && summaryData.totalTasks > 0
+                    ? `${Math.round(((summaryData.activeTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
                     : "No tasks yet"}
                 </p>
               </>
@@ -250,8 +250,8 @@ export default function TasksPage() {
               <>
                 <div className="text-2xl font-bold">{summaryData?.draftTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
-                  {summaryData?.totalTasks > 0
-                    ? `${Math.round(((summaryData?.draftTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
+                  {summaryData && summaryData.totalTasks > 0
+                    ? `${Math.round(((summaryData.draftTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
                     : "No draft tasks"}
                 </p>
               </>
@@ -413,7 +413,7 @@ export default function TasksPage() {
                     </TableCell>
                     <TableCell>{task.project.name}</TableCell>
                     <TableCell>{task.project.department.name}</TableCell>
-                    <TableCell>{task.user?.fullName || "No name"}</TableCell>
+                    <TableCell>{(task as any).user?.fullName || "No name"}</TableCell>
                     <TableCell>{formatDuration(task.duration)}</TableCell>
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell className="text-right">
@@ -485,7 +485,7 @@ export default function TasksPage() {
                       <User className="h-4 w-4" />
                       <span>Task Owner</span>
                     </div>
-                    <p className="text-sm font-medium">{selectedTask.user?.fullName || "No name"}</p>
+                    <p className="text-sm font-medium">{(selectedTask as any).user?.fullName || "No name"}</p>
                   </div>
 
                   <Separator />
