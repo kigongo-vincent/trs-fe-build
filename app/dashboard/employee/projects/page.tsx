@@ -145,7 +145,7 @@ const ProjectsPage = () => {
                 status: dbStatus,
                 progress: completion,
             });
-            const updatedProject = response.data;
+            const updatedProject = (response as any).data;
 
             setProjects((prev) =>
                 prev.map((p) =>
