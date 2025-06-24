@@ -23,7 +23,7 @@ import { Lock, LockOpen, Pencil, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const getStatusColor = (status: string): string => {
-    if (!status) return 'text-gray-500';
+    if (!status || typeof status !== 'string') return 'text-gray-500';
     switch (status.toLowerCase()) {
         case 'not started':
             return 'text-gray-500';
@@ -38,17 +38,36 @@ const getStatusColor = (status: string): string => {
     }
 };
 
-const statuses = ['Not Started', 'In Progress', 'Completed'];
-type ProjectStatus = 'Not Started' | 'In Progress' | 'Completed';
+type ProjectStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold';
+const statuses: ProjectStatus[] = ['Not Started', 'In Progress', 'Completed', 'On Hold'];
 const statusToCompletion: Record<ProjectStatus, number> = {
     'Not Started': 0,
     'In Progress': 50,
     'Completed': 100,
+    'On Hold': 0, // Assuming 0% progress for "On Hold"
 };
 const completionToStatus = (value: number): ProjectStatus => {
     if (value === 0) return 'Not Started';
     if (value === 100) return 'Completed';
     return 'In Progress';
+};
+
+const dbStatusToUI: Record<string, ProjectStatus> = {
+    'active': 'In Progress',
+    'inactive': 'Not Started',
+    'completed': 'Completed',
+    'on-hold': 'On Hold',
+};
+const normalizeStatus = (status: string | undefined | null): ProjectStatus => {
+    if (!status) return 'Not Started';
+    return dbStatusToUI[status] || 'Not Started';
+};
+
+const uiStatusToDB: Record<ProjectStatus, string> = {
+    'In Progress': 'active',
+    'Not Started': 'inactive',
+    'Completed': 'completed',
+    'On Hold': 'on-hold',
 };
 
 const ProjectsPage = () => {
@@ -81,11 +100,10 @@ const ProjectsPage = () => {
     // When a project is selected for editing, initialize modal state
     useEffect(() => {
         if (selectedProject) {
-            setStatus(
-                (selectedProject.status as ProjectStatus) || 'Not Started'
-            );
+            const normalized = normalizeStatus(selectedProject.status);
+            setStatus(normalized);
             setCompletion(selectedProject.progress ?? 0);
-            setOnHold(selectedProject.status?.toLowerCase() === 'on hold');
+            setOnHold(normalized === 'On Hold');
         }
     }, [selectedProject]);
 
@@ -106,7 +124,13 @@ const ProjectsPage = () => {
     };
 
     const handleLockToggle = () => {
-        setOnHold(!onHold);
+        if (onHold) {
+            setOnHold(false);
+            setStatus('Not Started'); // or restore previous status if you store it
+        } else {
+            setOnHold(true);
+            setStatus('On Hold');
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -114,14 +138,22 @@ const ProjectsPage = () => {
         if (!selectedProject) return;
         setModalLoading(true);
         try {
-            const updated = await updateProject(selectedProject.id, {
-                status,
+            // If onHold is true, status should be "On Hold"
+            const statusToSend = onHold ? 'On Hold' : status;
+            const dbStatus = uiStatusToDB[statusToSend];
+            const response = await updateProject(selectedProject.id, {
+                status: dbStatus,
                 progress: completion,
             });
+            const updatedProject = response.data;
+
             setProjects((prev) =>
                 prev.map((p) =>
-                    p.id === selectedProject.id ? { ...p, status: updated.status, progress: updated.progress } : p
+                    p.id === selectedProject.id ? { ...p, ...updatedProject } : p
                 )
+            );
+            setSelectedProject((prev) =>
+                prev ? { ...prev, ...updatedProject } : prev
             );
             toast({
                 title: 'Project Updated',
@@ -129,16 +161,15 @@ const ProjectsPage = () => {
                     ? `Status: On Hold (Last Known: ${status}, ${completion}%)`
                     : `Status: ${status}, Progress: ${completion}%`,
             });
+            setModalOpen(false);
         } catch (err: any) {
             toast({
                 title: 'Update failed',
                 description: err?.message || 'Could not update project',
                 variant: 'destructive',
             });
-        }
-        finally {
+        } finally {
             setModalLoading(false);
-            setModalOpen(false);
         }
     };
 
