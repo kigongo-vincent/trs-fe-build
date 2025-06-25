@@ -20,7 +20,7 @@ export function EmployeeHoursChart({ data }: EmployeeHoursChartProps) {
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" />
+        {/* <XAxis dataKey="name" /> */}
         <YAxis />
         <Tooltip formatter={(value: number) => [`${value}h`, "Hours"]} labelFormatter={(label) => `${label}`} />
         <Bar dataKey="hours" fill={primaryColor} radius={[4, 4, 0, 0]} />
