@@ -49,17 +49,18 @@ git push origin master || exit 1
 echo "Switching back to b1 branch..."
 git switch b1 || exit 1
 
-# Build the project
-echo "Building the project..."
+# Build the project as a static site for Netlify
+echo "Building the project (static export for Netlify)..."
 pnpm build || exit 1
+pnpm export || exit 1
 
 # Create build directory if it doesn't exist
 echo "Creating build directory if it doesn't exist..."
 mkdir -p "$BUILD_DIR"
 
-# Copy build files to build directory
-echo "Copying build files to build directory..."
-cp -r .next/* "$BUILD_DIR/" || exit 1
+# Copy static export files to build directory
+echo "Copying static site files to build directory..."
+cp -r out/* "$BUILD_DIR/" || exit 1
 
 # Change to the build directory
 echo "Changing to build directory..."
