@@ -328,6 +328,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       <BarChart3 className="h-4 w-4" />
                       <span>Analytics</span>
                     </Link>
+                    <Link
+                      href="/dashboard/company-admin/reports"
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        isActive("/dashboard/company-admin/reports") && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Reports</span>
+                    </Link>
                   </div>
                 )}
               </div>

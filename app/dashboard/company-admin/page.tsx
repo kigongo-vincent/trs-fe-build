@@ -318,6 +318,9 @@ export default function CompanyAdminDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+      <div className="mt-6">
+        <Link href="/dashboard/company-admin/reports" className="text-blue-600 hover:underline font-medium">Reports</Link>
+      </div>
     </div>
   )
 }
