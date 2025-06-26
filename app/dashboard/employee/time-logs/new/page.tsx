@@ -9,13 +9,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Clock, Loader2 } from "lucide-react"
+import { Clock, Loader2, Paperclip, Type } from "lucide-react"
 import Link from "next/link"
 import { getProjects, type Project } from "@/services/projects"
 import { getAuthUser } from "@/services/auth"
 import { postRequest } from "@/services/api"
 import { toast } from "sonner"
+import { FileAttachment, type Attachment } from "@/components/file-attachment"
+import { RichTextEditor } from "@/components/rich-text-editor"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface TimeLogPayload {
   duration: number
@@ -23,6 +25,7 @@ interface TimeLogPayload {
   description: string
   status: string
   project: string
+  attachments?: Attachment[]
 }
 
 export default function NewTimeLogPage() {
@@ -30,6 +33,7 @@ export default function NewTimeLogPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -101,6 +105,7 @@ export default function NewTimeLogPage() {
         description: formData.description.trim(),
         status: formData.status,
         project: formData.project,
+        attachments: attachments.length > 0 ? attachments : undefined,
       }
 
       const response = await postRequest("/consultants/time-logs", payload)
@@ -125,13 +130,13 @@ export default function NewTimeLogPage() {
         <h1 className="text-2xl font-bold tracking-tight">Log Time</h1>
       </div>
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-4xl">
         <CardHeader>
           <CardTitle>New Time Entry</CardTitle>
-          <CardDescription>Log your time for a specific task</CardDescription>
+          <CardDescription>Log your time for a specific task with rich descriptions and attachments</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="taskTitle">Task Title *</Label>
               <Input
@@ -139,18 +144,6 @@ export default function NewTimeLogPage() {
                 placeholder="Enter task title"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Task Description *</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe the task you worked on..."
-                className="min-h-[100px]"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
                 required
               />
             </div>
@@ -228,6 +221,57 @@ export default function NewTimeLogPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label>Task Description *</Label>
+              <Tabs defaultValue="rich" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="rich" className="flex items-center gap-2">
+                    <Type className="h-4 w-4" />
+                    Rich Text
+                  </TabsTrigger>
+                  <TabsTrigger value="plain" className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    Plain Text
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="rich" className="mt-4">
+                  <RichTextEditor
+                    value={formData.description}
+                    onChange={(value) => handleInputChange("description", value)}
+                    placeholder="Describe the task you worked on with rich formatting..."
+                    className="min-h-[200px]"
+                  />
+                </TabsContent>
+                <TabsContent value="plain" className="mt-4">
+                  <textarea
+                    placeholder="Describe the task you worked on..."
+                    className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={formData.description}
+                    onChange={(e) => handleInputChange("description", e.target.value)}
+                    required
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <FileAttachment
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              maxFiles={10}
+              maxSize={10 * 1024 * 1024} // 10MB
+              acceptedFileTypes={[
+                "image/*",
+                "application/pdf",
+                "text/*",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-powerpoint",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              ]}
+            />
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button variant="outline" asChild type="button">

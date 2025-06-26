@@ -2,6 +2,17 @@ import { getAuthData } from "./auth";
 
 const BASE_URL = "https://trs-api.tekjuice.xyz/api";
 
+export interface UploadProgressEvent {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface RequestOptions {
+  headers?: Record<string, string>;
+  onUploadProgress?: (progress: UploadProgressEvent) => void;
+}
+
 export async function getRequest<T>(route: string): Promise<T> {
   try {
     const authData = getAuthData();
@@ -25,21 +36,35 @@ export async function getRequest<T>(route: string): Promise<T> {
   }
 }
 
-export async function postRequest<T>(route: string, data: any): Promise<T> {
+export async function postRequest<T>(
+  route: string,
+  data: any,
+  options: RequestOptions = {}
+): Promise<T> {
   try {
     const authData = getAuthData();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+    const headers: Record<string, string> = {};
+
+    // Don't set Content-Type for FormData, let the browser set it
+    if (!(data instanceof FormData)) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (authData && authData.token) {
       headers["Authorization"] = `Bearer ${authData.token}`;
     }
 
+    // Merge custom headers
+    if (options.headers) {
+      Object.assign(headers, options.headers);
+    }
+
+    const body = data instanceof FormData ? data : JSON.stringify(data);
+
     const response = await fetch(`${BASE_URL}${route}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(data),
+      body,
     });
 
     return handleResponse<T>(response);
@@ -119,6 +144,61 @@ export async function patchRequest<T>(route: string, data: any): Promise<T> {
     console.error("PATCH request failed:", error);
     throw error;
   }
+}
+
+// File upload with progress tracking
+export async function uploadFileWithProgress<T>(
+  route: string,
+  formData: FormData,
+  onProgress?: (progress: UploadProgressEvent) => void
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const authData = getAuthData();
+    const headers: Record<string, string> = {};
+
+    if (authData && authData.token) {
+      headers["Authorization"] = `Bearer ${authData.token}`;
+    }
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && onProgress) {
+        const progress: UploadProgressEvent = {
+          loaded: event.loaded,
+          total: event.total,
+          percentage: Math.round((event.loaded * 100) / event.total),
+        };
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (error) {
+          reject(new Error("Invalid JSON response"));
+        }
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Upload failed"));
+    });
+
+    xhr.open("POST", `${BASE_URL}${route}`);
+
+    // Set headers
+    Object.entries(headers).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.send(formData);
+  });
 }
 
 export async function getTasksSummary(companyID: string) {

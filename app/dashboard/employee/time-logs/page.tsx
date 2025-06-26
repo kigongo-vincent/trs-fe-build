@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,9 @@ import { Calendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState, useMemo } from "react"
 import { fetchEmployeeTimeLogs, formatDurationString, formatDate, type TimeLog } from "@/services/employee"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { RichTextEditor } from "@/components/rich-text-editor"
+import { FileAttachment, type Attachment } from "@/components/file-attachment"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
@@ -22,6 +25,8 @@ export default function TimeLogsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [projectFilter, setProjectFilter] = useState("all")
+  const [selectedTimeLog, setSelectedTimeLog] = useState<TimeLog | null>(null)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
 
   // Fetch time logs data
   useEffect(() => {
@@ -110,6 +115,47 @@ export default function TimeLogsPage() {
     })
   }, [timeLogs, searchTerm, statusFilter, projectFilter])
 
+  const handleViewDetails = (timeLog: TimeLog) => {
+    setSelectedTimeLog(timeLog)
+    setIsDetailDialogOpen(true)
+  }
+
+  // Mock attachments data - in real app, this would come from the API
+  const getMockAttachments = (timeLog: TimeLog): Attachment[] => {
+    // Generate some mock attachments based on the time log content
+    const attachments: Attachment[] = []
+
+    if (timeLog.description.toLowerCase().includes('screenshot') || timeLog.description.toLowerCase().includes('image')) {
+      attachments.push({
+        id: '1',
+        name: 'Screenshot.png',
+        type: 'file',
+        size: 1024000,
+        preview: '/placeholder.jpg'
+      })
+    }
+
+    if (timeLog.description.toLowerCase().includes('document') || timeLog.description.toLowerCase().includes('pdf')) {
+      attachments.push({
+        id: '2',
+        name: 'Document.pdf',
+        type: 'file',
+        size: 2048000
+      })
+    }
+
+    if (timeLog.description.toLowerCase().includes('link') || timeLog.description.toLowerCase().includes('url')) {
+      attachments.push({
+        id: '3',
+        name: 'Project Link',
+        type: 'url',
+        url: 'https://example.com/project'
+      })
+    }
+
+    return attachments
+  }
+
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -131,6 +177,12 @@ export default function TimeLogsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Time Logs</h1>
         <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/dashboard/employee/time-logs/demo">
+              <Type className="mr-2 h-4 w-4" />
+              Demo Features
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
               <Plus className="mr-2 h-4 w-4" /> Log Time
@@ -303,26 +355,21 @@ export default function TimeLogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Time Logs</CardTitle>
+          <CardTitle>Time Logs</CardTitle>
           <CardDescription>
-            {loading ? (
-              <Skeleton className="h-4 w-32" />
-            ) : (
-              `Your recent time entries (${filteredTimeLogs.length} of ${timeLogs.length})`
-            )}
+            Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="space-y-4">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -343,42 +390,127 @@ export default function TimeLogsPage() {
                   <TableHead>Project</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Attachments</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTimeLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>{formatDate(log.createdAt)}</TableCell>
-                    <TableCell className="font-medium">{log.title}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{log.project}</Badge>
-                    </TableCell>
-                    <TableCell>{formatDurationString(log.duration)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          log.status === "active"
-                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                            : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
-                        }
-                      >
-                        {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredTimeLogs.map((log) => {
+                  const attachments = getMockAttachments(log)
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell>{formatDate(log.createdAt)}</TableCell>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div className="font-medium">{log.title}</div>
+                          <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                            {log.description.replace(/<[^>]*>/g, '').substring(0, 100)}
+                            {log.description.length > 100 && '...'}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{log.project}</Badge>
+                      </TableCell>
+                      <TableCell>{formatDurationString(log.duration)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            log.status === "active"
+                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                              : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                          }
+                        >
+                          {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {attachments.length > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">{attachments.length}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(log)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      {/* Time Log Details Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Time Log Details</DialogTitle>
+            <DialogDescription>Detailed view of the time log entry</DialogDescription>
+          </DialogHeader>
+
+          {selectedTimeLog && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold">{selectedTimeLog.title}</h3>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge variant="outline">{selectedTimeLog.project}</Badge>
+                  <Badge
+                    variant="outline"
+                    className={
+                      selectedTimeLog.status === "active"
+                        ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                        : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                    }
+                  >
+                    {selectedTimeLog.status.charAt(0).toUpperCase() + selectedTimeLog.status.slice(1)}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {formatDurationString(selectedTimeLog.duration)}
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Created on {formatDate(selectedTimeLog.createdAt)}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Description</h4>
+                <RichTextEditor
+                  value={selectedTimeLog.description}
+                  onChange={() => { }} // Read-only
+                  readOnly={true}
+                  className="border rounded-md"
+                />
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Attachments</h4>
+                <FileAttachment
+                  attachments={getMockAttachments(selectedTimeLog)}
+                  onAttachmentsChange={() => { }} // Read-only
+                  maxFiles={10}
+                  maxSize={10 * 1024 * 1024}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
