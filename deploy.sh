@@ -37,13 +37,13 @@ git commit -m "$MESSAGE" || exit 1
 echo "Pushing changes to b1..."
 git push origin b1 || exit 1
 
-# Switch to main branch and merge b1 into main
-echo "Switching to main branch..."
-git switch main || exit 1
-echo "Merging b1 into main..."
+# Switch to master branch and merge b1 into master
+echo "Switching to master branch..."
+git switch master || exit 1
+echo "Merging b1 into master..."
 git merge b1 || exit 1
-echo "Pushing changes to main..."
-git push origin main || exit 1
+echo "Pushing changes to master..."
+git push origin master || exit 1
 
 # Switch back to b1
 echo "Switching back to b1 branch..."
@@ -68,7 +68,7 @@ cd "$BUILD_DIR" || exit 1
 # Initialize git if needed and commit changes
 if [ ! -d .git ]; then
     git init
-    git branch -M main
+    git branch -M master
 fi
 
 # Add, commit, and push changes in the build directory
