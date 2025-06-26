@@ -52,7 +52,7 @@ git switch b1 || exit 1
 # Build the project as a static site for Netlify
 echo "Building the project (static export for Netlify)..."
 pnpm build || exit 1
-pnpm export || exit 1
+pnpm exec next export || exit 1
 
 # Create build directory if it doesn't exist
 echo "Creating build directory if it doesn't exist..."
