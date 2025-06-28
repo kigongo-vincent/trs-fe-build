@@ -1,4 +1,4 @@
-import { getRequest, postRequest, putRequest } from "./api";
+import { getRequest, postRequest, putRequest, deleteRequest } from "./api";
 
 export interface CreateProjectPayload {
   departmentId: string;
@@ -88,9 +88,18 @@ export interface ProjectTimelineResponse {
 }
 
 export interface UpdateProjectPayload {
+  name?: string;
+  departmentId?: string;
+  leadId?: string;
+  deadline?: string;
   status?: string;
   progress?: number;
-  // add other updatable fields as needed
+}
+
+export interface DeleteProjectResponse {
+  status: number;
+  message: string;
+  data?: any;
 }
 
 export const createProject = async (
@@ -130,4 +139,10 @@ export const updateProject = async (
   payload: UpdateProjectPayload
 ): Promise<Project> => {
   return putRequest<Project>(`/projects/${projectId}`, payload);
+};
+
+export const deleteProject = async (
+  id: string
+): Promise<DeleteProjectResponse> => {
+  return deleteRequest<DeleteProjectResponse>(`/projects/delete/${id}`);
 };
