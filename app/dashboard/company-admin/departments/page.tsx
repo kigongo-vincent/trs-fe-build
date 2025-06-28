@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Edit, Plus, Search, Trash, Users } from "lucide-react"
 import { DepartmentDistributionChart } from "@/components/department-distribution-chart"
+import { DeleteDepartmentDialog } from "@/components/delete-department-dialog"
 import { getDepartments } from "@/services/departments"
 import { getAuthData } from "@/services/auth"
+import Link from "next/link"
 
 interface User {
   id: string
@@ -46,6 +48,10 @@ export default function DepartmentsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [error, setError] = useState<string | null>(null)
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null)
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -101,6 +107,41 @@ export default function DepartmentsPage() {
     }
   }
 
+  const handleDeleteClick = (department: Department) => {
+    setDepartmentToDelete(department)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteSuccess = () => {
+    // Refresh the departments list
+    const fetchDepartments = async () => {
+      try {
+        setLoading(true)
+        const authData = getAuthData()
+        if (!authData?.user?.company?.id) {
+          setError("Company information not found. Please log in again.")
+          return
+        }
+
+        const companyId = authData.user.company.id
+        const response = await getDepartments(companyId)
+
+        if (response.status === 200) {
+          setDepartments(response.data)
+        } else {
+          setError("Failed to fetch departments")
+        }
+      } catch (err) {
+        setError("An error occurred while fetching departments")
+        console.error("Error fetching departments:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDepartments()
+  }
+
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -121,8 +162,10 @@ export default function DepartmentsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Departments</h1>
         <div className="flex items-center gap-2">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Add Department
+          <Button asChild>
+            <Link href="/dashboard/company-admin/departments/create">
+              <Plus className="mr-2 h-4 w-4" /> Add Department
+            </Link>
           </Button>
         </div>
       </div>
@@ -235,10 +278,16 @@ export default function DepartmentsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon">
-                            <Edit className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head)}&description=${encodeURIComponent(department.description || '')}`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(department)}
+                          >
                             <Trash className="h-4 w-4" />
                           </Button>
                         </div>
@@ -251,6 +300,13 @@ export default function DepartmentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteDepartmentDialog
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onDeleteSuccess={handleDeleteSuccess}
+        department={departmentToDelete}
+      />
     </div>
   )
 }
