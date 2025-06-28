@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -24,6 +24,7 @@ import {
   getTrendIndicator,
   type ConsultantDashboardData,
 } from "@/services/consultants"
+import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
 import { getAuthData } from "@/services/auth"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
@@ -44,6 +45,13 @@ export default function ConsultantsPage() {
   const [dashboardData, setDashboardData] = useState<ConsultantDashboardData | null>(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
+
+  // Date range and tasks state
+  const [startDate, setStartDate] = useState<string>("2024-01-05")
+  const [endDate, setEndDate] = useState<string>("2024-02-05")
+  const [filteredTasks, setFilteredTasks] = useState<any[]>([])
+  const [tasksLoading, setTasksLoading] = useState(false)
+  const [tasksError, setTasksError] = useState<string | null>(null)
 
   // Get company ID from auth data
   const authData = getAuthData()
@@ -107,6 +115,248 @@ export default function ConsultantsPage() {
     setFilteredConsultants(filtered)
   }, [searchQuery, departmentFilter, statusFilter, consultants])
 
+  // Filter tasks based on date range
+  useEffect(() => {
+    if (!startDate || !endDate) {
+      setFilteredTasks([])
+      return
+    }
+
+    fetchTasksByDateRange(new Date(startDate), new Date(endDate))
+  }, [startDate, endDate])
+
+  // Function to fetch tasks by date range from API
+  const fetchTasksByDateRange = async (startDate: Date, endDate: Date) => {
+    if (!selectedConsultant) return
+
+    setTasksLoading(true)
+    setTasksError(null)
+
+    try {
+      // Format dates for API
+      const startDateStr = startDate.toISOString().split('T')[0]
+      const endDateStr = endDate.toISOString().split('T')[0]
+
+      // TODO: Replace with actual API call
+      // const response = await fetch(`/api/consultants/${selectedConsultant.id}/time-logs?startDate=${startDateStr}&endDate=${endDateStr}`)
+      // const data = await response.json()
+
+      // For now, simulate API call with mock data
+      await new Promise(resolve => setTimeout(resolve, 500)) // Simulate network delay
+
+      // Mock API response - replace this with actual API call
+      const mockApiResponse = [
+        {
+          id: "1",
+          duration: "1920", // 32 hours in minutes
+          title: "Frontend Development - Dashboard",
+          description: "Developed the main dashboard interface with React components and implemented responsive design patterns",
+          status: "completed",
+          projectId: "proj-1",
+          createdAt: "2024-01-15T09:00:00Z",
+          updatedAt: "2024-01-20T17:30:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "TRS Platform"
+        },
+        {
+          id: "2",
+          duration: "1080", // 18 hours in minutes
+          title: "API Integration - User Management",
+          description: "Integrated user management APIs with frontend components and implemented authentication flows",
+          status: "active",
+          projectId: "proj-1",
+          createdAt: "2024-01-22T10:15:00Z",
+          updatedAt: "2024-01-25T16:45:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "TRS Platform"
+        },
+        {
+          id: "3",
+          duration: "720", // 12 hours in minutes
+          title: "Database Schema Design",
+          description: "Designed and implemented database schema for inventory management system with proper relationships",
+          status: "completed",
+          projectId: "proj-2",
+          createdAt: "2024-01-10T08:30:00Z",
+          updatedAt: "2024-01-12T14:20:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "Inventory System"
+        },
+        {
+          id: "4",
+          duration: "2700", // 45 hours in minutes
+          title: "Mobile App Development",
+          description: "Developing mobile application for customer self-service portal with React Native",
+          status: "active",
+          projectId: "proj-3",
+          createdAt: "2024-01-28T11:00:00Z",
+          updatedAt: "2024-02-05T18:15:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "Customer Portal"
+        },
+        {
+          id: "5",
+          duration: "1440", // 24 hours in minutes
+          title: "Security Audit Implementation",
+          description: "Implemented security audit features and compliance checks for the platform",
+          status: "completed",
+          projectId: "proj-1",
+          createdAt: "2024-01-05T07:45:00Z",
+          updatedAt: "2024-01-08T15:30:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "TRS Platform"
+        },
+        {
+          id: "6",
+          duration: "960", // 16 hours in minutes
+          title: "Performance Optimization",
+          description: "Optimizing application performance and reducing load times through code refactoring",
+          status: "active",
+          projectId: "proj-1",
+          createdAt: "2024-01-30T09:30:00Z",
+          updatedAt: "2024-02-02T16:00:00Z",
+          userId: selectedConsultant?.id || "user-1",
+          user: {
+            id: selectedConsultant?.id || "user-1",
+            fullName: selectedConsultant?.fullName || "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            email: selectedConsultant?.email || "john@example.com",
+            password: "",
+            employeeId: "EMP001",
+            status: "active",
+            jobTitle: "Frontend Developer",
+            bio: null,
+            avatarUrl: null,
+            resetToken: null,
+            resetTokenExpires: null,
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:00:00Z"
+          },
+          project: "TRS Platform"
+        }
+      ]
+
+      // Filter mock data based on date range (this would be done by the API in real implementation)
+      const filtered = mockApiResponse.filter(timeLog => {
+        const logDate = new Date(timeLog.createdAt)
+
+        return logDate >= startDate && logDate <= endDate
+      })
+
+      setFilteredTasks(filtered)
+    } catch (error) {
+      console.error("Error fetching time logs by date range:", error)
+      setTasksError("Failed to load time logs for the selected date range")
+      setFilteredTasks([])
+    } finally {
+      setTasksLoading(false)
+    }
+  }
+
+  // Function to set current date as both start and end dates
+  const setCurrentDate = () => {
+    const today = new Date().toISOString().split('T')[0]
+    setStartDate(today)
+    setEndDate(today)
+  }
+
+  // Calculate total hours for the selected date range
+  const calculateTotalHours = () => {
+    return filteredTasks.reduce((total, timeLog) => {
+      return total + Number(timeLog.duration)
+    }, 0)
+  }
+
+  const totalMinutes = calculateTotalHours()
+  const totalHours = Math.floor(totalMinutes / 60)
+  const remainingMinutes = totalMinutes % 60
+
   // Handle consultant view
   const handleViewConsultant = async (consultant: Consultant) => {
     setSelectedConsultant(consultant)
@@ -131,6 +381,10 @@ export default function ConsultantsPage() {
     setSelectedConsultant(null)
     setDashboardData(null)
     setDashboardError(null)
+    setStartDate("2024-01-05")
+    setEndDate("2024-02-05")
+    setFilteredTasks([])
+    setTasksError(null)
   }
 
   const retryDashboardFetch = async () => {
@@ -433,7 +687,7 @@ export default function ConsultantsPage() {
 
       {/* Consultant Details Modal */}
       <Dialog open={isConsultantModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] lg:max-w-[95vw] max-h-[90vh] overflow-y-auto !rounded-none border-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -717,6 +971,174 @@ export default function ConsultantsPage() {
                             <div className="text-center">
                               <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                               <p>No recent activity</p>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Tasks by Date Range */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Time Logs by Date Range</CardTitle>
+                            <CardDescription>View time logs within a specific time period</CardDescription>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <Filter className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex items-center gap-2">
+                                <div className="flex flex-col gap-1">
+                                  <label htmlFor="start-date" className="text-xs text-muted-foreground">
+                                    Start Date
+                                  </label>
+                                  <Input
+                                    id="start-date"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-40"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label htmlFor="end-date" className="text-xs text-muted-foreground">
+                                    End Date
+                                  </label>
+                                  <Input
+                                    id="end-date"
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-40"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-xs text-muted-foreground">
+                                    Quick Actions
+                                  </label>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={setCurrentDate}
+                                    className="w-40"
+                                  >
+                                    Today
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {tasksLoading ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-center h-32">
+                              <div className="text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                <p className="text-sm text-muted-foreground">Loading time logs...</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : tasksError ? (
+                          <div className="flex items-center justify-center h-32 text-muted-foreground">
+                            <div className="text-center">
+                              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-red-600 mb-2">{tasksError}</p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => startDate && endDate && fetchTasksByDateRange(new Date(startDate), new Date(endDate))}
+                              >
+                                Try Again
+                              </Button>
+                            </div>
+                          </div>
+                        ) : filteredTasks.length > 0 ? (
+                          <>
+                            {/* Summary Card */}
+                            <Card className="mb-6">
+                              <CardContent className="pt-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="text-center p-4 rounded-lg bg-muted/50">
+                                    <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                                    <p className="text-2xl font-bold">
+                                      {totalHours}h {remainingMinutes > 0 ? `${remainingMinutes}m` : ''}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">Total Hours</p>
+                                  </div>
+                                  <div className="text-center p-4 rounded-lg bg-muted/50">
+                                    <div className="h-8 w-8 mx-auto mb-2 text-muted-foreground flex items-center justify-center">
+                                      <span className="text-xl">📊</span>
+                                    </div>
+                                    <p className="text-2xl font-bold">{filteredTasks.length}</p>
+                                    <p className="text-sm text-muted-foreground">Time Logs</p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Task Title</TableHead>
+                                  <TableHead>Project</TableHead>
+                                  <TableHead>Created Date</TableHead>
+                                  <TableHead>Duration</TableHead>
+                                  <TableHead>Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {filteredTasks.map((timeLog) => (
+                                  <TableRow key={timeLog.id}>
+                                    <TableCell className="font-medium">
+                                      <div>
+                                        <div className="font-medium">{timeLog.title}</div>
+                                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                                          {timeLog.description}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">{timeLog.project}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                        {new Date(timeLog.createdAt).toLocaleDateString()}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        {formatDurationString(timeLog.duration)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          timeLog.status === "active"
+                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                            : timeLog.status === "completed"
+                                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                                              : "bg-gray-50 text-gray-700 border-gray-200"
+                                        }
+                                      >
+                                        {timeLog.status}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-muted-foreground">
+                            <div className="text-center">
+                              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p>No time logs found in the selected date range</p>
                             </div>
                           </div>
                         )}
