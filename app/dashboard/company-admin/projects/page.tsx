@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ProjectStatusChart } from "@/components/project-status-chart"
 import { ProjectTimelineChart } from "@/components/project-timeline-chart"
 import { NewProjectDialog } from "@/components/new-project-dialog"
+import { DeleteProjectDialog } from "@/components/delete-project-dialog"
+import { EditProjectDialog } from "@/components/edit-project-dialog"
 import Link from "next/link"
 import { type Project, type ProjectSummary, getProjects, getProjectsSummary } from "@/services/projects"
 import { getAuthData } from "@/services/auth"
@@ -32,6 +34,14 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
 
   // Get unique departments from projects
   const departments = [...new Set(projects.map((project) => project.department.name))]
@@ -120,6 +130,28 @@ export default function ProjectsPage() {
   }
 
   const handleProjectCreated = () => {
+    // Refresh both the projects list and summary, and trigger chart refresh
+    Promise.all([fetchProjectsSummary(), fetchProjects()])
+    setRefreshTrigger((prev) => prev + 1)
+  }
+
+  const handleDeleteClick = (project: Project) => {
+    setProjectToDelete(project)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteSuccess = () => {
+    // Refresh both the projects list and summary, and trigger chart refresh
+    Promise.all([fetchProjectsSummary(), fetchProjects()])
+    setRefreshTrigger((prev) => prev + 1)
+  }
+
+  const handleEditClick = (project: Project) => {
+    setProjectToEdit(project)
+    setEditModalOpen(true)
+  }
+
+  const handleEditSuccess = () => {
     // Refresh both the projects list and summary, and trigger chart refresh
     Promise.all([fetchProjectsSummary(), fetchProjects()])
     setRefreshTrigger((prev) => prev + 1)
@@ -379,12 +411,18 @@ export default function ProjectsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/dashboard/company-admin/projects/${project.id}`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditClick(project)}
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(project)}
+                        >
                           <Trash className="h-4 w-4" />
                         </Button>
                       </div>
@@ -401,6 +439,20 @@ export default function ProjectsPage() {
         open={showNewProjectDialog}
         onOpenChange={setShowNewProjectDialog}
         onSuccess={handleProjectCreated}
+      />
+
+      <DeleteProjectDialog
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onDeleteSuccess={handleDeleteSuccess}
+        project={projectToDelete}
+      />
+
+      <EditProjectDialog
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSuccess={handleEditSuccess}
+        project={projectToEdit}
       />
     </div>
   )
