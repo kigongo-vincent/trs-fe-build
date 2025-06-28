@@ -8,6 +8,7 @@ PERSONAL_REPO_REMOTE="personal"  # Default name for personal repo remote
 WORK_BRANCH="b1"                 # Working branch
 MASTER_BRANCH="master"           # Master branch in org repo
 MAIN_BRANCH="main"               # Main branch in personal repo
+DEFAULT_PERSONAL_REPO="https://github.com/kigongo-vincent/trs-fe-build.git"  # Default personal repo
 
 # Colors for output
 RED='\033[0;31m'
@@ -44,6 +45,47 @@ display_remotes() {
     done < <(git remote)
     
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Function to check if default personal repo already exists as a remote
+check_default_repo_exists() {
+    while read -r remote; do
+        local url=$(git remote get-url "$remote" 2>/dev/null)
+        if [ "$url" = "$DEFAULT_PERSONAL_REPO" ]; then
+            PERSONAL_REPO_REMOTE="$remote"
+            return 0
+        fi
+    done < <(git remote)
+    return 1
+}
+
+# Function to auto-add default personal repository
+auto_add_default_remote() {
+    echo -e "${MAGENTA}🔧 Auto-adding default personal repository${NC}"
+    echo -e "${CYAN}Adding: ${YELLOW}$DEFAULT_PERSONAL_REPO${NC}"
+    
+    # Find an available remote name
+    local remote_name="$PERSONAL_REPO_REMOTE"
+    local counter=1
+    
+    while git remote get-url "$remote_name" >/dev/null 2>&1; do
+        remote_name="${PERSONAL_REPO_REMOTE}${counter}"
+        ((counter++))
+    done
+    
+    PERSONAL_REPO_REMOTE="$remote_name"
+    
+    # Add the remote
+    echo -e "${YELLOW}🔄 Adding remote '$PERSONAL_REPO_REMOTE'...${NC}"
+    git remote add "$PERSONAL_REPO_REMOTE" "$DEFAULT_PERSONAL_REPO"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Remote '$PERSONAL_REPO_REMOTE' added successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Failed to add remote '$PERSONAL_REPO_REMOTE'${NC}"
+        return 1
+    fi
 }
 
 # Function to setup personal repository remote
@@ -156,12 +198,29 @@ check_git_repo
 display_remotes
 echo ""
 
-# Step 2: Check for personal remote or offer to add one
-if ! find_personal_remote; then
+# Step 2: Check if default personal repo already exists, if not add it automatically
+if ! check_default_repo_exists; then
+    echo -e "${YELLOW}⚠️  Default personal repository not found${NC}"
+    if ! auto_add_default_remote; then
+        echo -e "${RED}❌ Failed to add default personal repository${NC}"
+        exit 1
+    fi
+    echo ""
+    echo -e "${CYAN}📋 Updated remotes:${NC}"
+    display_remotes
+    echo ""
+else
+    echo -e "${GREEN}✅ Default personal repository found as remote '$PERSONAL_REPO_REMOTE'${NC}"
+    echo ""
+fi
+
+# Step 3: Check for other personal remotes or offer to add additional ones
+if ! find_personal_remote && ! check_default_repo_exists; then
     echo -e "${YELLOW}⚠️  No personal repository remote found${NC}"
     echo ""
     echo -e "${YELLOW}Options:${NC}"
     echo -e "${CYAN}n)${NC} Add new remote"
+    echo -e "${CYAN}c)${NC} Continue with existing remotes"
     echo -e "${CYAN}q)${NC} Quit"
     echo ""
     echo -e "${YELLOW}Choose option:${NC} "
@@ -176,6 +235,10 @@ if ! find_personal_remote; then
             echo ""
             echo -e "${CYAN}📋 Updated remotes:${NC}"
             display_remotes
+            echo ""
+            ;;
+        c|C)
+            echo -e "${YELLOW}⚠️ Continuing without additional personal remote${NC}"
             echo ""
             ;;
         q|Q)
