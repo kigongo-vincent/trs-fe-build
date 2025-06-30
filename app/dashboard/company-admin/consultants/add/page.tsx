@@ -163,8 +163,26 @@ export default function AddConsultantPage() {
       setError("Phone number is required")
       return
     }
+    // Basic phone number validation - should have at least 10 digits
+    const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
+    if (phoneDigits.length < 10) {
+      setError("Please enter a valid phone number with at least 10 digits")
+      return
+    }
     if (formData.daysToCome.length === 0) {
       setError("Please select at least one day")
+      return
+    }
+    if (!formData.addressStreet.trim()) {
+      setError("Street address is required")
+      return
+    }
+    if (!formData.addressCity.trim()) {
+      setError("City is required")
+      return
+    }
+    if (!formData.addressCountry.trim()) {
+      setError("Country is required")
       return
     }
 
@@ -199,7 +217,7 @@ export default function AddConsultantPage() {
         }
       }
 
-      const payload = {
+      const payload: any = {
         fullName: formData.fullName,
         email: formData.email,
         departmentId: formData.departmentId,
@@ -207,35 +225,52 @@ export default function AddConsultantPage() {
         companyId: companyId,
         job_title: formData.jobTitle,
         gross_pay: formData.grossPay,
-        date_of_birth: formData.dateOfBirth,
-        days_to_come: formData.daysToCome,
-        ...(idImageUrls.length > 0 ? { id_images: idImageUrls } : {}),
-        ...(formData.nextOfKinName || formData.nextOfKinRelationship || formData.nextOfKinPhone || formData.nextOfKinEmail ? {
-          next_of_kin: {
-            name: formData.nextOfKinName,
-            relationship: formData.nextOfKinRelationship,
-            phoneNumber: formData.nextOfKinPhone,
-            email: formData.nextOfKinEmail,
-          }
-        } : {}),
-        address: {
-          street: formData.addressStreet,
-          city: formData.addressCity,
-          state: formData.addressState,
-          country: formData.addressCountry,
-          postalCode: formData.addressPostalCode,
-        },
-        ...(formData.bankAccountName || formData.bankAccountNumber || formData.bankName || formData.bankSwiftCode || formData.bankBranch ? {
-          bank_details: {
-            accountName: formData.bankAccountName,
-            accountNumber: formData.bankAccountNumber,
-            bankName: formData.bankName,
-            swiftCode: formData.bankSwiftCode,
-            branch: formData.bankBranch,
-          }
-        } : {}),
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: formData.phoneNumber.trim(),
         currency: formData.currency,
+      }
+
+      // Only add date_of_birth if it has a value
+      if (formData.dateOfBirth && formData.dateOfBirth.trim()) {
+        payload.date_of_birth = new Date(formData.dateOfBirth).toISOString()
+      }
+
+      // Only add days_to_come if it has values
+      if (formData.daysToCome.length > 0) {
+        payload.days_to_come = JSON.stringify(formData.daysToCome)
+      }
+
+      // Only add id_images if there are any
+      if (idImageUrls.length > 0) {
+        payload.id_images = idImageUrls
+      }
+
+      // Only add next_of_kin if any field has a value
+      if (formData.nextOfKinName.trim() || formData.nextOfKinRelationship.trim() || formData.nextOfKinPhone.trim() || formData.nextOfKinEmail.trim()) {
+        payload.next_of_kin = {}
+        if (formData.nextOfKinName.trim()) payload.next_of_kin.name = formData.nextOfKinName.trim()
+        if (formData.nextOfKinRelationship.trim()) payload.next_of_kin.relationship = formData.nextOfKinRelationship.trim()
+        if (formData.nextOfKinPhone.trim()) payload.next_of_kin.phoneNumber = formData.nextOfKinPhone.trim()
+        if (formData.nextOfKinEmail.trim()) payload.next_of_kin.email = formData.nextOfKinEmail.trim()
+      }
+
+      // Only add address if required fields have values
+      if (formData.addressStreet.trim() || formData.addressCity.trim() || formData.addressState.trim() || formData.addressCountry.trim() || formData.addressPostalCode.trim()) {
+        payload.address = {}
+        if (formData.addressStreet.trim()) payload.address.street = formData.addressStreet.trim()
+        if (formData.addressCity.trim()) payload.address.city = formData.addressCity.trim()
+        if (formData.addressState.trim()) payload.address.state = formData.addressState.trim()
+        if (formData.addressCountry.trim()) payload.address.country = formData.addressCountry.trim()
+        if (formData.addressPostalCode.trim()) payload.address.postalCode = formData.addressPostalCode.trim()
+      }
+
+      // Only add bank_details if any field has a value
+      if (formData.bankAccountName.trim() || formData.bankAccountNumber.trim() || formData.bankName.trim() || formData.bankSwiftCode.trim() || formData.bankBranch.trim()) {
+        payload.bank_details = {}
+        if (formData.bankAccountName.trim()) payload.bank_details.accountName = formData.bankAccountName.trim()
+        if (formData.bankAccountNumber.trim()) payload.bank_details.accountNumber = formData.bankAccountNumber.trim()
+        if (formData.bankName.trim()) payload.bank_details.bankName = formData.bankName.trim()
+        if (formData.bankSwiftCode.trim()) payload.bank_details.swiftCode = formData.bankSwiftCode.trim()
+        if (formData.bankBranch.trim()) payload.bank_details.branch = formData.bankBranch.trim()
       }
 
       await postRequest("/auth/signup", payload)

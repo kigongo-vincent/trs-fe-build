@@ -1,3 +1,7 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -6,8 +10,519 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { updatePassword, PasswordUpdateRequest, updateProfile, ProfileUpdateRequest, getAuthUser, getAuthData, storeAuthData } from "@/services/auth"
+import { getDepartments } from "@/services/departments"
+import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
+
+interface PasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+interface PasswordFormErrors {
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+}
+
+interface ProfileFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  jobTitle: string;
+  departmentId: string;
+  bio: string;
+  employeeId: string;
+  phoneNumber: string | null;
+  grossPay: number;
+  dateOfBirth: string | null;
+  nextOfKin: {
+    name: string | null;
+    relationship: string | null;
+    phoneNumber: string | null;
+    email: string | null;
+  };
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+  };
+  bankDetails: {
+    accountName: string;
+    accountNumber: string;
+    bankName: string;
+    swiftCode: string;
+    routingNumber: string;
+  };
+  officeDays: string; // JSON string instead of array
+}
+
+interface ProfileFormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  jobTitle?: string;
+  departmentId?: string;
+  bio?: string;
+  employeeId?: string;
+  phoneNumber?: string;
+  grossPay?: string;
+  dateOfBirth?: string;
+  nextOfKin?: {
+    name?: string;
+    relationship?: string;
+    phoneNumber?: string;
+    email?: string;
+  };
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  bankDetails?: {
+    accountName?: string;
+    accountNumber?: string;
+    bankName?: string;
+    swiftCode?: string;
+    routingNumber?: string;
+  };
+  officeDays?: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
+  head: string;
+  status: string;
+  description: string | null;
+  createdAt: string | null;
+  updatedAt: string;
+  users: any[];
+  projects: any[];
+}
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const [passwordForm, setPasswordForm] = useState<PasswordFormData>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordErrors, setPasswordErrors] = useState<PasswordFormErrors>({});
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const [profileForm, setProfileForm] = useState<ProfileFormData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    jobTitle: "",
+    departmentId: "",
+    bio: "",
+    employeeId: "",
+    phoneNumber: null,
+    grossPay: 0,
+    dateOfBirth: null,
+    nextOfKin: {
+      name: null,
+      relationship: null,
+      phoneNumber: null,
+      email: null,
+    },
+    address: {
+      street: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+    },
+    bankDetails: {
+      accountName: "",
+      accountNumber: "",
+      bankName: "",
+      swiftCode: "",
+      routingNumber: "",
+    },
+    officeDays: "",
+  });
+  const [profileErrors, setProfileErrors] = useState<ProfileFormErrors>({});
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Helper function to get department name by ID
+  const getDepartmentNameById = (departmentId: string): string => {
+    const department = departments.find(dept => dept.id === departmentId);
+    return department?.name || "";
+  };
+
+  // Load user data and departments on component mount
+  useEffect(() => {
+    setIsClient(true);
+    const loadUserDataAndDepartments = async () => {
+      try {
+        setLoading(true);
+
+        // Get current user data
+        const currentUser = getAuthUser();
+        const authData = getAuthData();
+
+        if (!currentUser || !authData?.user?.company?.id) {
+          toast.error("User data not found", {
+            description: "Please log in again to access your settings.",
+          });
+          router.push("/");
+          return;
+        }
+
+        setUser(currentUser);
+
+        // Initialize profile form with user data
+        // Parse fullName to get firstName and lastName
+        const nameParts = currentUser.fullName?.split(" ") || [];
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        setProfileForm({
+          firstName,
+          lastName,
+          email: currentUser.email || "",
+          jobTitle: currentUser.jobTitle || "",
+          departmentId: currentUser.department?.id || "",
+          bio: currentUser.bio || "",
+          employeeId: currentUser.employeeId || "",
+          phoneNumber: currentUser.phoneNumber || null,
+          grossPay: currentUser.grossPay || 0,
+          dateOfBirth: currentUser.dateOfBirth || null,
+          nextOfKin: {
+            name: currentUser.nextOfKin?.name || null,
+            relationship: currentUser.nextOfKin?.relationship || null,
+            phoneNumber: currentUser.nextOfKin?.phoneNumber || null,
+            email: currentUser.nextOfKin?.email || null,
+          },
+          address: {
+            street: currentUser.address?.street || "",
+            city: currentUser.address?.city || "",
+            state: currentUser.address?.state || "",
+            country: currentUser.address?.country || "",
+            postalCode: currentUser.address?.postalCode || "",
+          },
+          bankDetails: {
+            accountName: currentUser.bankDetails?.accountName || "",
+            accountNumber: currentUser.bankDetails?.accountNumber || "",
+            bankName: currentUser.bankDetails?.bankName || "",
+            swiftCode: currentUser.bankDetails?.swiftCode || "",
+            routingNumber: currentUser.bankDetails?.routingNumber || "",
+          },
+          officeDays: currentUser.officeDays || "",
+        });
+
+        // Fetch departments for the company
+        const companyId = authData.user.company.id;
+        const departmentsResponse = await getDepartments(companyId);
+
+        if (departmentsResponse.status === 200) {
+          setDepartments(departmentsResponse.data);
+        } else {
+          console.error("Failed to fetch departments:", departmentsResponse.message);
+        }
+
+      } catch (error) {
+        console.error("Error loading user data:", error);
+        toast.error("Failed to load user data", {
+          description: "Please refresh the page and try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserDataAndDepartments();
+  }, [router]);
+
+  const validatePasswordForm = (): boolean => {
+    const errors: PasswordFormErrors = {};
+
+    if (!passwordForm.currentPassword) {
+      errors.currentPassword = "Current password is required";
+    }
+
+    if (!passwordForm.newPassword) {
+      errors.newPassword = "New password is required";
+    } else if (passwordForm.newPassword.length < 8) {
+      errors.newPassword = "Password must be at least 8 characters long";
+    }
+
+    if (!passwordForm.confirmPassword) {
+      errors.confirmPassword = "Please confirm your new password";
+    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateProfileForm = (): boolean => {
+    const errors: ProfileFormErrors = {};
+
+    if (!profileForm.firstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+
+    if (!profileForm.lastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+
+    if (!profileForm.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!profileForm.jobTitle.trim()) {
+      errors.jobTitle = "Job title is required";
+    }
+
+    // Phone number validation (if provided)
+    if (profileForm.phoneNumber && profileForm.phoneNumber.trim()) {
+      const phoneDigits = profileForm.phoneNumber.replace(/\D/g, '');
+      if (phoneDigits.length < 10) {
+        errors.phoneNumber = "Please enter a valid phone number with at least 10 digits";
+      }
+    }
+
+    setProfileErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handlePasswordChange = (field: keyof PasswordFormData, value: string) => {
+    setPasswordForm(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (passwordErrors[field]) {
+      setPasswordErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handleProfileChange = (field: keyof ProfileFormData, value: string) => {
+    setProfileForm(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (profileErrors[field]) {
+      setProfileErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handleProfileUpdate = async () => {
+    if (!validateProfileForm()) {
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+
+    try {
+      // Format the data properly for the API
+      const requestData: any = {
+        firstName: profileForm.firstName.trim(),
+        lastName: profileForm.lastName.trim(),
+        fullName: `${profileForm.firstName.trim()} ${profileForm.lastName.trim()}`,
+        email: profileForm.email.trim(),
+        jobTitle: profileForm.jobTitle.trim(),
+        bio: profileForm.bio.trim(),
+      }
+
+      // Only add departmentId if it has a value
+      if (profileForm.departmentId && profileForm.departmentId.trim()) {
+        requestData.departmentId = profileForm.departmentId
+      }
+
+      // Only add phoneNumber if it has a value
+      if (profileForm.phoneNumber && profileForm.phoneNumber.trim()) {
+        requestData.phoneNumber = profileForm.phoneNumber.trim()
+      }
+
+      // Only add dateOfBirth if it has a value
+      if (profileForm.dateOfBirth && profileForm.dateOfBirth.trim()) {
+        requestData.dateOfBirth = new Date(profileForm.dateOfBirth).toISOString()
+      }
+
+      // Only add nextOfKin if any field has a value
+      if (profileForm.nextOfKin.name?.trim() || profileForm.nextOfKin.relationship?.trim() || profileForm.nextOfKin.phoneNumber?.trim() || profileForm.nextOfKin.email?.trim()) {
+        requestData.nextOfKin = {}
+        if (profileForm.nextOfKin.name?.trim()) requestData.nextOfKin.name = profileForm.nextOfKin.name.trim()
+        if (profileForm.nextOfKin.relationship?.trim()) requestData.nextOfKin.relationship = profileForm.nextOfKin.relationship.trim()
+        if (profileForm.nextOfKin.phoneNumber?.trim()) requestData.nextOfKin.phoneNumber = profileForm.nextOfKin.phoneNumber.trim()
+        if (profileForm.nextOfKin.email?.trim()) requestData.nextOfKin.email = profileForm.nextOfKin.email.trim()
+      }
+
+      // Only add address if any field has a value
+      if (profileForm.address.street.trim() || profileForm.address.city.trim() || profileForm.address.state.trim() || profileForm.address.country.trim() || profileForm.address.postalCode.trim()) {
+        requestData.address = {}
+        if (profileForm.address.street.trim()) requestData.address.street = profileForm.address.street.trim()
+        if (profileForm.address.city.trim()) requestData.address.city = profileForm.address.city.trim()
+        if (profileForm.address.state.trim()) requestData.address.state = profileForm.address.state.trim()
+        if (profileForm.address.country.trim()) requestData.address.country = profileForm.address.country.trim()
+        if (profileForm.address.postalCode.trim()) requestData.address.postalCode = profileForm.address.postalCode.trim()
+      }
+
+      // Only add bankDetails if any field has a value
+      if (profileForm.bankDetails.accountName.trim() || profileForm.bankDetails.accountNumber.trim() || profileForm.bankDetails.bankName.trim() || profileForm.bankDetails.swiftCode.trim() || profileForm.bankDetails.routingNumber.trim()) {
+        requestData.bankDetails = {}
+        if (profileForm.bankDetails.accountName.trim()) requestData.bankDetails.accountName = profileForm.bankDetails.accountName.trim()
+        if (profileForm.bankDetails.accountNumber.trim()) requestData.bankDetails.accountNumber = profileForm.bankDetails.accountNumber.trim()
+        if (profileForm.bankDetails.bankName.trim()) requestData.bankDetails.bankName = profileForm.bankDetails.bankName.trim()
+        if (profileForm.bankDetails.swiftCode.trim()) requestData.bankDetails.swiftCode = profileForm.bankDetails.swiftCode.trim()
+        if (profileForm.bankDetails.routingNumber.trim()) requestData.bankDetails.routingNumber = profileForm.bankDetails.routingNumber.trim()
+      }
+
+      // Only add officeDays if it has a value
+      if (profileForm.officeDays && profileForm.officeDays.trim()) {
+        requestData.officeDays = profileForm.officeDays
+      }
+
+      const response = await updateProfile(requestData);
+
+      // Update the local store with the new profile data
+      const currentUser = getAuthUser();
+      const authData = getAuthData();
+
+      if (currentUser && authData) {
+        // Create updated user object
+        const updatedUser = {
+          ...currentUser,
+          fullName: `${profileForm.firstName.trim()} ${profileForm.lastName.trim()}`,
+          email: profileForm.email.trim(),
+          jobTitle: profileForm.jobTitle.trim(),
+          bio: profileForm.bio.trim(),
+          department: profileForm.departmentId ? (departments.find(dept => dept.id === profileForm.departmentId) || currentUser.department) : null,
+          employeeId: profileForm.employeeId,
+          phoneNumber: profileForm.phoneNumber,
+          grossPay: profileForm.grossPay,
+          dateOfBirth: profileForm.dateOfBirth,
+          nextOfKin: profileForm.nextOfKin,
+          address: profileForm.address,
+          bankDetails: profileForm.bankDetails,
+          officeDays: profileForm.officeDays,
+        };
+
+        // Update local storage
+        storeAuthData(authData.token, updatedUser);
+
+        // Update local state
+        setUser(updatedUser);
+
+        // Dispatch custom event to notify other components
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("userDataUpdated"));
+        }
+      }
+
+      toast.success("Profile updated successfully", {
+        description: response.message || "Your profile has been updated.",
+      });
+
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+
+      // Handle specific API errors
+      if (error.message?.includes("Email already exists")) {
+        setProfileErrors(prev => ({ ...prev, email: "This email is already in use" }));
+        toast.error("Email already exists", {
+          description: "Please use a different email address.",
+        });
+      } else if (error.message?.includes("Invalid email format")) {
+        setProfileErrors(prev => ({ ...prev, email: "Invalid email format" }));
+        toast.error("Invalid email format", {
+          description: "Please enter a valid email address.",
+        });
+      } else {
+        toast.error("Failed to update profile", {
+          description: error.message || "An unexpected error occurred. Please try again.",
+        });
+      }
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    if (!validatePasswordForm()) {
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+
+    try {
+      const requestData: PasswordUpdateRequest = {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      };
+
+      const response = await updatePassword(requestData);
+
+      // If we reach here without an error, the password update was successful
+      // The API returns { "message": "Password updated successfully" } on success
+      toast.success("Password updated successfully", {
+        description: response.message || "Your password has been changed.",
+      });
+
+      // Reset form
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setPasswordErrors({});
+
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
+
+    } catch (error: any) {
+      console.error("Password update error:", error);
+
+      // Handle specific API errors based on the documented response messages
+      if (error.message?.includes("Current password is incorrect")) {
+        setPasswordErrors(prev => ({ ...prev, currentPassword: "Current password is incorrect" }));
+        toast.error("Current password is incorrect", {
+          description: "Please check your current password and try again.",
+        });
+      } else if (error.message?.includes("Current password and new password are required")) {
+        toast.error("Missing required fields", {
+          description: "Please fill in all password fields.",
+        });
+      } else {
+        toast.error("Failed to update password", {
+          description: error.message || "An unexpected error occurred. Please try again.",
+        });
+      }
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        </div>
+        <div className="space-y-4">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+          <div className="h-64 w-full bg-muted animate-pulse rounded" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -29,8 +544,13 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src="/placeholder.svg?height=80&width=80" alt="John Doe" />
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarImage
+                    src={isClient && user?.avatarUrl ? user.avatarUrl : "/placeholder.svg?height=80&width=80"}
+                    alt={isClient && user?.fullName ? user.fullName : "User"}
+                  />
+                  <AvatarFallback>
+                    {isClient && user?.fullName ? user.fullName.split(" ").map((n: string) => n[0]).join("") : "U"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col gap-2">
                   <Button variant="outline" size="sm" className="w-full sm:w-auto">
@@ -47,47 +567,130 @@ export default function SettingsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="first-name">First Name</Label>
-                  <Input id="first-name" defaultValue="John" />
+                  <Input
+                    id="first-name"
+                    value={profileForm.firstName}
+                    onChange={(e) => handleProfileChange("firstName", e.target.value)}
+                    className={profileErrors.firstName ? "border-red-500" : ""}
+                  />
+                  {profileErrors.firstName && (
+                    <p className="text-sm text-red-500">{profileErrors.firstName}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last-name">Last Name</Label>
-                  <Input id="last-name" defaultValue="Doe" />
+                  <Input
+                    id="last-name"
+                    value={profileForm.lastName}
+                    onChange={(e) => handleProfileChange("lastName", e.target.value)}
+                    className={profileErrors.lastName ? "border-red-500" : ""}
+                  />
+                  {profileErrors.lastName && (
+                    <p className="text-sm text-red-500">{profileErrors.lastName}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john.doe@example.com" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={profileForm.email}
+                  onChange={(e) => handleProfileChange("email", e.target.value)}
+                  className={profileErrors.email ? "border-red-500" : ""}
+                />
+                {profileErrors.email && (
+                  <p className="text-sm text-red-500">{profileErrors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="job-title">Job Title</Label>
-                <Input id="job-title" defaultValue="Frontend Developer" />
+                <Input
+                  id="job-title"
+                  value={profileForm.jobTitle}
+                  onChange={(e) => handleProfileChange("jobTitle", e.target.value)}
+                  className={profileErrors.jobTitle ? "border-red-500" : ""}
+                />
+                {profileErrors.jobTitle && (
+                  <p className="text-sm text-red-500">{profileErrors.jobTitle}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                <Select defaultValue="engineering">
-                  <SelectTrigger id="department">
-                    <SelectValue placeholder="Select a department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="engineering">Engineering</SelectItem>
-                    <SelectItem value="design">Design</SelectItem>
-                    <SelectItem value="marketing">Marketing</SelectItem>
-                    <SelectItem value="product">Product</SelectItem>
-                    <SelectItem value="sales">Sales</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="department">Department (Optional)</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={profileForm.departmentId}
+                    onValueChange={(value) => handleProfileChange("departmentId", value)}
+                    disabled={loading}
+                  >
+                    <SelectTrigger id="department" className="flex-1">
+                      <SelectValue placeholder={loading ? "Loading departments..." : "Choose a department (optional)"}>
+                        {profileForm.departmentId ? getDepartmentNameById(profileForm.departmentId) : (loading ? "Loading departments..." : "Choose a department (optional)")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.length === 0 && !loading ? (
+                        <SelectItem value="no-departments" disabled>
+                          No departments available
+                        </SelectItem>
+                      ) : (
+                        departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {profileForm.departmentId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleProfileChange("departmentId", "")}
+                      disabled={loading}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {profileErrors.departmentId && (
+                  <p className="text-sm text-red-500">{profileErrors.departmentId}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
-                <Input id="bio" defaultValue="Frontend developer with 5 years of experience." />
+                <Textarea
+                  id="bio"
+                  value={profileForm.bio}
+                  onChange={(e) => handleProfileChange("bio", e.target.value)}
+                  className={profileErrors.bio ? "border-red-500" : ""}
+                  placeholder="Tell us about yourself, your experience, and what you do..."
+                  rows={4}
+                  maxLength={500}
+                />
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>Share your professional background and interests</span>
+                  <span className={profileForm.bio.length > 450 ? "text-orange-500" : profileForm.bio.length > 400 ? "text-yellow-600" : ""}>
+                    {profileForm.bio.length}/500 characters
+                  </span>
+                </div>
+                {profileErrors.bio && (
+                  <p className="text-sm text-red-500">{profileErrors.bio}</p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button>Save Changes</Button>
+              <Button
+                onClick={handleProfileUpdate}
+                disabled={isUpdatingProfile}
+              >
+                {isUpdatingProfile ? "Saving..." : "Save Changes"}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -101,21 +704,53 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" />
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
+                  className={passwordErrors.currentPassword ? "border-red-500" : ""}
+                />
+                {passwordErrors.currentPassword && (
+                  <p className="text-sm text-red-500">{passwordErrors.currentPassword}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
+                  className={passwordErrors.newPassword ? "border-red-500" : ""}
+                />
+                {passwordErrors.newPassword && (
+                  <p className="text-sm text-red-500">{passwordErrors.newPassword}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" />
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
+                  className={passwordErrors.confirmPassword ? "border-red-500" : ""}
+                />
+                {passwordErrors.confirmPassword && (
+                  <p className="text-sm text-red-500">{passwordErrors.confirmPassword}</p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button>Update Password</Button>
+              <Button
+                onClick={handlePasswordUpdate}
+                disabled={isUpdatingPassword}
+              >
+                {isUpdatingPassword ? "Updating..." : "Update Password"}
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>

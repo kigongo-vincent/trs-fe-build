@@ -15,6 +15,7 @@ import {
   Users,
   X,
   Receipt,
+  User,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -30,6 +31,7 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const [mounted, setMounted] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     admin: true,
     management: true,
@@ -39,7 +41,11 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   })
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && typeof window !== "undefined") {
       if (pathname.includes("super-admin")) {
         sessionStorage.setItem("userRole", "super-admin")
       } else if (pathname.includes("company-admin")) {
@@ -48,7 +54,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
         sessionStorage.setItem("userRole", "employee")
       }
     }
-  }, [pathname])
+  }, [pathname, mounted])
 
   const toggleGroup = (group: string) => {
     setExpandedGroups({
@@ -62,25 +68,38 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   }
 
   // Determine which role's sidebar to show based on the current path
-  // For settings page, check the previous navigation or use a more robust method
-  const isSuperAdmin =
-    pathname.includes("super-admin") ||
+  // Only use pathname-based logic for server-side rendering to avoid hydration issues
+  const isSuperAdmin = pathname.includes("super-admin")
+  const isCompanyAdmin = pathname.includes("company-admin")
+  const isConsultant = pathname.includes("employee")
+
+  // Use client-side logic only after mounting to avoid hydration mismatches
+  const clientIsSuperAdmin = mounted && (
+    isSuperAdmin ||
     (pathname === "/dashboard/settings" &&
       typeof window !== "undefined" &&
       (window.location.pathname.includes("super-admin") || sessionStorage.getItem("userRole") === "super-admin"))
+  )
 
-  const isCompanyAdmin =
-    pathname.includes("company-admin") ||
+  const clientIsCompanyAdmin = mounted && (
+    isCompanyAdmin ||
     (pathname === "/dashboard/settings" &&
       typeof window !== "undefined" &&
       (window.location.pathname.includes("company-admin") || sessionStorage.getItem("userRole") === "company-admin"))
+  )
 
-  const isConsultant =
-    pathname.includes("employee") ||
+  const clientIsConsultant = mounted && (
+    isConsultant ||
     (pathname === "/dashboard/settings" &&
       typeof window !== "undefined" &&
       sessionStorage.getItem("userRole") === "employee") ||
-    (!isSuperAdmin && !isCompanyAdmin)
+    (!clientIsSuperAdmin && !clientIsCompanyAdmin)
+  )
+
+  // Use server-side logic for initial render, client-side logic after mounting
+  const shouldShowSuperAdmin = isSuperAdmin || (mounted && clientIsSuperAdmin)
+  const shouldShowCompanyAdmin = isCompanyAdmin || (mounted && clientIsCompanyAdmin)
+  const shouldShowConsultant = isConsultant || (mounted && clientIsConsultant)
 
   const sidebarContent = (
     <>
@@ -99,7 +118,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       <ScrollArea className="flex-1 px-2 py-4">
         <div className="space-y-4">
           {/* Super Admin Section */}
-          {isSuperAdmin && (
+          {shouldShowSuperAdmin && (
             <>
               <div className="px-3 py-2">
                 <div className="space-y-1">
@@ -217,7 +236,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
           )}
 
           {/* Company Admin Section */}
-          {isCompanyAdmin && (
+          {shouldShowCompanyAdmin && (
             <>
               <div className="px-3 py-2">
                 <div className="space-y-1">
@@ -345,7 +364,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
           )}
 
           {/* Consultant Section (but with employee URLs) */}
-          {isConsultant && (
+          {shouldShowConsultant && (
             <>
               <div className="px-3 py-2">
                 <div className="space-y-1">
@@ -440,6 +459,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
               >
                 <Cog className="h-4 w-4" />
                 <span>Settings</span>
+              </Link>
+              <Link
+                href="/dashboard/profile"
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive("/dashboard/profile") && "bg-accent text-accent-foreground",
+                )}
+              >
+                <User className="h-4 w-4" />
+                <span>Profile</span>
               </Link>
             </div>
           </div>
