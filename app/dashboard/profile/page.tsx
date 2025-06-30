@@ -6,10 +6,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getAuthUser } from "@/services/auth"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
+import { useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { User as UserIcon } from "lucide-react"
 
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null)
     const [isClient, setIsClient] = useState(false)
+    const searchParams = useSearchParams();
+    const section = searchParams?.get('section') || 'personal';
 
     useEffect(() => {
         setIsClient(true)
@@ -75,183 +80,114 @@ export default function ProfilePage() {
         "0": "Sunday"
     }
 
+    // Section components
+    const PersonalSection = () => (
+        <>
+            {/* Header Row: Profile Card + Address Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mb-8">
+                {/* Profile Header Card */}
+                <Card className="w-full">
+                    <CardContent className="flex flex-col items-center gap-4 py-8 w-full">
+                        <Avatar className="h-24 w-24 mb-2 bg-primary/10">
+                            <AvatarImage src={user.avatarUrl || undefined} alt={user.fullName || "User"} />
+                            <AvatarFallback className="flex flex-col items-center justify-center h-full w-full text-4xl text-primary">
+                                {user.fullName ? (
+                                    <span>{getUserInitials()}</span>
+                                ) : (
+                                    <UserIcon className="h-12 w-12 text-primary/60" />
+                                )}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="text-center w-full">
+                            <div className="text-2xl font-bold mb-1">{user.fullName || "-"}</div>
+                            <div className="text-muted-foreground mb-1">{user.jobTitle || "-"}</div>
+                            <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground mb-1">
+                                <span>Employee ID: {user.employeeId || "-"}</span>
+                                <span>Department: {user.departmentId || "-"}</span>
+                            </div>
+                            <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground mb-2">
+                                <span>Email: {user.email || "-"}</span>
+                                <span>Phone: {user.phoneNumber || "-"}</span>
+                            </div>
+                            <Button variant="outline" size="sm">Edit Profile</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+                {/* Address Card */}
+                <Card className="w-full">
+                    <CardHeader><CardTitle>Address</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 w-full">
+                        <div><Label>Street</Label><div className="text-muted-foreground">{user.address?.street || "-"}</div></div>
+                        <div><Label>City</Label><div className="text-muted-foreground">{user.address?.city || "-"}</div></div>
+                        <div><Label>State</Label><div className="text-muted-foreground">{user.address?.state || "-"}</div></div>
+                        <div><Label>Country</Label><div className="text-muted-foreground">{user.address?.country || "-"}</div></div>
+                        <div><Label>Postal Code</Label><div className="text-muted-foreground">{user.address?.postalCode || "-"}</div></div>
+                    </CardContent>
+                </Card>
+            </div>
+            {/* Info Grid: Bio, Compensation, Office Days */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
+                {/* Bio Card */}
+                <Card className="w-full">
+                    <CardHeader><CardTitle>Bio</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 w-full">
+                        <div><Label>Bio</Label><div className="text-muted-foreground">{user.bio || "-"}</div></div>
+                    </CardContent>
+                </Card>
+                {/* Compensation Card */}
+                <Card className="w-full">
+                    <CardHeader><CardTitle>Compensation</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 w-full">
+                        <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `$${user.grossPay}` : "-"}</div></div>
+                    </CardContent>
+                </Card>
+                {/* Office Days Card */}
+                <Card className="w-full">
+                    <CardHeader><CardTitle>Office Days</CardTitle></CardHeader>
+                    <CardContent className="space-y-2 w-full">
+                        <div><Label>Days</Label><div className="text-muted-foreground">{Array.isArray(user.officeDays) && user.officeDays.length > 0 ? user.officeDays.map((d) => weekdayMap[d] || d).join(", ") : "-"}</div></div>
+                    </CardContent>
+                </Card>
+            </div>
+        </>
+    );
+    // Only Next of Kin and Bank Details remain as separate sections
+    const NextOfKinSection = () => (
+        <Card className="h-full">
+            <CardHeader><CardTitle>Next of Kin</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+                <div><Label>Name</Label><div className="text-muted-foreground">{user.nextOfKin?.name || "-"}</div></div>
+                <div><Label>Relationship</Label><div className="text-muted-foreground">{user.nextOfKin?.relationship || "-"}</div></div>
+                <div><Label>Phone</Label><div className="text-muted-foreground">{user.nextOfKin?.phoneNumber || "-"}</div></div>
+                <div><Label>Email</Label><div className="text-muted-foreground">{user.nextOfKin?.email || "-"}</div></div>
+            </CardContent>
+        </Card>
+    );
+    const BankSection = () => (
+        <Card className="h-full">
+            <CardHeader><CardTitle>Bank Details</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+                <div><Label>Account Name</Label><div className="text-muted-foreground">{user.bankDetails?.accountName || "-"}</div></div>
+                <div><Label>Account Number</Label><div className="text-muted-foreground">{user.bankDetails?.accountNumber || "-"}</div></div>
+                <div><Label>Bank Name</Label><div className="text-muted-foreground">{user.bankDetails?.bankName || "-"}</div></div>
+                <div><Label>SWIFT Code</Label><div className="text-muted-foreground">{user.bankDetails?.swiftCode || "-"}</div></div>
+                <div><Label>Routing Number</Label><div className="text-muted-foreground">{user.bankDetails?.routingNumber || "-"}</div></div>
+            </CardContent>
+        </Card>
+    );
+    // Section rendering logic
+    let SectionComponent = null;
+    switch (section) {
+        case 'personal': SectionComponent = <PersonalSection />; break;
+        case 'nextOfKin': SectionComponent = <NextOfKinSection />; break;
+        case 'bank': SectionComponent = <BankSection />; break;
+        default: SectionComponent = <PersonalSection />;
+    }
     return (
-        <div className="flex flex-col items-center justify-center min-h-[80vh] bg-muted/10 p-4">
-            <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Personal Information */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle>Personal Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label>Full Name</Label>
-                            <div className="text-muted-foreground">{user.fullName || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>First Name</Label>
-                            <div className="text-muted-foreground">{user.firstName || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Last Name</Label>
-                            <div className="text-muted-foreground">{user.lastName || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Email</Label>
-                            <div className="text-muted-foreground">{user.email || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Employee ID</Label>
-                            <div className="text-muted-foreground">{user.employeeId || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Job Title</Label>
-                            <div className="text-muted-foreground">{user.jobTitle || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Phone</Label>
-                            <div className="text-muted-foreground">{user.phoneNumber || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Date of Birth</Label>
-                            <div className="text-muted-foreground">{user.dateOfBirth ? new Date(user.dateOfBirth).toLocaleDateString() : "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Department ID</Label>
-                            <div className="text-muted-foreground">{user.departmentId || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Role ID</Label>
-                            <div className="text-muted-foreground">{user.roleId || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Company ID</Label>
-                            <div className="text-muted-foreground">{user.companyId || "-"}</div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Address & Compensation */}
-                <div className="flex flex-col gap-8 h-full">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Address</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div>
-                                <Label>Street</Label>
-                                <div className="text-muted-foreground">{user.address?.street || "-"}</div>
-                            </div>
-                            <div>
-                                <Label>City</Label>
-                                <div className="text-muted-foreground">{user.address?.city || "-"}</div>
-                            </div>
-                            <div>
-                                <Label>State</Label>
-                                <div className="text-muted-foreground">{user.address?.state || "-"}</div>
-                            </div>
-                            <div>
-                                <Label>Country</Label>
-                                <div className="text-muted-foreground">{user.address?.country || "-"}</div>
-                            </div>
-                            <div>
-                                <Label>Postal Code</Label>
-                                <div className="text-muted-foreground">{user.address?.postalCode || "-"}</div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Compensation</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div>
-                                <Label>Gross Pay</Label>
-                                <div className="text-muted-foreground">{user.grossPay ? `$${user.grossPay}` : "-"}</div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Next of Kin */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle>Next of Kin</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div>
-                            <Label>Name</Label>
-                            <div className="text-muted-foreground">{user.nextOfKin?.name || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Relationship</Label>
-                            <div className="text-muted-foreground">{user.nextOfKin?.relationship || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Phone</Label>
-                            <div className="text-muted-foreground">{user.nextOfKin?.phoneNumber || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Email</Label>
-                            <div className="text-muted-foreground">{user.nextOfKin?.email || "-"}</div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Bank Details */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle>Bank Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div>
-                            <Label>Account Name</Label>
-                            <div className="text-muted-foreground">{user.bankDetails?.accountName || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Account Number</Label>
-                            <div className="text-muted-foreground">{user.bankDetails?.accountNumber || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Bank Name</Label>
-                            <div className="text-muted-foreground">{user.bankDetails?.bankName || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>SWIFT Code</Label>
-                            <div className="text-muted-foreground">{user.bankDetails?.swiftCode || "-"}</div>
-                        </div>
-                        <div>
-                            <Label>Routing Number</Label>
-                            <div className="text-muted-foreground">{user.bankDetails?.routingNumber || "-"}</div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Office Days */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle>Office Days</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div>
-                            <Label>Days</Label>
-                            <div className="text-muted-foreground">{Array.isArray(user.officeDays) && user.officeDays.length > 0 ? user.officeDays.map((d) => weekdayMap[d] || d).join(", ") : "-"}</div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Bio */}
-                <Card className="h-full">
-                    <CardHeader>
-                        <CardTitle>Bio</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div>
-                            <Label>Bio</Label>
-                            <div className="text-muted-foreground">{user.bio || "-"}</div>
-                        </div>
-                    </CardContent>
-                </Card>
+        <div className="flex flex-col items-start justify-start min-h-[80vh] w-full bg-muted/10 p-4">
+            <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
+            <div className="w-full">
+                {SectionComponent}
             </div>
         </div>
     )

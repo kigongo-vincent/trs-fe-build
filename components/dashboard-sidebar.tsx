@@ -18,7 +18,7 @@ import {
   User,
 } from "lucide-react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -31,6 +31,9 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined
+  const profileSection = searchParams?.get('section') || ''
   const [mounted, setMounted] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     admin: true,
@@ -38,6 +41,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     consultant: true,
     analytics: true,
     reports: true,
+    profile: false,
   })
 
   useEffect(() => {
@@ -100,6 +104,13 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const shouldShowSuperAdmin = isSuperAdmin || (mounted && clientIsSuperAdmin)
   const shouldShowCompanyAdmin = isCompanyAdmin || (mounted && clientIsCompanyAdmin)
   const shouldShowConsultant = isConsultant || (mounted && clientIsConsultant)
+
+  const isProfileActive = pathname.startsWith("/dashboard/profile")
+  const profileSections = [
+    { key: "personal", label: "Personal Information" },
+    { key: "nextOfKin", label: "Next of Kin" },
+    { key: "bank", label: "Bank Details" },
+  ]
 
   const sidebarContent = (
     <>
@@ -460,16 +471,38 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <Cog className="h-4 w-4" />
                 <span>Settings</span>
               </Link>
-              <Link
-                href="/dashboard/profile"
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  isActive("/dashboard/profile") && "bg-accent text-accent-foreground",
+              {/* Collapsible Profile Menu */}
+              <div>
+                <div
+                  className="flex items-center justify-between py-2 cursor-pointer"
+                  onClick={() => toggleGroup("profile")}
+                >
+                  <span className={cn("flex items-center gap-3 text-sm font-medium", isProfileActive && "text-primary")}> <User className="h-4 w-4" /> Profile </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform",
+                      expandedGroups.profile && "rotate-180",
+                    )}
+                  />
+                </div>
+                {expandedGroups.profile && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {profileSections.map((section) => (
+                      <button
+                        key={section.key}
+                        className={cn(
+                          "flex w-full text-left items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition",
+                          isProfileActive && profileSection === section.key && "bg-accent text-accent-foreground"
+                        )}
+                        onClick={() => router.push(`/dashboard/profile?section=${section.key}`)}
+                      >
+                        <span>{section.label}</span>
+                        {isProfileActive && profileSection === section.key && <span className="ml-auto h-2 w-2 rounded-full bg-primary" />}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              >
-                <User className="h-4 w-4" />
-                <span>Profile</span>
-              </Link>
+              </div>
             </div>
           </div>
         </div>
