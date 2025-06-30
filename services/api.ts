@@ -217,6 +217,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
   if (!response.ok) {
+    // Handle validation errors specifically
+    if (response.status === 400 && data.errors) {
+      const errorMessages = data.errors
+        .map(
+          (error: any) =>
+            `${error.property}: ${Object.values(error.constraints || {}).join(
+              ", "
+            )}`
+        )
+        .join("; ");
+      throw new Error(errorMessages);
+    }
+
     const error = data.message || response.statusText;
     throw new Error(error);
   }
