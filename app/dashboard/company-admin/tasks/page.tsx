@@ -467,206 +467,113 @@ export default function TasksPage() {
       </Card>
 
       {/* Task Detail Modal */}
-      <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Task Details</DialogTitle>
-              <Button variant="outline" size="sm" onClick={() => setIsTaskModalOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <DialogDescription>
-              {selectedTask ? `Viewing details for task: ${selectedTask.title}` : ""}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedTask && (
-            <div className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{selectedTask.title}</h3>
-                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+      {selectedTask && isTaskModalOpen && (
+        <Dialog open={true} onOpenChange={open => { if (!open) setIsTaskModalOpen(false) }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Overlay */}
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
+            {/* Fullscreen Modal Content */}
+            <div
+              className="relative w-screen h-screen bg-background flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
+              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
+            >
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
+                <DialogHeader className="flex flex-row items-center gap-4 w-full">
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                    <Eye className="h-6 w-6" />
+                    {selectedTask?.title || "Task Details"}
+                  </DialogTitle>
+                </DialogHeader>
+                <button
+                  onClick={() => setIsTaskModalOpen(false)}
+                  className="ml-auto rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Close"
+                >
+                  <span className="sr-only">Close</span>
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              {/* Main Content - all info in one section */}
+              <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full flex flex-col gap-6">
+                {/* Header and Meta */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      {selectedTask.title}
+                      {(() => {
+                        switch (selectedTask.status.toLowerCase()) {
+                          case 'active':
+                            return <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800'>Active</Badge>;
+                          case 'draft':
+                            return <Badge variant='outline' className='bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800'>Draft</Badge>;
+                          default:
+                            return <Badge variant='outline'>{selectedTask.status}</Badge>;
+                        }
+                      })()}
                       <Badge variant="secondary">{selectedTask.project.name}</Badge>
-                      <Badge variant="outline">{selectedTask.project.department.name}</Badge>
-                      {getStatusBadge(selectedTask.status)}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>Created Date</span>
+                    </CardTitle>
+                    <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm">
+                      <span className="flex items-center gap-1"><User className="h-4 w-4" />{(selectedTask as any).user?.fullName || 'No owner'}</span>
+                      <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />Created {new Date(selectedTask.createdAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{Number(selectedTask.duration) >= 60 ? `${Math.floor(Number(selectedTask.duration) / 60)}h ${Number(selectedTask.duration) % 60}m` : `${selectedTask.duration}m`}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="font-semibold mb-1">Description</div>
+                      <div className="rounded bg-muted p-3 text-sm min-h-[60px]">
+                        {selectedTask.description || 'No description provided'}
                       </div>
-                      <p className="text-sm font-medium">{formatFullDate(selectedTask.createdAt)}</p>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        <span>Duration</span>
-                      </div>
-                      <p className="text-sm font-medium">{formatDuration(selectedTask.duration)}</p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span>Task Owner</span>
-                    </div>
-                    <p className="text-sm font-medium">{(selectedTask as any).user?.fullName || "No name"}</p>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">Description</h4>
-                    <div className="rounded-md bg-muted p-3 text-sm">
-                      {selectedTask.description || "No description provided"}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium">Timeline</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <div className="h-2 w-2 rounded-full bg-green-500" />
-                        <span>Created: {formatDateTime(selectedTask.createdAt)}</span>
-                      </div>
-                      {selectedTask.updatedAt !== selectedTask.createdAt && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <div className="h-2 w-2 rounded-full bg-blue-500" />
-                          <span>Last Updated: {formatDateTime(selectedTask.updatedAt)}</span>
+                  </CardContent>
+                </Card>
+                {/* Project Info, Department Info, Timeline in one row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Project Info */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />{selectedTask.project.name}<Badge variant="outline" className="capitalize ml-2">{selectedTask.project.status}</Badge></CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="font-medium">Progress:</span>
+                        <div className="flex-1 max-w-xs">
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary" style={{ width: `${selectedTask.project.progress}%` }} />
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <h3 className="text-lg font-semibold">{selectedTask.project.name}</h3>
-                        <p className="text-sm text-muted-foreground">Project</p>
+                        <span className="ml-2 text-sm font-semibold">{selectedTask.project.progress}%</span>
                       </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Project Status</span>
-                      </div>
-                      <Badge variant="outline" className="capitalize">
-                        {selectedTask.project.status}
-                      </Badge>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Progress</span>
-                      </div>
-                      <p className="text-sm font-medium">{selectedTask.project.progress}%</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>Project Deadline</span>
-                    </div>
-                    <p className="text-sm font-medium">
-                      {new Date(selectedTask.project.deadline).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <h4 className="font-semibold">{selectedTask.project.department.name}</h4>
-                        <p className="text-sm text-muted-foreground">Department</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span>Department Head</span>
-                    </div>
-                    <p className="text-sm font-medium">{selectedTask.project.department.head}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Department Status</span>
-                    </div>
-                    <Badge variant="outline" className="capitalize">
-                      {selectedTask.project.department.status}
-                    </Badge>
-                  </div>
-
-                  {selectedTask.project.department.description && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="mb-2 text-sm font-medium">Department Description</h4>
-                        <div className="rounded-md bg-muted p-3 text-sm">
-                          {selectedTask.project.department.description}
-                        </div>
-                      </div>
-                    </>
-                  )}
+                      <div className="flex items-center gap-2 mb-2"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="font-medium">Deadline:</span> {new Date(selectedTask.project.deadline).toLocaleDateString()}</div>
+                    </CardContent>
+                  </Card>
+                  {/* Department Info */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-muted-foreground" />{selectedTask.project.department.name}<Badge variant="outline" className="capitalize ml-2">{selectedTask.project.department.status}</Badge></CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 mb-2"><User className="h-4 w-4 text-muted-foreground" /><span className="font-medium">Head:</span> {selectedTask.project.department.head}</div>
+                      <div className="rounded bg-muted p-3 text-sm"><span className="font-semibold">Description:</span> {selectedTask.project.department.description || 'No description'}</div>
+                    </CardContent>
+                  </Card>
+                  {/* Timeline */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-muted-foreground" />Timeline</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 mb-2"><div className="h-3 w-3 rounded-full bg-green-500" /><span className="font-medium">Created:</span> {new Date(selectedTask.createdAt).toLocaleString()}</div>
+                      <div className="flex items-center gap-2 mb-2"><div className="h-3 w-3 rounded-full bg-blue-500" /><span className="font-medium">Last Updated:</span> {new Date(selectedTask.updatedAt).toLocaleString()}</div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-2xl font-bold">{formatDuration(selectedTask.duration)}</p>
-                  <p className="text-sm text-muted-foreground">Time Logged</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-lg font-semibold">{selectedTask.project.name}</p>
-                  <p className="text-sm text-muted-foreground">Project</p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <Building2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-lg font-semibold">{selectedTask.project.department.name}</p>
-                  <p className="text-sm text-muted-foreground">Department</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button variant="outline" onClick={() => setIsTaskModalOpen(false)}>
-                  Close
-                </Button>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </Dialog>
+      )}
     </div>
   )
 }
