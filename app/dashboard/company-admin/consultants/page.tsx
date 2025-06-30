@@ -1159,6 +1159,8 @@ export default function ConsultantsPage() {
                             <div className="flex flex-col gap-2 mt-4">
                               <div><Label>Address</Label><div className="text-muted-foreground whitespace-pre-line">{selectedConsultant?.company?.address || "-"}</div></div>
                               <div><Label>Phone</Label><div className="text-muted-foreground">{selectedConsultant?.company?.phone || "-"}</div></div>
+                              {/* TODO: Add gross pay/compensation when available on Consultant type */}
+                              <div><Label>Gross Pay</Label><div className="text-muted-foreground">-</div></div>
                               <div><Label>Office Days</Label><div className="text-muted-foreground">-</div></div>
                               <div><Label>Bio</Label><div className="text-muted-foreground">{selectedConsultant?.bio || "-"}</div></div>
                             </div>
