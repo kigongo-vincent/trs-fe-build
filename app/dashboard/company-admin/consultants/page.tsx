@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, Trash, UserCheck, UserX } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -65,6 +65,15 @@ export default function ConsultantsPage() {
   // Get company ID from auth data
   const authData = getAuthData()
   const companyId = authData?.user?.company?.id
+
+  // State for status confirmation dialog
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [statusTargetConsultant, setStatusTargetConsultant] = useState<Consultant | null>(null)
+  const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | null>(null)
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTargetConsultant, setDeleteTargetConsultant] = useState<Consultant | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -451,6 +460,55 @@ export default function ConsultantsPage() {
     setEditConsultant(null)
   }
 
+  // Open confirmation dialog for status change
+  const handleStatusDialog = (consultant: Consultant) => {
+    if (consultant.status === 'active') {
+      setStatusAction('deactivate')
+    } else {
+      setStatusAction('activate')
+    }
+    setStatusTargetConsultant(consultant)
+    setStatusDialogOpen(true)
+  }
+
+  // Confirm status change handler (stub)
+  const handleConfirmStatusChange = () => {
+    if (!statusTargetConsultant || !statusAction) return
+    // TODO: Implement actual API call
+    alert(`${statusAction === 'activate' ? 'Activate' : 'Deactivate'} consultant: ${statusTargetConsultant.fullName}`)
+    setStatusDialogOpen(false)
+    setStatusTargetConsultant(null)
+    setStatusAction(null)
+  }
+
+  // Cancel status change
+  const handleCancelStatusChange = () => {
+    setStatusDialogOpen(false)
+    setStatusTargetConsultant(null)
+    setStatusAction(null)
+  }
+
+  // Open confirmation dialog for delete
+  const handleDeleteDialog = (consultant: Consultant) => {
+    setDeleteTargetConsultant(consultant)
+    setDeleteDialogOpen(true)
+  }
+
+  // Confirm delete handler (stub)
+  const handleConfirmDelete = () => {
+    if (!deleteTargetConsultant) return
+    // TODO: Implement actual API call
+    alert(`Remove consultant: ${deleteTargetConsultant.fullName}`)
+    setDeleteDialogOpen(false)
+    setDeleteTargetConsultant(null)
+  }
+
+  // Cancel delete
+  const handleCancelDelete = () => {
+    setDeleteDialogOpen(false)
+    setDeleteTargetConsultant(null)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -694,6 +752,21 @@ export default function ConsultantsPage() {
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEditConsultant(consultant)}>
                               <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleStatusDialog(consultant)}
+                              title={consultant.status === 'active' ? 'Deactivate Consultant' : 'Activate Consultant'}
+                            >
+                              {consultant.status === 'active' ? (
+                                <UserCheck className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <UserX className="h-4 w-4 text-gray-400" />
+                              )}
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteDialog(consultant)} title="Remove Consultant">
+                              <Trash className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1223,6 +1296,44 @@ export default function ConsultantsPage() {
           {editConsultant && (
             <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={() => { setIsEditModalOpen(false); setEditConsultant(null); /* refetch consultants */ }} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={handleCancelStatusChange}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {statusAction === 'activate' ? 'Activate Consultant' : 'Deactivate Consultant'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {statusAction === 'activate'
+              ? `Are you sure you want to activate ${statusTargetConsultant?.fullName}?`
+              : `Are you sure you want to deactivate ${statusTargetConsultant?.fullName}?`}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleCancelStatusChange}>Cancel</Button>
+            <Button variant={statusAction === 'activate' ? 'default' : 'destructive'} onClick={handleConfirmStatusChange}>
+              {statusAction === 'activate' ? 'Activate' : 'Deactivate'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={handleCancelDelete}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove Consultant</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {`Are you sure you want to remove ${deleteTargetConsultant?.fullName}? This action cannot be undone.`}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleCancelDelete}>Cancel</Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>Remove</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
