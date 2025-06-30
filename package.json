@@ -10,6 +10,7 @@
     "export": "next export"
   },
   "dependencies": {
+    "@fontsource/poppins": "^5.2.6",
     "@hookform/resolvers": "latest",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",

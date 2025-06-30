@@ -3,13 +3,10 @@ import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Confetti } from "@/components/confetti"
 import { Toaster } from "sonner"
-import { Mona_Sans as FontSans } from "next/font/google"
-import { cn } from "@/lib/utils"
-
-const fontSans = FontSans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-})
+import "@fontsource/poppins/400.css"
+import "@fontsource/poppins/500.css"
+import "@fontsource/poppins/600.css"
+import "@fontsource/poppins/700.css"
 
 export const metadata = {
   title: "Task Reporting System (TRS)",
@@ -25,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}>
+      <body className="min-h-screen bg-background antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <Confetti />
           {children}
