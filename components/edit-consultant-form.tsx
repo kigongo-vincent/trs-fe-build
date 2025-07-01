@@ -353,7 +353,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                         {/* ID Documents */}
                         <div className="space-y-4 pt-6">
                             <h2 className="text-lg font-semibold mb-2">ID Documents</h2>
-                            <FileAttachment attachments={idImages} onAttachmentsChange={setIdImages} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} />
+                            <FileAttachment attachments={idImages} onAttachmentsChange={setIdImages} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
                             <p className="text-sm text-muted-foreground">You may upload up to 5 PDF files of the consultant's identification documents (e.g., passport, national ID, driver's license).</p>
                         </div>
 

@@ -105,13 +105,8 @@ export default function TimeLogDemoPage() {
                             onAttachmentsChange={setAttachments}
                             maxFiles={5}
                             maxSize={5 * 1024 * 1024} // 5MB for demo
-                            acceptedFileTypes={[
-                                "image/*",
-                                "application/pdf",
-                                "text/*",
-                                "application/msword",
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            ]}
+                            acceptedFileTypes={["image/*", "application/pdf"]}
+                            showUrlInput={true}
                             autoUpload={false} // Disable auto-upload for demo
                         />
                     </CardContent>

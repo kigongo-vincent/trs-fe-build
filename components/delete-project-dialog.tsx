@@ -93,6 +93,7 @@ export function DeleteProjectDialog({
 
                 <DialogFooter className="gap-2">
                     <Button
+                        type="button"
                         variant="outline"
                         onClick={onClose}
                         disabled={loading}
@@ -100,6 +101,7 @@ export function DeleteProjectDialog({
                         Cancel
                     </Button>
                     <Button
+                        type="button"
                         variant="destructive"
                         onClick={handleDelete}
                         disabled={loading}
