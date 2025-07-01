@@ -2,7 +2,7 @@
 
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
 
-const data = [
+const defaultData = [
   { date: "May 1", hours: 38 },
   { date: "May 2", hours: 42 },
   { date: "May 3", hours: 45 },
@@ -36,7 +36,7 @@ const data = [
   { date: "May 31", hours: 38 },
 ]
 
-export function HoursLoggedChart() {
+export function HoursLoggedChart({ data = defaultData }: { data?: { date: string; hours: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>

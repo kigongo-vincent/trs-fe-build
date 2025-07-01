@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
-const data = [
+const defaultData = [
   { name: "John Smith", hours: 42, tasks: 12, efficiency: 95 },
   { name: "Sarah Johnson", hours: 40, tasks: 10, efficiency: 92 },
   { name: "Emily Davis", hours: 38, tasks: 9, efficiency: 88 },
@@ -13,7 +13,7 @@ const data = [
   { name: "David Anderson", hours: 30, tasks: 5, efficiency: 75 },
 ]
 
-export function EmployeePerformanceChart() {
+export function EmployeePerformanceChart({ data = defaultData }: { data?: { name: string; hours: number; tasks: number; efficiency: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data} layout="vertical">

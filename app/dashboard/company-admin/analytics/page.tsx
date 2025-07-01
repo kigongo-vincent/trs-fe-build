@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -7,8 +9,36 @@ import { HoursLoggedChart } from "@/components/hours-logged-chart"
 import { DepartmentPerformanceChart } from "@/components/department-performance-chart"
 import { ProjectCompletionChart } from "@/components/project-completion-chart"
 import { EmployeePerformanceChart } from "@/components/employee-performance-chart"
+import { getRequest } from "@/services/api"
+import { useEffect, useState } from "react"
+import { getAuthData } from "@/services/auth"
 
 export default function AnalyticsPage() {
+  // Get companyId from session
+  const companyId = typeof window !== "undefined" ? getAuthData()?.user?.company?.id : undefined;
+
+  // State for analytics data
+  const [dailyHours, setDailyHours] = useState<any[]>([]);
+  const [hoursPerDept, setHoursPerDept] = useState<any[]>([]);
+  const [topConsultants, setTopConsultants] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    async function fetchAnalytics() {
+      try {
+        const dailyHoursRes = await getRequest(`/company/analytics/daily-hours-current-month/${companyId}`);
+        setDailyHours(Array.isArray(dailyHoursRes?.data) ? dailyHoursRes.data : Array.isArray(dailyHoursRes) ? dailyHoursRes : []);
+        const hoursPerDeptRes = await getRequest(`/company/analytics/hours-per-department/${companyId}`);
+        setHoursPerDept(Array.isArray(hoursPerDeptRes?.data) ? hoursPerDeptRes.data : Array.isArray(hoursPerDeptRes) ? hoursPerDeptRes : []);
+        const topConsultantsRes = await getRequest(`/company/analytics/top-consultants-by-hours-current-month/${companyId}`);
+        setTopConsultants(Array.isArray(topConsultantsRes?.data) ? topConsultantsRes.data : Array.isArray(topConsultantsRes) ? topConsultantsRes : []);
+      } catch (err) {
+        console.error("[Analytics] Error fetching analytics data:", err);
+      }
+    }
+    fetchAnalytics();
+  }, [companyId]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -51,7 +81,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Total hours logged across all departments</CardDescription>
               </CardHeader>
               <CardContent>
-                <HoursLoggedChart />
+                <HoursLoggedChart data={dailyHours} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -63,7 +93,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Productivity metrics by department</CardDescription>
               </CardHeader>
               <CardContent>
-                <DepartmentPerformanceChart />
+                <DepartmentPerformanceChart data={hoursPerDept} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -75,7 +105,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Project completion rates over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <ProjectCompletionChart />
+                <ProjectCompletionChart data={[]} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -87,14 +117,14 @@ export default function AnalyticsPage() {
                 <CardDescription>Top performing employees by hours logged</CardDescription>
               </CardHeader>
               <CardContent>
-                <EmployeePerformanceChart />
+                <EmployeePerformanceChart data={topConsultants} />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
@@ -131,10 +161,10 @@ export default function AnalyticsPage() {
             <p className="text-xs text-muted-foreground">+6% from last month</p>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>Key Insights</CardTitle>
             <CardDescription>Important metrics and trends</CardDescription>
@@ -171,8 +201,8 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
-        <Card>
+        </Card> */}
+        {/* <Card>
           <CardHeader>
             <CardTitle>Recommendations</CardTitle>
             <CardDescription>Suggested actions based on analytics</CardDescription>
@@ -209,7 +239,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   )

@@ -47,6 +47,7 @@ interface FileAttachmentProps {
     maxSize?: number // in bytes
     acceptedFileTypes?: string[]
     autoUpload?: boolean
+    showUrlInput?: boolean
 }
 
 const getFileIcon = (fileType: string) => {
@@ -72,8 +73,12 @@ export function FileAttachment({
     maxFiles = 10,
     maxSize = 10 * 1024 * 1024, // 10MB
     acceptedFileTypes = ["image/*", "application/pdf", "text/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-    autoUpload = false
+    autoUpload = false,
+    showUrlInput = false
 }: FileAttachmentProps) {
+    const [urlInput, setUrlInput] = useState("");
+    const [urlNameInput, setUrlNameInput] = useState("");
+
     const onDrop = useCallback((acceptedFiles: File[]) => {
         const newAttachments: Attachment[] = acceptedFiles.map((file) => ({
             id: Math.random().toString(36).substr(2, 9),
@@ -116,11 +121,25 @@ export function FileAttachment({
         }
     }
 
+    const addUrlAttachment = () => {
+        if (!urlInput.trim()) return;
+        const newAttachment: Attachment = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: urlNameInput.trim() || urlInput.trim(),
+            type: "url",
+            url: urlInput.trim(),
+        };
+        onAttachmentsChange([...attachments, newAttachment]);
+        setUrlInput("");
+        setUrlNameInput("");
+    };
+
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <Label>PDF Attachments ({attachments.length}/{maxFiles})</Label>
-
+                <Label>
+                    Attachments ({attachments.length}/{maxFiles})
+                </Label>
                 {/* File Drop Zone */}
                 <div
                     {...getRootProps()}
@@ -138,27 +157,54 @@ export function FileAttachment({
                     ) : (
                         <div>
                             <p className="text-sm text-muted-foreground mb-1">
-                                Drag & drop PDF files here, or click to select
+                                Drag & drop files here, or click to select
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                Max {maxFiles} PDFs, {formatFileSize(maxSize)} each
+                                Max {maxFiles} files, {formatFileSize(maxSize)} each
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Accepted: {acceptedFileTypes.join(", ")}
                             </p>
                         </div>
                     )}
                 </div>
             </div>
-
+            {/* URL Input Section */}
+            {showUrlInput && (
+                <div className="space-y-2">
+                    <Label>Add URL</Label>
+                    <div className="flex gap-2">
+                        <Input
+                            type="text"
+                            placeholder="https://example.com"
+                            value={urlInput}
+                            onChange={e => setUrlInput(e.target.value)}
+                        />
+                        <Input
+                            type="text"
+                            placeholder="Link name (optional)"
+                            value={urlNameInput}
+                            onChange={e => setUrlNameInput(e.target.value)}
+                        />
+                        <Button type="button" onClick={addUrlAttachment}>
+                            Add
+                        </Button>
+                    </div>
+                </div>
+            )}
             {/* Attachments List */}
             {attachments.length > 0 && (
                 <div className="space-y-2">
-                    <Label>Selected Files</Label>
+                    <Label>Selected Files & URLs</Label>
                     <div className="space-y-2">
                         {attachments.map((attachment) => (
                             <Card key={attachment.id} className="p-3">
                                 <CardContent className="p-0">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                                            {attachment.file ? (
+                                            {attachment.type === "url" ? (
+                                                <LinkIcon className="h-5 w-5 text-blue-500" />
+                                            ) : attachment.file ? (
                                                 getFileIcon(attachment.file.type)
                                             ) : (
                                                 <File className="h-5 w-5 flex-shrink-0" />
@@ -172,18 +218,29 @@ export function FileAttachment({
                                                         {formatFileSize(attachment.size)}
                                                     </p>
                                                 )}
+                                                {attachment.type === "url" && (
+                                                    <p className="text-xs text-muted-foreground truncate">
+                                                        {attachment.url}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
                                             <Button
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => openAttachment(attachment)}
                                                 className="h-8 w-8 p-0"
                                             >
-                                                <Download className="h-4 w-4" />
+                                                {attachment.type === "url" ? (
+                                                    <Eye className="h-4 w-4" />
+                                                ) : (
+                                                    <Download className="h-4 w-4" />
+                                                )}
                                             </Button>
                                             <Button
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => removeAttachment(attachment.id)}

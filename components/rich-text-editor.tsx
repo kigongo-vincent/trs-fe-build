@@ -4,8 +4,6 @@ import React, { useEffect, useState } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import TextAlign from "@tiptap/extension-text-align"
-import Link from "@tiptap/extension-link"
-import Image from "@tiptap/extension-image"
 import Color from "@tiptap/extension-color"
 import TextStyle from "@tiptap/extension-text-style"
 import { Label } from "@/components/ui/label"
@@ -14,7 +12,6 @@ import { Separator } from "@/components/ui/separator"
 import {
   Bold,
   Italic,
-  Underline,
   Strikethrough,
   List,
   ListOrdered,
@@ -25,8 +22,6 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Link as LinkIcon,
-  Image as ImageIcon,
   Palette,
   Eraser
 } from "lucide-react"
@@ -60,17 +55,6 @@ export function RichTextEditor({
       StarterKit,
       TextAlign.configure({
         types: ["heading", "paragraph"],
-      }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: "text-primary underline hover:no-underline",
-        },
-      }),
-      Image.configure({
-        HTMLAttributes: {
-          class: "max-w-full h-auto rounded my-2",
-        },
       }),
       Color,
       TextStyle,
@@ -106,20 +90,6 @@ export function RichTextEditor({
     return null
   }
 
-  const addLink = () => {
-    const url = window.prompt("Enter URL")
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run()
-    }
-  }
-
-  const addImage = () => {
-    const url = window.prompt("Enter image URL")
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run()
-    }
-  }
-
   const setColor = (color: string) => {
     editor.chain().focus().setColor(color).run()
   }
@@ -133,6 +103,7 @@ export function RichTextEditor({
             <div className="flex flex-wrap items-center gap-1 p-2 border-b bg-muted/50">
               {/* Text Formatting */}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleBold().run()}
@@ -141,6 +112,7 @@ export function RichTextEditor({
                 <Bold className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -149,14 +121,7 @@ export function RichTextEditor({
                 <Italic className="h-4 w-4" />
               </Button>
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                className={cn("h-8 w-8 p-0", editor.isActive("underline") && "bg-primary text-primary-foreground")}
-              >
-                <Underline className="h-4 w-4" />
-              </Button>
-              <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleStrike().run()}
@@ -169,6 +134,7 @@ export function RichTextEditor({
 
               {/* Headers */}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
@@ -177,6 +143,7 @@ export function RichTextEditor({
                 <Heading1 className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
@@ -185,6 +152,7 @@ export function RichTextEditor({
                 <Heading2 className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -197,6 +165,7 @@ export function RichTextEditor({
 
               {/* Lists */}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -205,6 +174,7 @@ export function RichTextEditor({
                 <List className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -217,6 +187,7 @@ export function RichTextEditor({
 
               {/* Alignment */}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().setTextAlign("left").run()}
@@ -225,6 +196,7 @@ export function RichTextEditor({
                 <AlignLeft className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().setTextAlign("center").run()}
@@ -233,6 +205,7 @@ export function RichTextEditor({
                 <AlignCenter className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().setTextAlign("right").run()}
@@ -241,6 +214,7 @@ export function RichTextEditor({
                 <AlignRight className="h-4 w-4" />
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().setTextAlign("justify").run()}
@@ -251,53 +225,38 @@ export function RichTextEditor({
 
               <Separator orientation="vertical" className="h-6" />
 
-              {/* Links and Images */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={addLink}
-                className={cn("h-8 w-8 p-0", editor.isActive("link") && "bg-primary text-primary-foreground")}
-              >
-                <LinkIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={addImage}
-                className="h-8 w-8 p-0"
-              >
-                <ImageIcon className="h-4 w-4" />
-              </Button>
-
-              <Separator orientation="vertical" className="h-6" />
-
               {/* Colors */}
               <div className="flex items-center gap-1">
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setColor("#ef4444")}
                   className="h-8 w-6 p-0 bg-red-500 hover:bg-red-600"
                 />
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setColor("#3b82f6")}
                   className="h-8 w-6 p-0 bg-blue-500 hover:bg-blue-600"
                 />
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setColor("#10b981")}
                   className="h-8 w-6 p-0 bg-green-500 hover:bg-green-600"
                 />
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setColor("#f59e0b")}
                   className="h-8 w-6 p-0 bg-yellow-500 hover:bg-yellow-600"
                 />
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setColor("#8b5cf6")}
@@ -309,6 +268,7 @@ export function RichTextEditor({
 
               {/* Clear Formatting */}
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
@@ -325,6 +285,16 @@ export function RichTextEditor({
             "min-h-[120px] focus:outline-none",
             readOnly && "bg-muted/50"
           )}
+          onKeyDown={(e) => {
+            // Prevent form submit on Cmd/Ctrl+Enter or Enter with meta/ctrl
+            if ((e.key === "Enter" && (e.metaKey || e.ctrlKey)) || (e.key === "Enter" && e.target.tagName !== "TEXTAREA")) {
+              e.preventDefault();
+            }
+            // Prevent form submit on Cmd/Ctrl+B, Cmd/Ctrl+I, Cmd/Ctrl+U
+            if ((e.metaKey || e.ctrlKey) && ["b", "i", "u"].includes(e.key.toLowerCase())) {
+              e.preventDefault();
+            }
+          }}
         />
         {placeholder && !value && !editor.isFocused && (
           <div className="absolute top-3 left-3 text-muted-foreground pointer-events-none">

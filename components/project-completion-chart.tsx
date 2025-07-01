@@ -2,7 +2,7 @@
 
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
 
-const data = [
+const defaultData = [
   { month: "Jan", completion: 65 },
   { month: "Feb", completion: 68 },
   { month: "Mar", completion: 72 },
@@ -10,7 +10,7 @@ const data = [
   { month: "May", completion: 78 },
 ]
 
-export function ProjectCompletionChart() {
+export function ProjectCompletionChart({ data = defaultData }: { data?: { month: string; completion: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>

@@ -24,8 +24,9 @@ interface TimeLogPayload {
   title: string
   description: string
   status: string
-  project: string
-  attachments?: Attachment[]
+  project?: string
+  attachments?: string[] // base64 strings
+  urls?: { url: string; name: string }[]
 }
 
 export default function NewTimeLogPage() {
@@ -86,11 +87,6 @@ export default function NewTimeLogPage() {
       return
     }
 
-    if (!formData.project) {
-      toast.error("Please select a project")
-      return
-    }
-
     if (!formData.minutes || Number(formData.minutes) <= 0) {
       toast.error("Please enter valid time in minutes")
       return
@@ -99,17 +95,42 @@ export default function NewTimeLogPage() {
     setIsSubmitting(true)
 
     try {
+      // Separate file and url attachments
+      const fileAttachments = attachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+      const urlAttachments = attachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
+
+      // Convert files to base64
+      const toBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // result: data:[mimetype];base64,[data]
+            const match = result.match(/^data:([^;]+);base64,(.*)$/);
+            if (match) {
+              const mimetype = match[1];
+              const data = match[2];
+              resolve(`data:${mimetype};name=${file.name};base64,${data}`);
+            } else {
+              reject(new Error("Invalid base64 format"));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
+
       const payload: TimeLogPayload = {
         duration: Number(formData.minutes),
         title: formData.title.trim(),
         description: formData.description.trim(),
         status: formData.status,
-        project: formData.project,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        ...(formData.project ? { project: formData.project } : {}),
+        attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+        urls: urlAttachments.length > 0 ? urlAttachments : undefined,
       }
-
+      console.log("payload", payload)
       const response = await postRequest("/consultants/time-logs", payload)
-
       if (response.status === 201) {
         toast.success("Time log created successfully!")
         router.push("/dashboard/employee")
@@ -118,7 +139,11 @@ export default function NewTimeLogPage() {
       }
     } catch (error) {
       console.error("Error creating time log:", error)
-      toast.error("Failed to create time log. Please try again.")
+      if (error instanceof Error && error.message) {
+        toast.error(error.message)
+      } else {
+        toast.error("Failed to create time log. Please try again.")
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -149,15 +174,14 @@ export default function NewTimeLogPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="project">Project *</Label>
+              <Label htmlFor="project">Project (optional)</Label>
               <Select
                 value={formData.project}
                 onValueChange={(value) => handleInputChange("project", value)}
                 disabled={isLoadingProjects}
-                required
               >
                 <SelectTrigger id="project">
-                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
                 </SelectTrigger>
                 <SelectContent>
                   {isLoadingProjects ? (
@@ -224,35 +248,12 @@ export default function NewTimeLogPage() {
 
             <div className="space-y-2">
               <Label>Task Description *</Label>
-              <Tabs defaultValue="rich" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="rich" className="flex items-center gap-2">
-                    <Type className="h-4 w-4" />
-                    Rich Text
-                  </TabsTrigger>
-                  <TabsTrigger value="plain" className="flex items-center gap-2">
-                    <Paperclip className="h-4 w-4" />
-                    Plain Text
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="rich" className="mt-4">
-                  <RichTextEditor
-                    value={formData.description}
-                    onChange={(value) => handleInputChange("description", value)}
-                    placeholder="Describe the task you worked on with rich formatting..."
-                    className="min-h-[200px]"
-                  />
-                </TabsContent>
-                <TabsContent value="plain" className="mt-4">
-                  <textarea
-                    placeholder="Describe the task you worked on..."
-                    className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    required
-                  />
-                </TabsContent>
-              </Tabs>
+              <RichTextEditor
+                value={formData.description}
+                onChange={(value) => handleInputChange("description", value)}
+                placeholder="Describe the task you worked on with rich formatting..."
+                className="min-h-[200px]"
+              />
             </div>
 
             <FileAttachment
@@ -260,17 +261,8 @@ export default function NewTimeLogPage() {
               onAttachmentsChange={setAttachments}
               maxFiles={10}
               maxSize={10 * 1024 * 1024} // 10MB
-              acceptedFileTypes={[
-                "image/*",
-                "application/pdf",
-                "text/*",
-                "application/msword",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "application/vnd.ms-excel",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "application/vnd.ms-powerpoint",
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-              ]}
+              acceptedFileTypes={["image/*", "application/pdf"]}
+              showUrlInput={true}
             />
           </CardContent>
           <CardFooter className="flex justify-between">
