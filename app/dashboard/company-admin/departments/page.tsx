@@ -268,7 +268,7 @@ export default function DepartmentsPage() {
                   filteredDepartments.map((department) => (
                     <TableRow key={department.id}>
                       <TableCell className="font-medium">{department.name}</TableCell>
-                      <TableCell>{department.head}</TableCell>
+                      <TableCell>{typeof department.head === 'object' && department.head !== null ? (department.head as any).fullName : department.head}</TableCell>
                       <TableCell>{department.users.length}</TableCell>
                       <TableCell>{department.projects.length}</TableCell>
                       <TableCell>
