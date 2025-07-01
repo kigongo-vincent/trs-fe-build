@@ -6,17 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X } from "lucide-react"
+import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X, Trash } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskStatusChart } from "@/components/task-status-chart"
 import { TasksByDepartmentChart } from "@/components/tasks-by-department-chart"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { fetchTasksSummary, fetchAllTasks, type TasksSummaryData, type Task } from "@/services/tasks"
+import { fetchTasksSummary, fetchAllTasks, type TasksSummaryData, type Task, deleteTask } from "@/services/tasks"
 import { EditTaskForm } from "@/components/edit-task-form"
 import { getProjects } from "@/services/projects"
 import { getAuthData } from "@/services/auth"
+import { toast } from "sonner"
 
 export default function TasksPage() {
   const [summaryData, setSummaryData] = useState<TasksSummaryData | null>(null)
@@ -35,6 +36,9 @@ export default function TasksPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [projectsList, setProjectsList] = useState<{ id: string; name: string }[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Get unique departments and projects for filters
   const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)))
@@ -477,6 +481,18 @@ export default function TasksPage() {
                         <Button variant="ghost" size="icon" onClick={() => { setEditTask(task); setIsEditModalOpen(true); }}>
                           ✎
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setDeleteTaskId(task.id)
+                            setDeleteDialogOpen(true)
+                          }}
+                          className="text-destructive hover:bg-destructive/10"
+                          aria-label="Delete Task"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -612,6 +628,52 @@ export default function TasksPage() {
           projects={projectsList}
         />
       )}
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!deleteTaskId) return
+                setIsDeleting(true)
+                try {
+                  await deleteTask(deleteTaskId)
+                  toast.success("Task deleted successfully")
+                  // Refresh tasks
+                  const response = await fetchAllTasks()
+                  setTasks(response.data)
+                  setFilteredTasks(response.data)
+                  // Refresh summary
+                  await loadTasksSummary()
+                  setDeleteDialogOpen(false)
+                  setDeleteTaskId(null)
+                } catch (err: any) {
+                  toast.error(err?.message || "Failed to delete task")
+                } finally {
+                  setIsDeleting(false)
+                }
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -111,3 +111,8 @@ export async function updateTask(
   const { putRequest } = await import("./api");
   return putRequest<Task>(`/consultants/time-logs/${id}`, payload);
 }
+
+export async function deleteTask(id: string): Promise<void> {
+  const { deleteRequest } = await import("./api");
+  await deleteRequest(`/consultants/time-logs/${id}`);
+}
