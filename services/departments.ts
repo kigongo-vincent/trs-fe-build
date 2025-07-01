@@ -39,7 +39,7 @@ interface DepartmentsResponse {
 interface CreateDepartmentPayload {
   companyId: string;
   name: string;
-  head: string;
+  headId: string;
   description: string;
 }
 

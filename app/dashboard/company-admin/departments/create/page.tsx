@@ -111,7 +111,7 @@ export default function CreateDepartmentPage() {
             const payload = {
                 companyId: authData.user.company.id,
                 name: formData.name.trim(),
-                head: formData.head.trim(),
+                headId: formData.head.trim(),
                 description: formData.description.trim()
             }
 

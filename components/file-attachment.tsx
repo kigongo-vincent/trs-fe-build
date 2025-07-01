@@ -50,7 +50,8 @@ interface FileAttachmentProps {
     showUrlInput?: boolean
 }
 
-const getFileIcon = (fileType: string) => {
+const getFileIcon = (fileType: string | undefined) => {
+    if (!fileType) return <File className="h-4 w-4" />
     if (fileType.startsWith("image/")) return <Image className="h-4 w-4" />
     if (fileType.startsWith("video/")) return <Video className="h-4 w-4" />
     if (fileType.startsWith("audio/")) return <Music className="h-4 w-4" />

@@ -17,6 +17,11 @@ import { fetchEmployeeTimeLogs, formatDurationString, formatDate, type TimeLog }
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
+import { useRouter } from "next/navigation"
+import { getProjects } from "@/services/projects"
+import { getAuthUser } from "@/services/auth"
+import { putRequest } from "@/services/api"
+import { Label } from "@/components/ui/label"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
@@ -27,6 +32,11 @@ export default function TimeLogsPage() {
   const [projectFilter, setProjectFilter] = useState("all")
   const [selectedTimeLog, setSelectedTimeLog] = useState<TimeLog | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const router = useRouter()
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editTimeLog, setEditTimeLog] = useState<TimeLog | null>(null)
+  const [projects, setProjects] = useState<any[]>([])
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false)
 
   // Fetch time logs data
   useEffect(() => {
@@ -45,6 +55,23 @@ export default function TimeLogsPage() {
     }
 
     loadTimeLogs()
+  }, [])
+
+  useEffect(() => {
+    const fetchProjectsList = async () => {
+      setIsLoadingProjects(true)
+      try {
+        const user = getAuthUser()
+        if (!user?.company?.id) return
+        const response = await getProjects(user.company.id)
+        setProjects(response.data)
+      } catch (e) {
+        // handle error
+      } finally {
+        setIsLoadingProjects(false)
+      }
+    }
+    fetchProjectsList()
   }, [])
 
   // Calculate summary statistics
@@ -154,6 +181,53 @@ export default function TimeLogsPage() {
     }
 
     return attachments
+  }
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    duration: "",
+    status: "active",
+    project: ""
+  })
+  useEffect(() => {
+    if (editTimeLog) {
+      setEditForm({
+        title: editTimeLog.title,
+        description: editTimeLog.description,
+        duration: editTimeLog.duration,
+        status: editTimeLog.status,
+        project: editTimeLog.project || ""
+      })
+    }
+  }, [editTimeLog])
+
+  const handleEditInputChange = (field: string, value: string) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editTimeLog) return
+    // Validation (simple)
+    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.duration || !editForm.project) return
+    try {
+      await putRequest(`/consultants/time-logs/${editTimeLog.id}`, {
+        title: editForm.title.trim(),
+        description: editForm.description.trim(),
+        duration: Number(editForm.duration),
+        status: editForm.status,
+        project: editForm.project
+      })
+      setIsEditDialogOpen(false)
+      setEditTimeLog(null)
+      // Refresh time logs
+      const data = await fetchEmployeeTimeLogs()
+      setTimeLogs(data)
+    } catch (err) {
+      // handle error
+    }
   }
 
   if (error) {
@@ -444,6 +518,13 @@ export default function TimeLogsPage() {
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
+                        >
+                          Edit
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -509,6 +590,91 @@ export default function TimeLogsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Time Log Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Time Log</DialogTitle>
+            <DialogDescription>Update your time log entry</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="editTitle">Task Title *</Label>
+              <Input
+                id="editTitle"
+                value={editForm.title}
+                onChange={e => handleEditInputChange("title", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editProject">Project *</Label>
+              <Select
+                value={editForm.project}
+                onValueChange={value => handleEditInputChange("project", value)}
+                disabled={isLoadingProjects}
+              >
+                <SelectTrigger id="editProject">
+                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingProjects ? (
+                    <SelectItem value="loading" disabled>
+                      Loading projects...
+                    </SelectItem>
+                  ) : projects.length === 0 ? (
+                    <SelectItem value="no-projects" disabled>
+                      No projects available
+                    </SelectItem>
+                  ) : (
+                    projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDuration">Duration (minutes) *</Label>
+              <Input
+                id="editDuration"
+                type="number"
+                min={1}
+                value={editForm.duration}
+                onChange={e => handleEditInputChange("duration", e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editStatus">Status *</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={value => handleEditInputChange("status", value)}
+              >
+                <SelectTrigger id="editStatus">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDescription">Description *</Label>
+              <RichTextEditor
+                value={editForm.description}
+                onChange={val => handleEditInputChange("description", val)}
+                placeholder="Task description"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoadingProjects}>
+              Save Changes
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

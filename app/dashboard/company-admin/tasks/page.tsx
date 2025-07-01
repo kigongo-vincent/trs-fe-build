@@ -14,6 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { fetchTasksSummary, fetchAllTasks, type TasksSummaryData, type Task } from "@/services/tasks"
+import { EditTaskForm } from "@/components/edit-task-form"
+import { getProjects } from "@/services/projects"
+import { getAuthData } from "@/services/auth"
 
 export default function TasksPage() {
   const [summaryData, setSummaryData] = useState<TasksSummaryData | null>(null)
@@ -29,6 +32,9 @@ export default function TasksPage() {
   const [durationFilter, setDurationFilter] = useState("all")
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editTask, setEditTask] = useState<Task | null>(null)
+  const [projectsList, setProjectsList] = useState<{ id: string; name: string }[]>([])
 
   // Get unique departments and projects for filters
   const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)))
@@ -62,8 +68,20 @@ export default function TasksPage() {
       }
     }
 
+    async function fetchProjects() {
+      try {
+        const authData = getAuthData()
+        if (!authData?.user?.company?.id) return
+        const response = await getProjects(authData.user.company.id)
+        setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name })))
+      } catch (err) {
+        // handle error if needed
+      }
+    }
+
     loadTasksSummary()
     loadAllTasks()
+    fetchProjects()
   }, [])
 
   // Filter tasks based on search and filters
@@ -456,6 +474,9 @@ export default function TasksPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleViewTask(task)}>
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditTask(task); setIsEditModalOpen(true); }}>
+                          ✎
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -573,6 +594,23 @@ export default function TasksPage() {
             </div>
           </div>
         </Dialog>
+      )}
+      {isEditModalOpen && editTask && (
+        <EditTaskForm
+          task={editTask}
+          onClose={() => { setIsEditModalOpen(false); setEditTask(null); }}
+          onUpdated={async () => {
+            setIsEditModalOpen(false)
+            setEditTask(null)
+            // Refresh tasks
+            setIsTasksLoading(true)
+            const response = await fetchAllTasks()
+            setTasks(response.data)
+            setFilteredTasks(response.data)
+            setIsTasksLoading(false)
+          }}
+          projects={projectsList}
+        />
       )}
     </div>
   )
