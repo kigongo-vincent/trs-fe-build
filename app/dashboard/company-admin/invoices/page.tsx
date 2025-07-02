@@ -1,14 +1,14 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Download, Eye, FileText, Plus, Search, FileDown, Triangle, X as XIcon } from "lucide-react"
+import { CalendarIcon, Download, Eye, FileText, Plus, Search, FileDown, Triangle, X as XIcon, Calendar, Building2, Mail, Phone, MapPin, CreditCard, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -17,6 +17,8 @@ import { getCompanyInvoicesSummary, getRequest } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function InvoicesPage() {
   const [summary, setSummary] = useState<any[] | null>(null)
@@ -123,7 +125,7 @@ export default function InvoicesPage() {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{item.label === "Total Amount" ? `USD ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
+                <div className="text-2xl font-bold">{item.label === "Total Amount" ? `${item.currency || "USD"} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
                 <p className="text-xs text-muted-foreground">
                   {item.label === "Total Invoices" && ""}
                   {item.label === "Paid Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Paid Invoices" ? "0% of total invoices" : null}
@@ -257,6 +259,9 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
   const [sortBy, setSortBy] = useState<string>("invoiceNumber")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [filteredInvoices, setFilteredInvoices] = useState<any[]>([])
+  // Modal state
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     async function fetchInvoices() {
@@ -363,90 +368,239 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
   )
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead
-            className={`cursor-pointer select-none ${sortBy === "invoiceNumber" ? "text-primary font-semibold" : ""}`}
-            onClick={() => handleSort("invoiceNumber")}
-          >
-            Invoice Number
-            {sortArrow("invoiceNumber")}
-          </TableHead>
-          <TableHead
-            className={`cursor-pointer select-none ${sortBy === "employee" ? "text-primary font-semibold" : ""}`}
-            onClick={() => handleSort("employee")}
-          >
-            Consultant
-            {sortArrow("employee")}
-          </TableHead>
-          <TableHead
-            className={`cursor-pointer select-none ${sortBy === "period" ? "text-primary font-semibold" : ""}`}
-            onClick={() => handleSort("period")}
-          >
-            Period
-            {sortArrow("period")}
-          </TableHead>
-          <TableHead
-            className={`cursor-pointer select-none ${sortBy === "amount" ? "text-primary font-semibold" : ""}`}
-            onClick={() => handleSort("amount")}
-          >
-            Amount
-            {sortArrow("amount")}
-          </TableHead>
-          <TableHead
-            className={`cursor-pointer select-none ${sortBy === "status" ? "text-primary font-semibold" : ""}`}
-            onClick={() => handleSort("status")}
-          >
-            Status
-            {sortArrow("status")}
-          </TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sortedInvoices.map((invoice) => (
-          <TableRow key={invoice.id}>
-            <TableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</TableCell>
-            <TableCell>{invoice.user?.fullName || "-"}</TableCell>
-            <TableCell>{invoice.startDate && invoice.endDate ? `${format(new Date(invoice.startDate), "MMM yyyy")}` : "-"}</TableCell>
-            <TableCell>
-              {invoice.amount != null && !isNaN(Number(invoice.amount))
-                ? `${currency} ${Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                : "N/A"}
-            </TableCell>
-            <TableCell>
-              <Badge
-                variant="outline"
-                className={
-                  invoice.status === "paid"
-                    ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                    : invoice.status === "pending"
-                      ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
-                      : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950 dark:text-gray-400 dark:border-gray-800"
-                }
-              >
-                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/dashboard/company-admin/invoices/${invoice.id}`}>
-                    <Eye className="h-4 w-4 mr-1" /> View
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`/dashboard/company-admin/invoices/${invoice.id}/download`}>
-                    <Download className="h-4 w-4 mr-1" /> PDF
-                  </Link>
-                </Button>
-              </div>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead
+              className={`cursor-pointer select-none ${sortBy === "invoiceNumber" ? "text-primary font-semibold" : ""}`}
+              onClick={() => handleSort("invoiceNumber")}
+            >
+              Invoice Number
+              {sortArrow("invoiceNumber")}
+            </TableHead>
+            <TableHead
+              className={`cursor-pointer select-none ${sortBy === "employee" ? "text-primary font-semibold" : ""}`}
+              onClick={() => handleSort("employee")}
+            >
+              Consultant
+              {sortArrow("employee")}
+            </TableHead>
+            <TableHead
+              className={`cursor-pointer select-none ${sortBy === "period" ? "text-primary font-semibold" : ""}`}
+              onClick={() => handleSort("period")}
+            >
+              Period
+              {sortArrow("period")}
+            </TableHead>
+            <TableHead
+              className={`cursor-pointer select-none ${sortBy === "amount" ? "text-primary font-semibold" : ""}`}
+              onClick={() => handleSort("amount")}
+            >
+              Amount
+              {sortArrow("amount")}
+            </TableHead>
+            <TableHead
+              className={`cursor-pointer select-none ${sortBy === "status" ? "text-primary font-semibold" : ""}`}
+              onClick={() => handleSort("status")}
+            >
+              Status
+              {sortArrow("status")}
+            </TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {sortedInvoices.map((invoice) => (
+            <TableRow key={invoice.id}>
+              <TableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</TableCell>
+              <TableCell>{invoice.user?.fullName || "-"}</TableCell>
+              <TableCell>{invoice.startDate && invoice.endDate ? `${format(new Date(invoice.startDate), "MMM yyyy")}` : "-"}</TableCell>
+              <TableCell>
+                {invoice.amount != null && !isNaN(Number(invoice.amount))
+                  ? `${currency} ${Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "N/A"}
+              </TableCell>
+              <TableCell>
+                <Badge
+                  variant="outline"
+                  className={
+                    invoice.status === "paid"
+                      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                      : invoice.status === "pending"
+                        ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                        : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950 dark:text-gray-400 dark:border-gray-800"
+                  }
+                >
+                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setModalOpen(true); }}>
+                    <Eye className="h-4 w-4 mr-1" /> View
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/dashboard/company-admin/invoices/${invoice.id}/download`}>
+                      <Download className="h-4 w-4 mr-1" /> PDF
+                    </Link>
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {/* Invoice Details Modal */}
+      <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} />
+    </>
+  )
+}
+
+// Modal component for invoice details
+function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: boolean, onOpenChange: (open: boolean) => void, invoice: any, currency: string }) {
+  if (!invoice) return null
+  // Helper functions
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    })
+  }
+  const getCurrencyOrigin = () => {
+    if (invoice.user?.currency) return { code: invoice.user.currency, origin: `Consultant` }
+    if (currency) return { code: currency, origin: `Company` }
+    return { code: 'USD', origin: 'Default' }
+  }
+  const formatCurrency = (amount: any, code = 'USD') => {
+    // Always show as 'CODE amount', e.g., 'USD 1,000.00', no symbol
+    return `${code} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'processing':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'overdue':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+  const currencyInfo = getCurrencyOrigin()
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-gray-50 overflow-y-auto">
+        <br />
+        <br />
+        <DialogTitle className="sr-only">Invoice Details {invoice.invoiceNumber ? `- ${invoice.invoiceNumber}` : ''}</DialogTitle>
+        <Card className="shadow-none border-none bg-transparent">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">INVOICE</CardTitle>
+            <CardDescription className="text-base text-gray-600 dark:text-gray-300">{invoice.invoiceNumber}</CardDescription>
+            {invoice.user?.company && (
+              <div className="bg-primary text-white px-4 py-6 rounded mt-2">
+                <span className="text-lg font-bold">{invoice.user.company.name}</span>
+                <span className="block text-blue-100 text-xs">{invoice.user.company.sector}</span>
+              </div>
+            )}
+            <div className={`inline-block px-3 py-1 rounded-full w-[max-content] text-xs font-medium border mt-2 ${getStatusColor(invoice.status)}`}>{invoice.status?.toUpperCase()}</div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-white dark:bg-neutral-800 border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center text-primary"><Calendar className="w-4 h-4 mr-2 text-primary" />Invoice Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Issue Date:</span><span className="font-medium">{formatDate(invoice.createdAt || invoice.startDate)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Period:</span><span className="font-medium">{formatDate(invoice.startDate)} - {formatDate(invoice.endDate)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Last Updated:</span><span className="font-medium">{formatDate(invoice.updatedAt || invoice.endDate)}</span></div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white dark:bg-neutral-800 border-none">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center text-primary"><Building2 className="w-4 h-4 mr-2 text-primary" />Consultant Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div><span className="font-semibold text-gray-900 dark:text-white">{invoice.user?.fullName}</span><span className="block text-gray-600 dark:text-gray-300 capitalize">{invoice.user?.jobTitle} Consultant</span></div>
+                  <div className="flex items-center text-muted-foreground"><Mail className="w-4 h-4 mr-2" /><span>{invoice.user?.email}</span></div>
+                  <div className="flex items-center text-muted-foreground"><Phone className="w-4 h-4 mr-2" /><span>{invoice.user?.phoneNumber}</span></div>
+                  {invoice.user?.address && (<div className="flex items-start text-muted-foreground"><MapPin className="w-4 h-4 mr-2 mt-1" /><span>{invoice.user.address.street}, {invoice.user.address.city}, {invoice.user.address.state}, {invoice.user.address.country}</span></div>)}
+                </CardContent>
+              </Card>
+            </div>
+            {invoice.description && (
+              <Card className=" dark:bg-blue-900/30 ">
+                <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Service Description</CardTitle></CardHeader>
+                <CardContent className="text-gray-700 dark:text-gray-200 text-sm">{invoice.description}</CardContent>
+              </Card>
+            )}
+            <Card className=" dark:border-neutral-700">
+              <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Invoice Items</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-neutral-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white">Description</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Hours</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Rate</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className=" dark:bg-neutral-900  divide-gray-200 dark:divide-neutral-800">
+                    <tr>
+                      <td className="px-4 py-3"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {formatDate(invoice.startDate)} to {formatDate(invoice.endDate)}</span></td>
+                      <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{invoice.totalHours || '-'}</td>
+                      <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{formatCurrency(invoice.user?.grossPay || 0, currencyInfo.code)}</td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+            <Card className="bg-white dark:bg-neutral-800 border-none">
+              <CardContent className="p-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-gray-600 dark:text-gray-300"><span>Subtotal:</span><span>{formatCurrency(invoice.amount || 0, currencyInfo.code)}</span></div>
+                  <div className="flex justify-between text-gray-600 dark:text-gray-300"><span>Tax:</span><span>{formatCurrency(0, currencyInfo.code)}</span></div>
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between text-base font-bold text-gray-900 dark:text-white items-center"><span className="flex items-center gap-1">Total:<TooltipProvider><Tooltip><TooltipTrigger asChild><span tabIndex={0}><Info className="w-4 h-4 text-primary ml-1" /></span></TooltipTrigger><TooltipContent><span>Currency: {currencyInfo.code} <br />Source: {currencyInfo.origin}</span></TooltipContent></Tooltip></TooltipProvider></span><span>{formatCurrency(invoice.amount || 0, currencyInfo.code)}</span></div>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground text-right">Showing amounts in <span className="font-semibold">{currencyInfo.code}</span> ({currencyInfo.origin} currency)</div>
+              </CardContent>
+            </Card>
+            {invoice.user?.bankDetails && (
+              <Card className="bg-white dark:from-neutral-900 dark:to-blue-950 border-none">
+                <CardHeader className="pb-2"><CardTitle className="text-base font-semibold flex items-center text-primary"><CreditCard className="w-4 h-4 mr-2 text-primary" />Payment Information</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div><span className="text-xs text-gray-600 dark:text-gray-300">Bank Name</span><span className="block font-medium">{invoice.user.bankDetails.bankName}</span></div>
+                  <div><span className="text-xs text-gray-600 dark:text-gray-300">Branch</span><span className="block font-medium">{invoice.user.bankDetails.branch}</span></div>
+                  <div><span className="text-xs text-gray-600 dark:text-gray-300">Account Name</span><span className="block font-medium">{invoice.user.bankDetails.accountName}</span></div>
+                  <div><span className="text-xs text-gray-600 dark:text-gray-300">Account Number</span><span className="block font-medium">{invoice.user.bankDetails.accountNumber}</span></div>
+                  <div className="md:col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">SWIFT Code</span><span className="block font-medium">{invoice.user.bankDetails.swiftCode}</span></div>
+                </CardContent>
+              </Card>
+            )}
+            <CardFooter className="flex-col border-t pt-4">
+              <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+                <p>Thank you for your business!</p>
+                {invoice.user?.email && (<p className="mt-1">For any questions regarding this invoice, please contact {invoice.user.email}</p>)}
+              </div>
+            </CardFooter>
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2 px-6 pb-4 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+            <Button asChild>
+              <Link href={`/dashboard/company-admin/invoices/${invoice.id}/download`}>
+                <Download className="h-4 w-4 mr-1" /> PDF
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </DialogContent>
+    </Dialog>
   )
 }
 
