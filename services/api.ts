@@ -213,6 +213,10 @@ export async function getHoursByProject(companyID: string) {
   return getRequest(`/company/hoursByProject/summary/${companyID}`);
 }
 
+export async function getCompanyInvoicesSummary(companyID: string) {
+  return getRequest(`/company/invoices/summary/${companyID}`);
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
