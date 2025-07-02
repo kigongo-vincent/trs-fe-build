@@ -1,6 +1,6 @@
 import { getRequest, postRequest, putRequest, deleteRequest } from "./api";
 
-interface User {
+export interface User {
   id: string;
   fullName: string;
   firstName: string | null;
@@ -18,10 +18,10 @@ interface User {
   updatedAt: string;
 }
 
-interface Department {
+export interface Department {
   id: string;
   name: string;
-  head: string;
+  head: User | null;
   status: string;
   description: string | null;
   createdAt: string | null;

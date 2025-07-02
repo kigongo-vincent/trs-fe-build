@@ -6,42 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Edit, Plus, Search, Trash, Users } from "lucide-react"
+import { Edit, Plus, Search, SearchIcon, Trash, Users } from "lucide-react"
 import { DepartmentDistributionChart } from "@/components/department-distribution-chart"
 import { DeleteDepartmentDialog } from "@/components/delete-department-dialog"
 import { getDepartments } from "@/services/departments"
 import { getAuthData } from "@/services/auth"
 import Link from "next/link"
-
-interface User {
-  id: string
-  fullName: string
-  firstName: string | null
-  lastName: string | null
-  email: string
-  password: string
-  employeeId: string | null
-  status: string
-  jobTitle: string | null
-  bio: string | null
-  avatarUrl: string | null
-  resetToken: string | null
-  resetTokenExpires: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-interface Department {
-  id: string
-  name: string
-  head: string
-  status: string
-  description: string | null
-  createdAt: string | null
-  updatedAt: string
-  users: User[]
-  projects: any[]
-}
+import type { Department, User } from "@/services/departments"
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Department[]>([])
@@ -88,7 +59,7 @@ export default function DepartmentsPage() {
   const filteredDepartments = departments.filter(
     (dept) =>
       dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      dept.head.toLowerCase().includes(searchTerm.toLowerCase()),
+      (dept.head?.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   )
 
   // Calculate statistics
@@ -212,24 +183,37 @@ export default function DepartmentsPage() {
           {loading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : (
-            <DepartmentDistributionChart departments={departments} />
+            <DepartmentDistributionChart departments={departments.map((dept) => ({
+              ...dept,
+              head: dept.head?.fullName || "",
+            }))} />
           )}
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="relative w-full max-w-sm">
+          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+            <SearchIcon className="h-4 w-4" />
+          </span>
           <Input
             type="text"
             placeholder="Search departments..."
-            className="h-9"
+            className="h-10 pl-10 pr-4 rounded-lg border border-muted bg-muted/50 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search departments"
           />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-          </Button>
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-primary"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
@@ -268,7 +252,7 @@ export default function DepartmentsPage() {
                   filteredDepartments.map((department) => (
                     <TableRow key={department.id}>
                       <TableCell className="font-medium">{department.name}</TableCell>
-                      <TableCell>{typeof department.head === 'object' && department.head !== null ? (department.head as any).fullName : department.head}</TableCell>
+                      <TableCell>{department.head?.fullName || ""}</TableCell>
                       <TableCell>{department.users.length}</TableCell>
                       <TableCell>{department.projects.length}</TableCell>
                       <TableCell>
@@ -279,7 +263,7 @@ export default function DepartmentsPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="icon" asChild>
-                            <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head)}&description=${encodeURIComponent(department.description || '')}`}>
+                            <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head?.fullName || "")}&description=${encodeURIComponent(department.description || '')}`}>
                               <Edit className="h-4 w-4" />
                             </Link>
                           </Button>
@@ -305,7 +289,14 @@ export default function DepartmentsPage() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onDeleteSuccess={handleDeleteSuccess}
-        department={departmentToDelete}
+        department={
+          departmentToDelete
+            ? {
+              ...departmentToDelete,
+              head: departmentToDelete.head?.fullName || "",
+            }
+            : null
+        }
       />
     </div>
   )
