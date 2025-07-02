@@ -263,7 +263,7 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
                 <FormItem>
                   <FormLabel>Deadline</FormLabel>
                   <FormControl>
-                    <Input type="date" min={getTodayDate()} {...field} disabled={isSubmitting} className="w-full" />
+                    <Input type="date" min={getTodayDate()} {...field} disabled={isSubmitting} className="!w-max" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
