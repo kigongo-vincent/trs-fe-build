@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, Trash, UserCheck, UserX } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -23,6 +23,7 @@ import {
   getDayName,
   getTrendIndicator,
   type ConsultantDashboardData,
+  updateConsultantStatus,
 } from "@/services/consultants"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
@@ -30,6 +31,7 @@ import { getAuthData } from "@/services/auth"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { EditConsultantForm } from "@/components/edit-consultant-form"
 import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 
 export default function ConsultantsPage() {
   const [consultants, setConsultants] = useState<Consultant[]>([])
@@ -69,11 +71,8 @@ export default function ConsultantsPage() {
   // State for status confirmation dialog
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [statusTargetConsultant, setStatusTargetConsultant] = useState<Consultant | null>(null)
-  const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | null>(null)
-
-  // State for delete confirmation dialog
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteTargetConsultant, setDeleteTargetConsultant] = useState<Consultant | null>(null)
+  const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | 'on-leave' | null>(null)
+  const [statusLoading, setStatusLoading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -461,24 +460,37 @@ export default function ConsultantsPage() {
   }
 
   // Open confirmation dialog for status change
-  const handleStatusDialog = (consultant: Consultant) => {
-    if (consultant.status === 'active') {
-      setStatusAction('deactivate')
-    } else {
-      setStatusAction('activate')
-    }
+  const handleStatusDialog = (consultant: Consultant, action: 'activate' | 'deactivate' | 'on-leave') => {
+    setStatusAction(action)
     setStatusTargetConsultant(consultant)
     setStatusDialogOpen(true)
   }
 
-  // Confirm status change handler (stub)
-  const handleConfirmStatusChange = () => {
+  // Confirm status change handler
+  const handleConfirmStatusChange = async () => {
     if (!statusTargetConsultant || !statusAction) return
-    // TODO: Implement actual API call
-    alert(`${statusAction === 'activate' ? 'Activate' : 'Deactivate'} consultant: ${statusTargetConsultant.fullName}`)
-    setStatusDialogOpen(false)
-    setStatusTargetConsultant(null)
-    setStatusAction(null)
+    let newStatus: "active" | "inactive" | "on-leave" = "active"
+    if (statusAction === 'activate') newStatus = 'active'
+    else if (statusAction === 'deactivate') newStatus = 'inactive'
+    else if (statusAction === 'on-leave') newStatus = 'on-leave'
+    setStatusLoading(true)
+    try {
+      if (!companyId) throw new Error('Company ID not found')
+      await updateConsultantStatus(companyId, statusTargetConsultant.id, newStatus)
+      // Refetch consultants after status change
+      const consultantsResponse = await getAllConsultants(companyId)
+      if (consultantsResponse.status === 200) {
+        setConsultants(consultantsResponse.data)
+        setFilteredConsultants(consultantsResponse.data)
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update consultant status')
+    } finally {
+      setStatusLoading(false)
+      setStatusDialogOpen(false)
+      setStatusTargetConsultant(null)
+      setStatusAction(null)
+    }
   }
 
   // Cancel status change
@@ -486,27 +498,6 @@ export default function ConsultantsPage() {
     setStatusDialogOpen(false)
     setStatusTargetConsultant(null)
     setStatusAction(null)
-  }
-
-  // Open confirmation dialog for delete
-  const handleDeleteDialog = (consultant: Consultant) => {
-    setDeleteTargetConsultant(consultant)
-    setDeleteDialogOpen(true)
-  }
-
-  // Confirm delete handler (stub)
-  const handleConfirmDelete = () => {
-    if (!deleteTargetConsultant) return
-    // TODO: Implement actual API call
-    alert(`Remove consultant: ${deleteTargetConsultant.fullName}`)
-    setDeleteDialogOpen(false)
-    setDeleteTargetConsultant(null)
-  }
-
-  // Cancel delete
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false)
-    setDeleteTargetConsultant(null)
   }
 
   return (
@@ -614,18 +605,17 @@ export default function ConsultantsPage() {
       </Card>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="relative flex items-center h-12 w-[260px] border border-gray-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-100">
+          <span className="absolute left-3 text-gray-400">
+            <SearchIcon className="h-6 w-6" />
+          </span>
           <Input
             type="text"
             placeholder="Search consultants..."
-            className="h-9"
+            className="pl-12 h-12 w-full border-none bg-transparent text-lg placeholder:text-gray-400 focus:outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-          </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
@@ -739,10 +729,16 @@ export default function ConsultantsPage() {
                             className={
                               consultant.status === "active"
                                 ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                                : consultant.status === "inactive"
+                                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800"
+                                  : consultant.status === "on-leave" || consultant.status === ""
+                                    ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-400 dark:border-primary-800"
+                                    : "bg-gray-50 text-gray-700 border-gray-200"
                             }
                           >
-                            {consultant.status.charAt(0).toUpperCase() + consultant.status.slice(1)}
+                            {(consultant.status === "on-leave" || consultant.status === "")
+                              ? "On Leave"
+                              : consultant.status.charAt(0).toUpperCase() + consultant.status.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -756,7 +752,7 @@ export default function ConsultantsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleStatusDialog(consultant)}
+                              onClick={() => handleStatusDialog(consultant, consultant.status === 'active' ? 'deactivate' : 'activate')}
                               title={consultant.status === 'active' ? 'Deactivate Consultant' : 'Activate Consultant'}
                             >
                               {consultant.status === 'active' ? (
@@ -765,9 +761,25 @@ export default function ConsultantsPage() {
                                 <UserX className="h-4 w-4 text-gray-400" />
                               )}
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteDialog(consultant)} title="Remove Consultant">
-                              <Trash className="h-4 w-4 text-red-500" />
-                            </Button>
+                            {consultant.status === "" ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStatusDialog(consultant, 'activate')}
+                                title="Activate Consultant"
+                              >
+                                <UserCheck className="h-4 w-4 text-green-500" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleStatusDialog(consultant, 'on-leave')}
+                                title="Set On Leave"
+                              >
+                                <Clock className="h-4 w-4 text-yellow-500" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1218,10 +1230,16 @@ export default function ConsultantsPage() {
                                   className={
                                     selectedConsultant?.status === "active"
                                       ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                      : "bg-gray-50 text-gray-700 border-gray-200"
+                                      : selectedConsultant?.status === "inactive"
+                                        ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800"
+                                        : selectedConsultant?.status === "on-leave" || selectedConsultant?.status === ""
+                                          ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-400 dark:border-primary-800"
+                                          : "bg-gray-50 text-gray-700 border-gray-200"
                                   }
                                 >
-                                  {selectedConsultant?.status || "-"}
+                                  {(selectedConsultant?.status === "on-leave" || selectedConsultant?.status === "")
+                                    ? "On Leave"
+                                    : selectedConsultant?.status || "-"}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1310,35 +1328,33 @@ export default function ConsultantsPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {statusAction === 'activate' ? 'Activate Consultant' : 'Deactivate Consultant'}
+              {statusAction === 'activate' && 'Activate Consultant'}
+              {statusAction === 'deactivate' && 'Deactivate Consultant'}
+              {statusAction === 'on-leave' && 'Set Consultant On Leave'}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            {statusAction === 'activate'
-              ? `Are you sure you want to activate ${statusTargetConsultant?.fullName}?`
-              : `Are you sure you want to deactivate ${statusTargetConsultant?.fullName}?`}
+            {statusAction === 'activate' && `Are you sure you want to activate ${statusTargetConsultant?.fullName}?`}
+            {statusAction === 'deactivate' && `Are you sure you want to deactivate ${statusTargetConsultant?.fullName}?`}
+            {statusAction === 'on-leave' && `Are you sure you want to set ${statusTargetConsultant?.fullName} as On Leave?`}
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleCancelStatusChange}>Cancel</Button>
-            <Button variant={statusAction === 'activate' ? 'default' : 'destructive'} onClick={handleConfirmStatusChange}>
-              {statusAction === 'activate' ? 'Activate' : 'Deactivate'}
+            <Button variant="outline" onClick={handleCancelStatusChange} disabled={statusLoading}>Cancel</Button>
+            <Button
+              variant={statusAction === 'deactivate' ? 'destructive' : 'default'}
+              onClick={handleConfirmStatusChange}
+              disabled={statusLoading}
+            >
+              {statusLoading ? (
+                <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></span>Processing...</span>
+              ) : (
+                <>
+                  {statusAction === 'activate' && 'Activate'}
+                  {statusAction === 'deactivate' && 'Deactivate'}
+                  {statusAction === 'on-leave' && 'Set On Leave'}
+                </>
+              )}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={handleCancelDelete}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remove Consultant</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {`Are you sure you want to remove ${deleteTargetConsultant?.fullName}? This action cannot be undone.`}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleCancelDelete}>Cancel</Button>
-            <Button variant="destructive" onClick={handleConfirmDelete}>Remove</Button>
           </div>
         </DialogContent>
       </Dialog>
