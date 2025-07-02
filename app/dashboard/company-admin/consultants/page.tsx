@@ -1230,12 +1230,18 @@ export default function ConsultantsPage() {
                               </div>
                             </div>
                             <div className="flex flex-col gap-2 mt-4">
-                              <div><Label>Address</Label><div className="text-muted-foreground whitespace-pre-line">{selectedConsultant?.company?.address || "-"}</div></div>
-                              <div><Label>Phone</Label><div className="text-muted-foreground">{selectedConsultant?.company?.phone || "-"}</div></div>
-                              {/* TODO: Add gross pay/compensation when available on Consultant type */}
-                              <div><Label>Gross Pay</Label><div className="text-muted-foreground">-</div></div>
-                              <div><Label>Office Days</Label><div className="text-muted-foreground">-</div></div>
-                              <div><Label>Bio</Label><div className="text-muted-foreground">{selectedConsultant?.bio || "-"}</div></div>
+                              <Label>Full Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.fullName || '-'}</div>
+                              <Label>Email</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.email || '-'}</div>
+                              <Label>Status</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.status || '-'}</div>
+                              <Label>Job Title</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.jobTitle || (selectedConsultant as any)?.job_title || '-'}</div>
+                              <Label>Gross Pay</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay || '-'}</div>
+                              <Label>Date of Birth</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString() : '-'}</div>
+                              <Label>Phone Number</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.phoneNumber || '-'}</div>
+                              <Label>Currency</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.currency || '-'}</div>
+                              <Label>Office Days</Label><div className="text-muted-foreground">{Array.isArray((selectedConsultant as any)?.days_to_come) ? (selectedConsultant as any).days_to_come.join(', ') : (selectedConsultant as any)?.days_to_come ? JSON.parse((selectedConsultant as any).days_to_come).join(', ') : (selectedConsultant as any)?.officeDays ? (selectedConsultant as any).officeDays.join(', ') : '-'}</div>
+                              <Label>Address</Label><div className="text-muted-foreground whitespace-pre-line">{(selectedConsultant as any)?.address ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}` : '-'}</div>
+                              <Label>Next of Kin</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.name || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.name) || '-'}</div>
+                              <Label>Bank Details</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountName) || '-'}</div>
                             </div>
                           </div>
                         </CardContent>
@@ -1250,10 +1256,10 @@ export default function ConsultantsPage() {
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><Label>Name</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Relationship</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Phone</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Email</Label><div className="text-muted-foreground">-</div></div>
+                            <div><Label>Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.name || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.name) || '-'}</div></div>
+                            <div><Label>Relationship</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.relationship || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.relationship) || '-'}</div></div>
+                            <div><Label>Phone</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.phoneNumber || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.phoneNumber) || '-'}</div></div>
+                            <div><Label>Email</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.email || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.email) || '-'}</div></div>
                           </div>
                         </CardContent>
                       </Card>
@@ -1267,11 +1273,11 @@ export default function ConsultantsPage() {
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><Label>Account Name</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Account Number</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Bank Name</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>SWIFT Code</Label><div className="text-muted-foreground">-</div></div>
-                            <div><Label>Routing Number</Label><div className="text-muted-foreground">-</div></div>
+                            <div><Label>Account Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountName) || '-'}</div></div>
+                            <div><Label>Account Number</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountNumber || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountNumber) || '-'}</div></div>
+                            <div><Label>Bank Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.bankName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.bankName) || '-'}</div></div>
+                            <div><Label>SWIFT Code</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.swiftCode || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.swiftCode) || '-'}</div></div>
+                            <div><Label>Branch</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.branch || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.branch) || '-'}</div></div>
                           </div>
                         </CardContent>
                       </Card>

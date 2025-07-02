@@ -32,27 +32,35 @@ const PhoneInput = dynamic(() => import("react-phone-input-2"), { ssr: false })
 
 export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consultant, onClose, onUpdated }) => {
     const [formData, setFormData] = useState({
-        fullName: consultant.fullName || "",
+        fullName: consultant.fullName || consultant.full_name || "",
         email: consultant.email || "",
-        departmentId: consultant.department?.id || "",
-        jobTitle: consultant.jobTitle || "",
-        grossPay: consultant.grossPay || "",
-        dateOfBirth: consultant.dateOfBirth ? consultant.dateOfBirth.split("T")[0] : "",
-        daysToCome: consultant.daysToCome || [],
-        nextOfKinName: consultant.nextOfKin?.name || "",
-        nextOfKinRelationship: consultant.nextOfKin?.relationship || "",
-        nextOfKinPhone: consultant.nextOfKin?.phoneNumber || "",
-        nextOfKinEmail: consultant.nextOfKin?.email || "",
+        departmentId: consultant.departmentId || consultant.department?.id || "",
+        jobTitle: consultant.jobTitle || consultant.job_title || "",
+        grossPay: consultant.grossPay || consultant.gross_pay || "",
+        dateOfBirth: (consultant.dateOfBirth || consultant.date_of_birth) ? (consultant.dateOfBirth || consultant.date_of_birth).split("T")[0] : "",
+        daysToCome: Array.isArray(consultant.days_to_come)
+            ? consultant.days_to_come
+            : consultant.days_to_come
+                ? JSON.parse(consultant.days_to_come)
+                : Array.isArray(consultant.officeDays)
+                    ? consultant.officeDays
+                    : consultant.officeDays
+                        ? JSON.parse(consultant.officeDays)
+                        : consultant.daysToCome || [],
+        nextOfKinName: consultant.nextOfKin?.name || (consultant.next_of_kin && consultant.next_of_kin.name) || "",
+        nextOfKinRelationship: consultant.nextOfKin?.relationship || (consultant.next_of_kin && consultant.next_of_kin.relationship) || "",
+        nextOfKinPhone: consultant.nextOfKin?.phoneNumber || (consultant.next_of_kin && consultant.next_of_kin.phoneNumber) || "",
+        nextOfKinEmail: consultant.nextOfKin?.email || (consultant.next_of_kin && consultant.next_of_kin.email) || "",
         addressStreet: consultant.address?.street || "",
         addressCity: consultant.address?.city || "",
         addressState: consultant.address?.state || "",
         addressCountry: consultant.address?.country || "",
         addressPostalCode: consultant.address?.postalCode || "",
-        bankAccountName: consultant.bankDetails?.accountName || "",
-        bankAccountNumber: consultant.bankDetails?.accountNumber || "",
-        bankName: consultant.bankDetails?.bankName || "",
-        bankSwiftCode: consultant.bankDetails?.swiftCode || "",
-        bankBranch: consultant.bankDetails?.branch || "",
+        bankAccountName: consultant.bankDetails?.accountName || (consultant.bank_details && consultant.bank_details.accountName) || "",
+        bankAccountNumber: consultant.bankDetails?.accountNumber || (consultant.bank_details && consultant.bank_details.accountNumber) || "",
+        bankName: consultant.bankDetails?.bankName || (consultant.bank_details && consultant.bank_details.bankName) || "",
+        bankSwiftCode: consultant.bankDetails?.swiftCode || (consultant.bank_details && consultant.bank_details.swiftCode) || "",
+        bankBranch: consultant.bankDetails?.branch || (consultant.bank_details && consultant.bank_details.branch) || "",
         phoneNumber: consultant.phoneNumber || "",
         currency: consultant.currency || "USD",
         nin: consultant.nin || "",
@@ -62,7 +70,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
-    const [idImages, setIdImages] = useState<Attachment[]>([])
+    const [attachments, setAttachments] = useState<Attachment[]>([])
 
     // Days to Come logic
     const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -160,69 +168,95 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
         }
         setSubmitting(true)
         try {
-            // Upload files if any
+            // Separate file and url attachments
+            const fileAttachments = attachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+            // Convert files to base64
+            const toBase64 = (file: File) =>
+                new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        const match = result.match(/^data:([^;]+);base64,(.*)$/);
+                        if (match) {
+                            const mimetype = match[1];
+                            const data = match[2];
+                            resolve(`data:${mimetype};name=${file.name};base64,${data}`);
+                        } else {
+                            reject(new Error("Invalid base64 format"));
+                        }
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
+            const urlAttachments = attachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
+            // Upload files and collect URLs
             let idImageUrls: string[] = []
-            if (idImages.length > 0) {
+            if (attachmentsBase64.length > 0) {
                 try {
                     const uploadResults = await Promise.all(
-                        idImages.map(async (att) => {
-                            if (att.file) {
-                                const res = await uploadFile(att.file)
-                                return res.url
-                            }
-                            return null
+                        attachmentsBase64.map(async (att) => {
+                            const res = await uploadFile(att)
+                            return res.url
                         })
                     )
                     idImageUrls = uploadResults.filter(Boolean) as string[]
                 } catch (uploadErr) {
-                    setError("Failed to upload one or more ID documents. Please try again.")
+                    setError("Failed to upload one or more attachments. Please try again.")
                     setSubmitting(false)
                     return
                 }
             }
             const payload: any = {
+                // camelCase fields
                 fullName: formData.fullName,
                 email: formData.email,
-                departmentId: formData.departmentId,
-                job_title: formData.jobTitle,
-                gross_pay: formData.grossPay,
+                jobTitle: formData.jobTitle,
+                grossPay: formData.grossPay,
+                dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
                 phoneNumber: formData.phoneNumber.trim(),
                 currency: formData.currency,
+                departmentId: formData.departmentId,
+                // snake_case fields
+                job_title: formData.jobTitle,
+                gross_pay: formData.grossPay,
+                date_of_birth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
+                days_to_come: formData.daysToCome.length > 0 ? JSON.stringify(formData.daysToCome) : null,
+                // nested fields
+                address: (formData.addressStreet || formData.addressCity || formData.addressState || formData.addressCountry || formData.addressPostalCode) ? {
+                    street: formData.addressStreet,
+                    city: formData.addressCity,
+                    state: formData.addressState,
+                    country: formData.addressCountry,
+                    postalCode: formData.addressPostalCode,
+                } : null,
+                nextOfKin: (formData.nextOfKinName || formData.nextOfKinRelationship || formData.nextOfKinPhone || formData.nextOfKinEmail) ? {
+                    name: formData.nextOfKinName,
+                    relationship: formData.nextOfKinRelationship,
+                    phoneNumber: formData.nextOfKinPhone,
+                    email: formData.nextOfKinEmail,
+                } : null,
+                bankDetails: (formData.bankAccountName || formData.bankAccountNumber || formData.bankName || formData.bankSwiftCode || formData.bankBranch) ? {
+                    accountName: formData.bankAccountName,
+                    accountNumber: formData.bankAccountNumber,
+                    bankName: formData.bankName,
+                    swiftCode: formData.bankSwiftCode,
+                    branch: formData.bankBranch,
+                } : null,
+                // Attachments, officeDays, etc.
+                attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+                id_images: idImageUrls.length > 0 ? idImageUrls : undefined,
+                officeDays: formData.daysToCome.length > 0 ? formData.daysToCome : null,
             }
-            if (formData.dateOfBirth && formData.dateOfBirth.trim()) {
-                payload.date_of_birth = new Date(formData.dateOfBirth).toISOString()
+            // Remove empty/null fields
+            Object.keys(payload).forEach(key => (payload[key] === null || payload[key] === undefined) && delete payload[key]);
+            // Use PUT for update, endpoint: /company/consultants/{companyId}/{consultantId}
+            const authData = getAuthData();
+            if (!authData || !authData.user || !authData.user.company) {
+                throw new Error("Authentication data not found. Please log in again.");
             }
-            if (formData.daysToCome.length > 0) {
-                payload.days_to_come = JSON.stringify(formData.daysToCome)
-            }
-            if (idImageUrls.length > 0) {
-                payload.id_images = idImageUrls
-            }
-            if (formData.nextOfKinName.trim() || formData.nextOfKinRelationship.trim() || formData.nextOfKinPhone.trim() || formData.nextOfKinEmail.trim()) {
-                payload.next_of_kin = {}
-                if (formData.nextOfKinName.trim()) payload.next_of_kin.name = formData.nextOfKinName.trim()
-                if (formData.nextOfKinRelationship.trim()) payload.next_of_kin.relationship = formData.nextOfKinRelationship.trim()
-                if (formData.nextOfKinPhone.trim()) payload.next_of_kin.phoneNumber = formData.nextOfKinPhone.trim()
-                if (formData.nextOfKinEmail.trim()) payload.next_of_kin.email = formData.nextOfKinEmail.trim()
-            }
-            if (formData.addressStreet.trim() || formData.addressCity.trim() || formData.addressState.trim() || formData.addressCountry.trim() || formData.addressPostalCode.trim()) {
-                payload.address = {}
-                if (formData.addressStreet.trim()) payload.address.street = formData.addressStreet.trim()
-                if (formData.addressCity.trim()) payload.address.city = formData.addressCity.trim()
-                if (formData.addressState.trim()) payload.address.state = formData.addressState.trim()
-                if (formData.addressCountry.trim()) payload.address.country = formData.addressCountry.trim()
-                if (formData.addressPostalCode.trim()) payload.address.postalCode = formData.addressPostalCode.trim()
-            }
-            if (formData.bankAccountName.trim() || formData.bankAccountNumber.trim() || formData.bankName.trim() || formData.bankSwiftCode.trim() || formData.bankBranch.trim()) {
-                payload.bank_details = {}
-                if (formData.bankAccountName.trim()) payload.bank_details.accountName = formData.bankAccountName.trim()
-                if (formData.bankAccountNumber.trim()) payload.bank_details.accountNumber = formData.bankAccountNumber.trim()
-                if (formData.bankName.trim()) payload.bank_details.bankName = formData.bankName.trim()
-                if (formData.bankSwiftCode.trim()) payload.bank_details.swiftCode = formData.bankSwiftCode.trim()
-                if (formData.bankBranch.trim()) payload.bank_details.branch = formData.bankBranch.trim()
-            }
-            // Use PUT for update, endpoint assumed as /consultants/:id
-            await putRequest(`/consultants/${consultant.id}`, payload)
+            const companyId = authData.user.company.id;
+            await putRequest(`/company/consultants/${companyId}/${consultant.id}`, payload)
             setSuccess("Consultant updated successfully!")
             onUpdated()
         } catch (err: any) {
@@ -353,7 +387,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                         {/* ID Documents */}
                         <div className="space-y-4 pt-6">
                             <h2 className="text-lg font-semibold mb-2">ID Documents</h2>
-                            <FileAttachment attachments={idImages} onAttachmentsChange={setIdImages} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
+                            <FileAttachment attachments={attachments} onAttachmentsChange={setAttachments} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
                             <p className="text-sm text-muted-foreground">You may upload up to 5 PDF files of the consultant's identification documents (e.g., passport, national ID, driver's license).</p>
                         </div>
 

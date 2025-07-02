@@ -15,11 +15,36 @@ import {
   formatMinutesToHours,
   formatHoursCount,
 } from "@/services/employee"
+import { useRouter } from "next/navigation"
+import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 
 export default function EmployeeDashboard() {
   const [dashboardData, setDashboardData] = useState<EmployeeDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!isAuthenticated() || isTokenExpired()) {
+        router.replace("/")
+        return
+      }
+      const role = getUserRole()
+      if (role !== "Consultant" && role !== "Employee") {
+        switch (role) {
+          case "Super Admin":
+            router.replace("/dashboard/super-admin")
+            break
+          case "Company Admin":
+            router.replace("/dashboard/company-admin")
+            break
+          default:
+            router.replace("/dashboard/employee")
+        }
+      }
+    }
+  }, [router])
 
   useEffect(() => {
     const loadDashboardData = async () => {

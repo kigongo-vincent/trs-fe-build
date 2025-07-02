@@ -79,6 +79,11 @@ export function storeAuthData(token: string, user: any): void {
   if (typeof window !== "undefined") {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
+    // Set cookies for middleware access
+    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
+    document.cookie = `user=${encodeURIComponent(
+      JSON.stringify(user)
+    )}; path=/; max-age=${60 * 60 * 24 * 7}`;
   }
 }
 
@@ -124,7 +129,9 @@ export function isAuthenticated(): boolean {
 
 export function getUserRole(): string | null {
   const user = getAuthUser();
-  return user?.role?.name || null;
+  let role = user?.role?.name || null;
+  if (role === "Consultancy") role = "Consultant";
+  return role;
 }
 
 export function getDashboardPath(): string {
@@ -152,4 +159,21 @@ export async function updateProfile(
   data: ProfileUpdateRequest
 ): Promise<ProfileUpdateResponse> {
   return putRequest<ProfileUpdateResponse>("/profile/profile", data);
+}
+
+export function isTokenExpired(): boolean {
+  const token = getAuthToken();
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!payload.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp < now) {
+      clearAuth();
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
 }

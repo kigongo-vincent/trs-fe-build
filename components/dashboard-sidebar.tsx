@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useState, useEffect } from "react"
+import { getUserRole } from "@/services/auth"
 
 interface DashboardSidebarProps {
   open: boolean
@@ -43,22 +44,14 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     reports: true,
     profile: false,
   })
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (mounted && typeof window !== "undefined") {
-      if (pathname.includes("super-admin")) {
-        sessionStorage.setItem("userRole", "super-admin")
-      } else if (pathname.includes("company-admin")) {
-        sessionStorage.setItem("userRole", "company-admin")
-      } else if (pathname.includes("employee")) {
-        sessionStorage.setItem("userRole", "employee")
-      }
+    if (typeof window !== "undefined") {
+      setUserRole(getUserRole())
     }
-  }, [pathname, mounted])
+  }, [])
 
   const toggleGroup = (group: string) => {
     setExpandedGroups({
@@ -71,39 +64,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     return pathname === path
   }
 
-  // Determine which role's sidebar to show based on the current path
-  // Only use pathname-based logic for server-side rendering to avoid hydration issues
-  const isSuperAdmin = pathname.includes("super-admin")
-  const isCompanyAdmin = pathname.includes("company-admin")
-  const isConsultant = pathname.includes("employee")
-
-  // Use client-side logic only after mounting to avoid hydration mismatches
-  const clientIsSuperAdmin = mounted && (
-    isSuperAdmin ||
-    (pathname === "/dashboard/settings" &&
-      typeof window !== "undefined" &&
-      (window.location.pathname.includes("super-admin") || sessionStorage.getItem("userRole") === "super-admin"))
-  )
-
-  const clientIsCompanyAdmin = mounted && (
-    isCompanyAdmin ||
-    (pathname === "/dashboard/settings" &&
-      typeof window !== "undefined" &&
-      (window.location.pathname.includes("company-admin") || sessionStorage.getItem("userRole") === "company-admin"))
-  )
-
-  const clientIsConsultant = mounted && (
-    isConsultant ||
-    (pathname === "/dashboard/settings" &&
-      typeof window !== "undefined" &&
-      sessionStorage.getItem("userRole") === "employee") ||
-    (!clientIsSuperAdmin && !clientIsCompanyAdmin)
-  )
-
-  // Use server-side logic for initial render, client-side logic after mounting
-  const shouldShowSuperAdmin = isSuperAdmin || (mounted && clientIsSuperAdmin)
-  const shouldShowCompanyAdmin = isCompanyAdmin || (mounted && clientIsCompanyAdmin)
-  const shouldShowConsultant = isConsultant || (mounted && clientIsConsultant)
+  // Use userRole for menu logic
+  const shouldShowSuperAdmin = userRole === "Super Admin"
+  const shouldShowCompanyAdmin = userRole === "Company Admin"
+  const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
 
   const isProfileActive = pathname.startsWith("/dashboard/profile")
   const profileSections = [
