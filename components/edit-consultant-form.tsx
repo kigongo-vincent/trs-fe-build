@@ -12,6 +12,7 @@ import dynamic from "next/dynamic"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
 import { uploadFile } from "@/services/upload"
 import "react-phone-input-2/lib/style.css"
+import { toast } from "sonner"
 
 interface Department {
     id: string
@@ -68,7 +69,6 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
     const [departments, setDepartments] = useState<Department[]>([])
     const [loading, setLoading] = useState(false)
     const [submitting, setSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [attachments, setAttachments] = useState<Attachment[]>([])
 
@@ -81,7 +81,6 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
     useEffect(() => {
         const fetchDepartments = async () => {
             setLoading(true)
-            setError(null)
             try {
                 const authData = getAuthData()
                 if (!authData || !authData.user || !authData.user.company) {
@@ -91,7 +90,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 const response = await getRequest(`/departments/company/${companyId}`)
                 setDepartments(response.data)
             } catch (err: any) {
-                setError(err.message || "Failed to fetch departments. Please try again.")
+                toast.error(err.message || "Failed to fetch departments. Please try again.")
             } finally {
                 setLoading(false)
             }
@@ -110,60 +109,55 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setError(null)
         setSuccess(null)
         // Validation (reuse from add)
         if (!formData.fullName.trim()) {
-            setError("Full name is required")
+            toast.error("Full name is required")
             return
         }
         if (!formData.email.trim()) {
-            setError("Email is required")
+            toast.error("Email is required")
             return
         }
         if (!formData.email.includes("@")) {
-            setError("Please enter a valid email address")
-            return
-        }
-        if (!formData.departmentId) {
-            setError("Please select a department")
+            toast.error("Please enter a valid email address")
             return
         }
         if (!formData.jobTitle.trim()) {
-            setError("Job title is required")
+            toast.error("Job title is required")
             return
         }
         if (!formData.grossPay.trim() || isNaN(Number(formData.grossPay))) {
-            setError("Gross pay is required and must be a number")
+            toast.error("Gross pay is required and must be a number")
             return
         }
         if (!formData.dateOfBirth.trim()) {
-            setError("Date of birth is required")
+            toast.error("Date of birth is required")
             return
         }
         if (!formData.phoneNumber.trim()) {
-            setError("Phone number is required")
+            toast.error("Phone number is required")
             return
         }
         const phoneDigits = formData.phoneNumber.replace(/\D/g, '')
         if (phoneDigits.length < 10) {
-            setError("Please enter a valid phone number with at least 10 digits")
+            toast.error("Please enter a valid phone number with at least 10 digits")
             return
         }
         if (formData.daysToCome.length === 0) {
-            setError("Please select at least one day")
+            toast.error("Please select at least one day")
             return
         }
         if (!formData.addressStreet.trim()) {
-            setError("Street address is required")
+            toast.error("Street address is required")
             return
         }
         if (!formData.addressCity.trim()) {
-            setError("City is required")
+            toast.error("City is required")
             return
         }
         if (!formData.addressCountry.trim()) {
-            setError("Country is required")
+            toast.error("Country is required")
             return
         }
         setSubmitting(true)
@@ -242,7 +236,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
             setSuccess("Consultant updated successfully!")
             onUpdated()
         } catch (err: any) {
-            setError(err.message || "Failed to update consultant. Please try again.")
+            toast.error(err.message || "Failed to update consultant. Please try again.")
         } finally {
             setSubmitting(false)
         }
@@ -283,7 +277,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="department">Department <span className="text-red-500">*</span></Label>
+                                <Label htmlFor="department">Department <span className="text-muted-foreground">(optional)</span></Label>
                                 <Select value={formData.departmentId} onValueChange={handleDepartmentChange}>
                                     <SelectTrigger id="department">
                                         <SelectValue placeholder="Select a department" />
@@ -369,6 +363,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                         {/* ID Documents */}
                         <div className="space-y-4 pt-6">
                             <h2 className="text-lg font-semibold mb-2">ID Documents</h2>
+                            <Label>ID Documents <span className="text-muted-foreground">(optional)</span></Label>
                             <FileAttachment attachments={attachments} onAttachmentsChange={setAttachments} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
                             <p className="text-sm text-muted-foreground">You may upload up to 5 PDF files of the consultant's identification documents (e.g., passport, national ID, driver's license).</p>
                         </div>
@@ -429,12 +424,6 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                             )}
                         </Button>
                     </CardFooter>
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
                     {success && (
                         <Alert className="bg-green-50 text-green-800 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                             <AlertTitle>Success</AlertTitle>
