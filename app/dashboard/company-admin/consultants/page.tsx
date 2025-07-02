@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon, FileText, Download, PhoneCall, PhoneIcon, MapPin } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -128,7 +128,10 @@ export default function ConsultantsPage() {
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((consultant) => consultant.status.toLowerCase() === statusFilter.toLowerCase())
+      filtered = filtered.filter((consultant) => {
+        const status = consultant.status === "" ? "on-leave" : consultant.status.toLowerCase();
+        return status === statusFilter.toLowerCase();
+      })
     }
 
     setFilteredConsultants(filtered)
@@ -641,6 +644,7 @@ export default function ConsultantsPage() {
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="on-leave">On Leave</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -826,12 +830,12 @@ export default function ConsultantsPage() {
               <div className="flex flex-1 w-full h-[calc(100vh-80px)] px-0">
                 {/* Sidebar Navigation */}
                 <div className="w-56 min-w-[180px] border-r bg-muted/30 flex flex-col py-8 gap-2 text-base">
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('overview')}>Overview</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'recent' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('recent')}>Recent Activity</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('logs')}>Logs by Range</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('personal')}>Personal</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('bank')}>Bank Details</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'recent' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('recent')}>Recent Activity</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('bank')}>Bank Details</button>
                 </div>
                 {/* Main Content - only this is scrollable */}
                 <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full pb-0">
@@ -963,7 +967,7 @@ export default function ConsultantsPage() {
                           <CardDescription>Latest time logs and tasks</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          {dashboardData?.recentLogs && dashboardData.recentLogs.length > 0 ? (
+                          {dashboardData?.recentLogs && dashboardData.recentLogs.filter((log) => log.status !== "draft").length > 0 ? (
                             <Table>
                               <TableHeader>
                                 <TableRow>
@@ -975,46 +979,47 @@ export default function ConsultantsPage() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {dashboardData.recentLogs.map((log) => (
-                                  <TableRow key={log.id}>
-                                    <TableCell className="font-medium">{log.title}</TableCell>
-                                    <TableCell>{log.project}</TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        {new Date(log.date).toLocaleDateString()}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
-                                        {formatMinutesToHours(log.minutes)}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          log.status === "active"
-                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                            : log.status === "completed"
-                                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                              : "bg-gray-50 text-gray-700 border-gray-200"
-                                        }
-                                      >
-                                        {log.status}
-                                      </Badge>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                {dashboardData.recentLogs
+                                  .filter((log) => log.status !== "draft")
+                                  .map((log) => (
+                                    <TableRow key={log.id}>
+                                      <TableCell className="font-medium">{log.title}</TableCell>
+                                      <TableCell>{log.project}</TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                                          {new Date(log.date).toLocaleDateString()}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                          <Clock className="h-4 w-4 text-muted-foreground" />
+                                          {formatMinutesToHours(log.minutes)}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge
+                                          variant="outline"
+                                          className={
+                                            log.status === "active"
+                                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                              : log.status === "completed"
+                                                ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                                                : "bg-gray-50 text-gray-700 border-gray-200"
+                                          }
+                                        >
+                                          {log.status}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
                               </TableBody>
                             </Table>
                           ) : (
-                            <div className="flex items-center justify-center h-32 text-muted-foreground">
-                              <div className="text-center">
-                                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p>No recent activity</p>
-                              </div>
+                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                              <Clock className="h-10 w-10 mb-3 opacity-40" />
+                              <div className="text-lg font-semibold mb-1">No recent activity</div>
+                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
                             </div>
                           )}
                         </CardContent>
@@ -1032,7 +1037,7 @@ export default function ConsultantsPage() {
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-2">
-                                <Filter className="h-4 w-4 text-muted-foreground" />
+                                {/* <Filter className="h-4 w-4 text-muted-foreground" /> */}
                                 <div className="flex items-center gap-2">
                                   <div className="flex flex-col gap-1">
                                     <label htmlFor="start-date" className="text-xs text-muted-foreground">
@@ -1193,7 +1198,7 @@ export default function ConsultantsPage() {
                   {modalSection === 'personal' && (
                     <div className="flex flex-col gap-8">
                       {/* Profile Section - All Personal Info Merged */}
-                      <Card className="w-full shadow-lg">
+                      <Card className="w-full">
                         <CardContent className="pt-8 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
                           <Avatar className="h-28 w-28 mx-auto md:mx-0">
                             <AvatarImage
@@ -1218,6 +1223,10 @@ export default function ConsultantsPage() {
                                 <Mail className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{selectedConsultant?.email || "-"}</span>
                               </div>
+                              <div><div className="text-muted-foreground text-sm flex items-center space-x-2">
+                                <PhoneIcon size={14} className="mr-2" />
+                                +{(selectedConsultant as any)?.phoneNumber || '-'}</div></div>
+
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{selectedConsultant?.role?.name || "-"}</span>
@@ -1244,23 +1253,159 @@ export default function ConsultantsPage() {
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2">
+                                <div className="flex items-center space-x-3 mx-4"><Label>Born: </Label><div className="text-muted-foreground text-sm">{(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString() : '-'}</div></div>
                                 <span className="text-sm text-muted-foreground">Joined:</span>
                                 <span className="text-sm">{selectedConsultant?.createdAt ? new Date(selectedConsultant.createdAt).toLocaleDateString() : "-"}</span>
                               </div>
                             </div>
+
+                            <div className="xl:col-span-2 flex items-center space-x-2 mt-2"><MapPin className="text-red-500" size={15} /><div className="text-muted-foreground text-sm whitespace-pre-line">{(selectedConsultant as any)?.address ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}` : '-'}</div></div>
+
+
+                            {/* IDs Section */}
                             <div className="flex flex-col gap-2 mt-4">
-                              <Label>Full Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.fullName || '-'}</div>
-                              <Label>Email</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.email || '-'}</div>
-                              <Label>Status</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.status || '-'}</div>
-                              <Label>Job Title</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.jobTitle || (selectedConsultant as any)?.job_title || '-'}</div>
-                              <Label>Gross Pay</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay || '-'}</div>
-                              <Label>Date of Birth</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString() : '-'}</div>
-                              <Label>Phone Number</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.phoneNumber || '-'}</div>
-                              <Label>Currency</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.currency || '-'}</div>
-                              <Label>Office Days</Label><div className="text-muted-foreground">{Array.isArray((selectedConsultant as any)?.days_to_come) ? (selectedConsultant as any).days_to_come.join(', ') : (selectedConsultant as any)?.days_to_come ? JSON.parse((selectedConsultant as any).days_to_come).join(', ') : (selectedConsultant as any)?.officeDays ? (selectedConsultant as any).officeDays.join(', ') : '-'}</div>
-                              <Label>Address</Label><div className="text-muted-foreground whitespace-pre-line">{(selectedConsultant as any)?.address ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}` : '-'}</div>
-                              <Label>Next of Kin</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.name || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.name) || '-'}</div>
-                              <Label>Bank Details</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountName) || '-'}</div>
+                              <Label>IDs</Label>
+                              <div className="space-y-2">
+                                {Array.isArray((selectedConsultant as any)?.attachments) && (selectedConsultant as any).attachments.length > 0 ? (
+                                  (selectedConsultant as any).attachments.map((att: string, idx: number) => {
+                                    // Assume all are PDFs
+                                    let fileName = `ID ${idx + 1}.pdf`;
+                                    let url = att;
+                                    // Try to extract name if present
+                                    const nameMatch = att.match(/name=([^;]+);/);
+                                    if (nameMatch) fileName = nameMatch[1];
+                                    // PDF icon
+                                    const icon = (
+                                      <FileText className="h-5 w-5 text-red-500" />
+                                    );
+                                    return (
+                                      <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+                                        <div className="flex-shrink-0">{icon}</div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium truncate">{fileName}</div>
+                                        </div>
+                                        <a
+                                          href={url}
+                                          download={fileName}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />
+                                            View
+                                          </Button>
+                                        </a>
+                                        <a
+                                          href={url}
+                                          download={fileName}
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
+                                            <Download className="h-4 w-4" />
+                                            Download
+                                          </Button>
+                                        </a>
+                                      </div>
+                                    );
+                                  })
+                                ) : (
+                                  // Default sample documents
+                                  <>
+                                    <div className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+                                      <FileText className="h-5 w-5 text-red-500" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium truncate">Passport.pdf</div>
+                                      </div>
+                                      <a
+                                        href="https://images.pexels.com/photos/8061986/pexels-photo-8061986.jpeg"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                          <FileText className="h-4 w-4" />
+                                          View
+                                        </Button>
+                                      </a>
+                                      <a
+                                        href="https://images.pexels.com/photos/8061986/pexels-photo-8061986.jpeg"
+                                        download="Passport.pdf"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
+                                          <Download className="h-4 w-4" />
+                                          Download
+                                        </Button>
+                                      </a>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+                                      <FileText className="h-5 w-5 text-red-500" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium truncate">Driving License.pdf</div>
+                                      </div>
+                                      <a
+                                        href="https://images.pexels.com/photos/45113/pexels-photo-45113.jpeg"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                          <FileText className="h-4 w-4" />
+                                          View
+                                        </Button>
+                                      </a>
+                                      <a
+                                        href="https://images.pexels.com/photos/45113/pexels-photo-45113.jpeg"
+                                        download="Driving License.pdf"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
+                                          <Download className="h-4 w-4" />
+                                          Download
+                                        </Button>
+                                      </a>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {/* End IDs Section */}
+                            <div className="flex flex-col gap-2 mt-4">
+                              {/* Gross Pay with visual hierarchy (no outside label) */}
+                              <div className="w-full">
+                                <Card className="bg-primary/10 border-primary/20 shadow-none mb-2">
+                                  <CardContent className="py-4 flex flex-col items-center">
+                                    <span className="text-3xl font-extrabold text-primary">
+                                      {(() => {
+                                        let grossPay = (selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay;
+                                        let currency = (selectedConsultant as any)?.currency;
+                                        if (!currency) currency = 'USD';
+                                        if (!grossPay || isNaN(Number(grossPay))) return '-';
+                                        // Format with commas
+                                        const formattedGrossPay = Number(grossPay).toLocaleString();
+                                        return `${currency} ${formattedGrossPay}`;
+                                      })()}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground mt-1">Monthly Gross Pay</span>
+                                  </CardContent>
+                                </Card>
+                                <span className="text-xs text-muted-foreground block text-center mt-1">If no currency is set, USD is used by default.</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2 mt-4">
+                              <Label>Office Days</Label>
+                              <div className="flex flex-row gap-2 flex-wrap">
+                                {(() => {
+                                  let days: string[] = [];
+                                  if (Array.isArray((selectedConsultant as any)?.days_to_come)) days = (selectedConsultant as any).days_to_come;
+                                  else if ((selectedConsultant as any)?.days_to_come) days = JSON.parse((selectedConsultant as any).days_to_come);
+                                  else if ((selectedConsultant as any)?.officeDays) days = (selectedConsultant as any).officeDays;
+                                  if (!days || days.length === 0) return <span className="text-muted-foreground">-</span>;
+                                  return days.map((day: string, idx: number) => (
+                                    <Card key={idx} className="px-3 py-1 bg-muted/50 shadow-none text-sm font-medium rounded-full">
+                                      <CardContent className="p-0 flex items-center justify-center">{day}</CardContent>
+                                    </Card>
+                                  ));
+                                })()}
+                              </div>
                             </div>
                           </div>
                         </CardContent>
