@@ -189,24 +189,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                     reader.readAsDataURL(file);
                 });
             const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
-            const urlAttachments = attachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
-            // Upload files and collect URLs
-            let idImageUrls: string[] = []
-            if (attachmentsBase64.length > 0) {
-                try {
-                    const uploadResults = await Promise.all(
-                        attachmentsBase64.map(async (att) => {
-                            const res = await uploadFile(att)
-                            return res.url
-                        })
-                    )
-                    idImageUrls = uploadResults.filter(Boolean) as string[]
-                } catch (uploadErr) {
-                    setError("Failed to upload one or more attachments. Please try again.")
-                    setSubmitting(false)
-                    return
-                }
-            }
+            // No separate upload, just add base64 strings to payload
             const payload: any = {
                 // camelCase fields
                 fullName: formData.fullName,
@@ -245,7 +228,6 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 } : null,
                 // Attachments, officeDays, etc.
                 attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
-                id_images: idImageUrls.length > 0 ? idImageUrls : undefined,
                 officeDays: formData.daysToCome.length > 0 ? formData.daysToCome : null,
             }
             // Remove empty/null fields
