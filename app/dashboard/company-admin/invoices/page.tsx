@@ -19,6 +19,8 @@ import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function InvoicesPage() {
   const [summary, setSummary] = useState<any[] | null>(null)
@@ -488,6 +490,20 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
     }
   }
   const currencyInfo = getCurrencyOrigin()
+  // --- Checks and Comments State ---
+  const [reviewed, setReviewed] = useState(false)
+  const [satisfied, setSatisfied] = useState(false)
+  const [approved, setApproved] = useState(false)
+  const [comment, setComment] = useState("")
+  const [commentDate, setCommentDate] = useState<string>("")
+  const [addingComment, setAddingComment] = useState(false)
+  const handleAddComment = async () => {
+    if (!comment.trim()) return
+    setAddingComment(true)
+    await new Promise(res => setTimeout(res, 500))
+    setCommentDate(new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))
+    setAddingComment(false)
+  }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-gray-50 overflow-y-auto">
@@ -531,7 +547,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
               </Card>
             </div>
             {invoice.description && (
-              <Card className=" dark:bg-blue-900/30 ">
+              <Card className=" dark:bg-blue-900/30 border-none">
                 <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Service Description</CardTitle></CardHeader>
                 <CardContent className="text-gray-700 dark:text-gray-200 text-sm">{invoice.description}</CardContent>
               </Card>
@@ -589,6 +605,52 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
                 {invoice.user?.email && (<p className="mt-1">For any questions regarding this invoice, please contact {invoice.user.email}</p>)}
               </div>
             </CardFooter>
+
+            {/* --- Checks and Comments Section --- */}
+            <div className="mt-6 p-4 border rounded bg-white dark:bg-neutral-900">
+              <div className="flex flex-col md:flex-row md:items-center md:gap-6 gap-2">
+                <Label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(!!checked)} id="reviewed-check" /> Reviewed
+                </Label>
+                <Label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(!!checked)} id="satisfied-check" /> Satisfied
+                </Label>
+                <Label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={approved} onCheckedChange={checked => setApproved(!!checked)} id="approved-check" /> Approved
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-primary/30 text-primary hover:border-primary ml-auto"
+                >Save</Button>
+              </div>
+              <div className="mt-4">
+                <Label htmlFor="invoice-comment" className="block text-xs font-medium mb-1 text-muted-foreground">Add Comment</Label>
+                <Textarea
+                  id="invoice-comment"
+                  className="mb-2"
+                  rows={3}
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Write a comment..."
+                />
+                <div className="flex justify-end mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-primary/30 text-primary hover:border-primary"
+                    onClick={handleAddComment}
+                    disabled={!comment.trim() || addingComment}
+                  >{addingComment ? "Adding..." : "Add Comment"}</Button>
+                </div>
+                {commentDate && (
+                  <div className="mt-3 border rounded p-2 bg-gray-50 dark:bg-neutral-800">
+                    <div className="text-sm">{comment}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{commentDate}</div>
+                  </div>
+                )}
+              </div>
+            </div>
           </CardContent>
           <CardFooter className="flex justify-end gap-2 px-6 pb-4 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
