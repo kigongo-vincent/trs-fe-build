@@ -254,20 +254,20 @@ function InvoiceTable({ currency }: { currency: string }) {
   }
 
   const sortArrow = (column: string) => (
-    <span className="inline-flex flex-col ml-1 align-middle">
+    <span className="inline-flex flex-col ml-2 align-middle">
       <svg width="10" height="7" viewBox="0 0 10 7" className={
         sortBy === column && sortDir === "asc"
           ? "text-primary opacity-100"
           : "text-muted-foreground opacity-40"
-      } style={{ marginBottom: 1 }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      } style={{ marginBottom: "1px" }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
         <polygon points="5,1 9,6 1,6" />
       </svg>
-      <span style={{ height: 2 }} />
+      <span style={{ height: 1 }} />
       <svg width="10" height="7" viewBox="0 0 10 7" className={
         sortBy === column && sortDir === "desc"
           ? "text-primary opacity-100"
           : "text-muted-foreground opacity-40"
-      } style={{ marginTop: 1, transform: 'rotate(180deg)' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      } style={{ marginTop: "1px", transform: 'rotate(180deg)' }} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
         <polygon points="5,1 9,6 1,6" />
       </svg>
     </span>
