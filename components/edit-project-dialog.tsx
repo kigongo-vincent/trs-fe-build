@@ -5,6 +5,9 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Loader2 } from "lucide-react"
+import { DialogClose } from "@/components/ui/dialog"
+import { X } from "lucide-react"
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 import { Button } from "@/components/ui/button"
 import {
@@ -188,116 +191,129 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Edit Project</DialogTitle>
-                    <DialogDescription>Update the project details below.</DialogDescription>
-                </DialogHeader>
-
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Project Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Enter project name" {...field} disabled={isSubmitting} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="departmentId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Department</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value}
-                                        disabled={isSubmitting || loadingDepartments}
-                                    >
+            <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
+                <DialogTitle><VisuallyHidden>Edit Project</VisuallyHidden></DialogTitle>
+                <div className="sticky top-0 left-0 w-full bg-background border-b shadow z-20 px-8 py-6 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                        <DialogTitle className="text-2xl font-semibold">Edit Project</DialogTitle>
+                        <DialogDescription>Update the project details below.</DialogDescription>
+                    </div>
+                    <DialogClose asChild>
+                        <button
+                            type="button"
+                            className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            aria-label="Close"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
+                    </DialogClose>
+                </div>
+                <div className="flex-1 overflow-auto px-8 py-6">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Project Name</FormLabel>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue
-                                                    placeholder={loadingDepartments ? "Loading departments..." : "Select department"}
-                                                />
-                                            </SelectTrigger>
+                                            <Input placeholder="Enter project name" {...field} disabled={isSubmitting} />
                                         </FormControl>
-                                        <SelectContent>
-                                            {departments.map((department) => (
-                                                <SelectItem key={department.id} value={department.id}>
-                                                    {department.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={form.control}
-                            name="leadId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Project Lead</FormLabel>
-                                    <Select
-                                        onValueChange={field.onChange}
-                                        defaultValue={field.value}
-                                        disabled={isSubmitting || loadingUsers}
-                                    >
+                            <FormField
+                                control={form.control}
+                                name="departmentId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Department</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                            disabled={isSubmitting || loadingDepartments}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue
+                                                        placeholder={loadingDepartments ? "Loading departments..." : "Select department"}
+                                                    />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {departments.map((department) => (
+                                                    <SelectItem key={department.id} value={department.id}>
+                                                        {department.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="leadId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Project Lead</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                            disabled={isSubmitting || loadingUsers}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder={loadingUsers ? "Loading users..." : "Select project lead"} />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {users.map((user) => (
+                                                    <SelectItem key={user.id} value={user.id}>
+                                                        <div className="flex flex-col">
+                                                            <span>{user.fullName}</span>
+                                                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="deadline"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Deadline</FormLabel>
                                         <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder={loadingUsers ? "Loading users..." : "Select project lead"} />
-                                            </SelectTrigger>
+                                            <Input type="date" min={getTodayDate()} {...field} disabled={isSubmitting} className="!w-max" />
                                         </FormControl>
-                                        <SelectContent>
-                                            {users.map((user) => (
-                                                <SelectItem key={user.id} value={user.id}>
-                                                    <div className="flex flex-col">
-                                                        <span>{user.fullName}</span>
-                                                        <span className="text-xs text-muted-foreground">{user.email}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                        <FormField
-                            control={form.control}
-                            name="deadline"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Deadline</FormLabel>
-                                    <FormControl>
-                                        <Input type="date" min={getTodayDate()} {...field} disabled={isSubmitting} className="!w-max" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Update Project
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Update Project
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog>
     )
