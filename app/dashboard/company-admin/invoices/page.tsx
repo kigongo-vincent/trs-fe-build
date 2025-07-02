@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Download, Eye, FileText, Plus, Search, FileDown, Triangle } from "lucide-react"
+import { CalendarIcon, Download, Eye, FileText, Plus, Search, FileDown, Triangle, X as XIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { getCompanyInvoicesSummary, getRequest } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
@@ -22,6 +22,16 @@ export default function InvoicesPage() {
   const [summary, setSummary] = useState<any[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [searchValue, setSearchValue] = useState("")
+  const [searchLoading, setSearchLoading] = useState(false)
+
+  // Filter states
+  const [status, setStatus] = useState("all")
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>("")
+  const [filterLoading, setFilterLoading] = useState(false)
+  const [filterParams, setFilterParams] = useState<{ status: string, startDate: string, endDate: string }>({ status: "all", startDate: "", endDate: "" })
 
   useEffect(() => {
     async function fetchSummary() {
@@ -46,6 +56,39 @@ export default function InvoicesPage() {
   const totalAmountItem = summary?.find((item) => item.label === "Total Amount")
   const currency = totalAmountItem?.currency || "USD"
   const showDisclaimer = !totalAmountItem?.currency || totalAmountItem.currency !== "USD"
+
+  const handleSearch = async () => {
+    setSearchLoading(true)
+    setTimeout(() => {
+      setSearchTerm(searchValue)
+      setFilterParams({ status: "all", startDate: "", endDate: "" })
+      setSearchLoading(false)
+    }, 1000)
+  }
+
+  const handleClearSearch = () => {
+    setSearchValue("")
+    setSearchTerm("")
+    setFilterParams({ status: "all", startDate: "", endDate: "" })
+  }
+
+  const handleFilterSubmit = async () => {
+    setFilterLoading(true)
+    setTimeout(() => {
+      setFilterParams({ status, startDate, endDate })
+      setSearchTerm("")
+      setFilterLoading(false)
+    }, 1000)
+  }
+
+  const handleClearFilters = () => {
+    setStatus("all")
+    setStartDate("")
+    setEndDate("")
+    setFilterParams({ status: "all", startDate: "", endDate: "" })
+  }
+
+  const isFilterActive = status !== "all" || !!startDate || !!endDate
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,59 +151,90 @@ export default function InvoicesPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input type="text" placeholder="Search invoices..." className="h-9" />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end mt-3 md:justify-between">
+        <div className="flex w-full max-w-sm items-center space-x-2 relative">
+          <Input
+            type="text"
+            placeholder="Search invoices..."
+            className="h-9 pr-8"
+            value={searchValue}
+            onChange={e => setSearchValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+            disabled={searchLoading}
+          />
+          {searchValue && (
+            <button
+              type="button"
+              className="absolute right-12 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+              onClick={handleClearSearch}
+              tabIndex={-1}
+              aria-label="Clear search"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-2 lg:px-3"
+            onClick={handleSearch}
+            disabled={searchLoading}
+          >
             <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
+            <span className="sr-only md:not-sr-only md:ml-2">{searchLoading ? "Searching..." : "Search"}</span>
           </Button>
         </div>
-        <div className="flex flex-row items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-[240px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                <span>Filter by date range</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                defaultMonth={new Date(2025, 4)}
-                selected={{
-                  from: new Date(2025, 0, 1),
-                  to: new Date(2025, 4, 11),
-                }}
-              />
-            </PopoverContent>
-          </Popover>
-          <Select defaultValue="all">
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select defaultValue="all">
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              <SelectItem value="development">Development</SelectItem>
-              <SelectItem value="design">Design</SelectItem>
-              <SelectItem value="marketing">Marketing</SelectItem>
-              <SelectItem value="sales">Sales</SelectItem>
-              <SelectItem value="hr">HR</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <form className="flex flex-row items-end gap-2" onSubmit={e => { e.preventDefault(); handleFilterSubmit() }}>
+          <div className="flex flex-col">
+            <label htmlFor="start-date" className="text-xs text-muted-foreground font-normal mb-1">Start Date</label>
+            <Input
+              id="start-date"
+              type="date"
+              className="h-9 w-[140px]"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              max={endDate || undefined}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label htmlFor="end-date" className="text-xs text-muted-foreground font-normal mb-1">End Date</label>
+            <Input
+              id="end-date"
+              type="date"
+              className="h-9 w-[140px]"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              min={startDate || undefined}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label htmlFor="status-filter" className="text-xs text-muted-foreground font-normal mb-1">Status</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger id="status-filter" className="h-9 w-[120px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit" variant="default" size="sm" className="h-9 px-4 self-end" disabled={filterLoading || !isFilterActive}>
+            {filterLoading ? "Filtering..." : "Apply Filter"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2 self-end"
+            onClick={handleClearFilters}
+            disabled={!isFilterActive}
+          >
+            Clear Filters
+          </Button>
+        </form>
       </div>
 
       <Card>
@@ -169,19 +243,20 @@ export default function InvoicesPage() {
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceTable currency={currency} />
+          <InvoiceTable currency={currency} searchTerm={searchTerm} filterParams={filterParams} />
         </CardContent>
       </Card>
     </div>
   )
 }
 
-function InvoiceTable({ currency }: { currency: string }) {
+function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string } }) {
   const [invoices, setInvoices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string>("invoiceNumber")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const [filteredInvoices, setFilteredInvoices] = useState<any[]>([])
 
   useEffect(() => {
     async function fetchInvoices() {
@@ -191,7 +266,17 @@ function InvoiceTable({ currency }: { currency: string }) {
         const authData = getAuthData()
         const companyId = authData?.user?.company?.id
         if (!companyId) throw new Error("Company ID not found")
-        const res: any = await getRequest(`/company/invoices/${companyId}`)
+        let url = `/company/invoices/${companyId}`
+        let params: any = {}
+        if (searchTerm) {
+          params.search = searchTerm
+        } else if (filterParams) {
+          if (filterParams.status && filterParams.status !== "all") params.status = filterParams.status
+          if (filterParams.startDate) params.startDate = filterParams.startDate
+          if (filterParams.endDate) params.endDate = filterParams.endDate
+        }
+        const query = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : ""
+        const res: any = await getRequest(url + query)
         setInvoices(res.data)
       } catch (err: any) {
         setError(err.message || "Failed to fetch invoices")
@@ -200,7 +285,11 @@ function InvoiceTable({ currency }: { currency: string }) {
       }
     }
     fetchInvoices()
-  }, [])
+  }, [searchTerm, filterParams])
+
+  useEffect(() => {
+    setFilteredInvoices(invoices)
+  }, [invoices])
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -211,7 +300,7 @@ function InvoiceTable({ currency }: { currency: string }) {
     }
   }
 
-  const sortedInvoices = [...invoices].sort((a, b) => {
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     let aValue: any, bValue: any
     switch (sortBy) {
       case "invoiceNumber":
@@ -249,7 +338,7 @@ function InvoiceTable({ currency }: { currency: string }) {
   if (error) {
     return <div className="h-[300px] flex items-center justify-center text-red-500">{error}</div>
   }
-  if (!invoices.length) {
+  if (!filteredInvoices.length) {
     return <div className="h-[300px] flex items-center justify-center text-muted-foreground">No invoices found.</div>
   }
 
@@ -281,14 +370,14 @@ function InvoiceTable({ currency }: { currency: string }) {
             className={`cursor-pointer select-none ${sortBy === "invoiceNumber" ? "text-primary font-semibold" : ""}`}
             onClick={() => handleSort("invoiceNumber")}
           >
-            Invoice #
+            Invoice Number
             {sortArrow("invoiceNumber")}
           </TableHead>
           <TableHead
             className={`cursor-pointer select-none ${sortBy === "employee" ? "text-primary font-semibold" : ""}`}
             onClick={() => handleSort("employee")}
           >
-            Employee
+            Consultant
             {sortArrow("employee")}
           </TableHead>
           <TableHead
