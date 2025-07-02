@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ConsultantsByDepartmentChart } from "@/components/consultants-by-department-chart"
@@ -32,6 +32,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { EditConsultantForm } from "@/components/edit-consultant-form"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { X } from "lucide-react"
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 export default function ConsultantsPage() {
   const [consultants, setConsultants] = useState<Consultant[]>([])
@@ -812,8 +814,7 @@ export default function ConsultantsPage() {
                 </DialogHeader>
                 <button
                   onClick={handleCloseModal}
-                  className="ml-auto rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                  aria-label="Close"
+                  className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
                 >
                   <span className="sr-only">Close</span>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
@@ -833,7 +834,7 @@ export default function ConsultantsPage() {
                   <button className={`mx-3 text-left px-4 py-2 rounded text-base transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} onClick={() => setModalSection('bank')}>Bank Details</button>
                 </div>
                 {/* Main Content - only this is scrollable */}
-                <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full">
+                <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full pb-0">
                   {modalSection === 'overview' && (
                     <div className="flex flex-col gap-8">
                       {/* Hours Overview */}
@@ -1310,16 +1311,28 @@ export default function ConsultantsPage() {
 
       {/* Consultant Edit Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={handleCloseEditModal}>
-        <DialogContent className="max-w-[95vw] lg:max-w-[95vw] max-h-[90vh] overflow-y-auto !rounded-none border-0" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
+          <DialogTitle><VisuallyHidden>Edit Consultant</VisuallyHidden></DialogTitle>
+          <div className="sticky top-0 left-0 w-full bg-background border-b shadow z-20 px-8 py-6 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-2xl font-semibold">
               <Edit className="h-5 w-5" />
               Edit Consultant
-            </DialogTitle>
-          </DialogHeader>
-          {editConsultant && (
-            <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={() => { setIsEditModalOpen(false); setEditConsultant(null); /* refetch consultants */ }} />
-          )}
+            </div>
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+                aria-label="Close"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </DialogClose>
+          </div>
+          <div className="flex-1 overflow-auto px-8 py-6 pb-0">
+            {editConsultant && (
+              <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={() => { setIsEditModalOpen(false); setEditConsultant(null); /* refetch consultants */ }} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
