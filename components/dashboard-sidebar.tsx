@@ -61,7 +61,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   }
 
   const isActive = (path: string) => {
-    return pathname === path
+    return pathname === path || pathname.startsWith(path + "/");
   }
 
   // Use userRole for menu logic
