@@ -1475,7 +1475,33 @@ export default function ConsultantsPage() {
           </div>
           <div className="flex-1 overflow-auto px-8 py-6 pb-0">
             {editConsultant && (
-              <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={() => { setIsEditModalOpen(false); setEditConsultant(null); /* refetch consultants */ }} />
+              <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={async () => {
+                setIsEditModalOpen(false);
+                setEditConsultant(null);
+                // Refetch consultants and department summary after update
+                if (companyId) {
+                  setLoading(true);
+                  setChartLoading(true);
+                  try {
+                    const [consultantsResponse, summaryResponse] = await Promise.all([
+                      getAllConsultants(companyId),
+                      getConsultantsSummary(companyId),
+                    ]);
+                    if (consultantsResponse.status === 200) {
+                      setConsultants(consultantsResponse.data);
+                      setFilteredConsultants(consultantsResponse.data);
+                    }
+                    if (summaryResponse.status === 200) {
+                      setDepartmentSummary(summaryResponse.data);
+                    }
+                  } catch (error) {
+                    console.error("Failed to refetch data after consultant update:", error);
+                  } finally {
+                    setLoading(false);
+                    setChartLoading(false);
+                  }
+                }
+              }} />
             )}
           </div>
         </DialogContent>
