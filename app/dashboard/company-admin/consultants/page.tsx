@@ -64,7 +64,7 @@ export default function ConsultantsPage() {
   const [editConsultant, setEditConsultant] = useState<Consultant | null>(null)
 
   // Sidebar section state for consultant modal
-  const [modalSection, setModalSection] = useState<'overview' | 'recent' | 'logs' | 'personal' | 'nextOfKin' | 'bank'>('overview')
+  const [modalSection, setModalSection] = useState<'overview' | 'recent' | 'logs' | 'personal' | 'nextOfKin' | 'bank'>('personal')
 
   // Get company ID from auth data
   const authData = getAuthData()
@@ -812,8 +812,8 @@ export default function ConsultantsPage() {
               <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
                 <DialogHeader className="flex flex-row items-center gap-4 w-full">
                   <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                    <User className="h-6 w-6" />
-                    {selectedConsultant?.fullName || "Consultant"} Dashboard
+                    {/* <User className="h-6 w-6" /> */}
+                    {selectedConsultant?.fullName || "Consultant"}
                   </DialogTitle>
                 </DialogHeader>
                 <button

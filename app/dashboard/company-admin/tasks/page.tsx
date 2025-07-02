@@ -102,11 +102,7 @@ export default function TasksPage() {
       )
     }
 
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((task) => task.status === statusFilter)
-    }
-
+    // Remove status filter logic
     // Department filter
     if (departmentFilter !== "all") {
       filtered = filtered.filter((task) => task.project.department.name === departmentFilter)
@@ -138,8 +134,11 @@ export default function TasksPage() {
       })
     }
 
+    // Only show tasks that are not drafts
+    filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft")
+
     setFilteredTasks(filtered)
-  }, [tasks, searchTerm, statusFilter, departmentFilter, projectFilter, durationFilter])
+  }, [tasks, searchTerm, departmentFilter, projectFilter, durationFilter])
 
   const formatDuration = (duration: string) => {
     const minutes = Number.parseFloat(duration)
@@ -370,16 +369,6 @@ export default function TasksPage() {
           </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Department" />
@@ -426,7 +415,7 @@ export default function TasksPage() {
         <CardHeader>
           <CardTitle>All Tasks</CardTitle>
           <CardDescription>
-            {isTasksLoading ? "Loading tasks..." : `${filteredTasks.length} of ${tasks.length} tasks`}
+            {isTasksLoading ? "Loading tasks..." : `${filteredTasks.length} of ${tasks.filter((task) => task.status.toLowerCase() !== "draft").length} tasks`}
           </CardDescription>
         </CardHeader>
         <CardContent>
