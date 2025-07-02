@@ -21,6 +21,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import jsPDF from "jspdf"
+
+// Helper function for date formatting (top-level, shared)
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: 'numeric'
+  })
+}
 
 export default function InvoicesPage() {
   const [summary, setSummary] = useState<any[] | null>(null)
@@ -339,6 +347,77 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
     return 0
   })
 
+  // PDF download for row (stateless: checkboxes No, comment empty)
+  const handleRowDownloadPDF = (invoice: any) => {
+    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
+    const reviewedText = 'No'
+    const satisfiedText = 'No'
+    const approvedText = 'No'
+    const commentBlock = ''
+    const currencyInfo = { code: currency, origin: 'Company' }
+    const html = `
+      <div style='font-family: Arial, sans-serif; color: #222; font-size: 12pt; max-width: 700px;'>
+        <h2 style='margin-bottom: 0;'>INVOICE</h2>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px;'><b>Invoice Number:</b></td><td style='padding:4px;'>${invoice.invoiceNumber || invoice.id}</td></tr>
+          <tr><td style='padding:4px;'><b>Status:</b></td><td style='padding:4px;'>${invoice.status ? invoice.status.toUpperCase() : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Issue Date:</b></td><td style='padding:4px;'>${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Period:</b></td><td style='padding:4px;'>${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Last Updated:</b></td><td style='padding:4px;'>${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Consultant Information</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px;'><b>Name:</b></td><td style='padding:4px;'>${invoice.user?.fullName || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Email:</b></td><td style='padding:4px;'>${invoice.user?.email || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Phone:</b></td><td style='padding:4px;'>${invoice.user?.phoneNumber || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Job Title:</b></td><td style='padding:4px;'>${invoice.user?.jobTitle || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Company:</b></td><td style='padding:4px;'>${invoice.user?.company?.name || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Address:</b></td><td style='padding:4px;'>${invoice.user?.address ? `${invoice.user.address.street}, ${invoice.user.address.city}, ${invoice.user.address.state}, ${invoice.user.address.country}` : '-'}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Invoice Items</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr style='background:#f5f5f5;'>
+            <th style='border:1px solid #bbb; padding:8px;'>Description</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Hours</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Rate</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Amount</th>
+          </tr>
+          <tr>
+            <td style='border:1px solid #bbb; padding:8px;'>Consulting Services<br><span style='font-size:10pt;color:#888;'>Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${invoice.totalHours || '-'}</td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        </table>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px; text-align:right;'><b>Subtotal:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+          <tr><td style='padding:4px; text-align:right;'><b>Tax:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} 0.00</td></tr>
+          <tr><td style='padding:4px; text-align:right;'><b>Total:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Review Status</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Reviewed:</b></td><td style='padding:4px; border:1px solid #bbb;'>${reviewedText}</td></tr>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Satisfied:</b></td><td style='padding:4px; border:1px solid #bbb;'>${satisfiedText}</td></tr>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Approved:</b></td><td style='padding:4px; border:1px solid #bbb;'>${approvedText}</td></tr>
+          ${commentBlock}
+        </table>
+        <div style='margin-top:24px; color:#888; font-size:10pt;'>
+          Thank you for your business!<br>
+          ${invoice.user?.email ? `For any questions regarding this invoice, please contact ${invoice.user.email}` : ''}
+        </div>
+      </div>
+    `
+    doc.html(html, {
+      x: 32,
+      y: 32,
+      width: 530,
+      windowWidth: 700,
+      callback: function (doc) {
+        doc.save(`Invoice_${invoice.invoiceNumber || invoice.id}.pdf`)
+      }
+    })
+  }
+
   if (loading) {
     return <div className="h-[300px] flex items-center justify-center">Loading...</div>
   }
@@ -442,10 +521,8 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
                   <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setModalOpen(true); }}>
                     <Eye className="h-4 w-4 mr-1" /> View
                   </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/dashboard/company-admin/invoices/${invoice.id}/download`}>
-                      <Download className="h-4 w-4 mr-1" /> PDF
-                    </Link>
+                  <Button variant="ghost" size="sm" onClick={() => handleRowDownloadPDF(invoice)}>
+                    <Download className="h-4 w-4 mr-1" /> PDF
                   </Button>
                 </div>
               </TableCell>
@@ -456,6 +533,38 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
       {/* Invoice Details Modal */}
       <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} />
     </>
+  )
+}
+
+function InvoiceActions() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline">
+          <FileDown className="mr-2 h-4 w-4" /> Download
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56">
+        <div className="grid gap-2">
+          <h4 className="font-medium leading-none">Download Options</h4>
+          <p className="text-sm text-muted-foreground">Choose a download format</p>
+          <div className="grid gap-2 pt-2">
+            <Button size="sm" className="w-full justify-start">
+              <Download className="mr-2 h-4 w-4" /> All Invoices (PDF)
+            </Button>
+            <Button size="sm" className="w-full justify-start">
+              <Download className="mr-2 h-4 w-4" /> Selected Invoices (PDF)
+            </Button>
+            <Button size="sm" className="w-full justify-start">
+              <Download className="mr-2 h-4 w-4" /> Export as CSV
+            </Button>
+            <Button size="sm" className="w-full justify-start">
+              <Download className="mr-2 h-4 w-4" /> Export as Excel
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -504,6 +613,79 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
     setCommentDate(new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))
     setAddingComment(false)
   }
+
+  // --- PDF Generation (basic, organized, with inline HTML/CSS and table borders) ---
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
+    const reviewedText = reviewed ? 'Yes' : 'No'
+    const satisfiedText = satisfied ? 'Yes' : 'No'
+    const approvedText = approved ? 'Yes' : 'No'
+    const commentBlock = comment
+      ? `<tr><td colspan='2' style='padding:8px; border:1px solid #bbb;'><b>Comment:</b> ${comment}</td></tr>`
+      : ''
+    const html = `
+      <div style='font-family: Arial, sans-serif; color: #222; font-size: 12pt; max-width: 700px;'>
+        <h2 style='margin-bottom: 0;'>INVOICE</h2>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px;'><b>Invoice Number:</b></td><td style='padding:4px;'>${invoice.invoiceNumber || invoice.id}</td></tr>
+          <tr><td style='padding:4px;'><b>Status:</b></td><td style='padding:4px;'>${invoice.status ? invoice.status.toUpperCase() : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Issue Date:</b></td><td style='padding:4px;'>${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Period:</b></td><td style='padding:4px;'>${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Last Updated:</b></td><td style='padding:4px;'>${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Consultant Information</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px;'><b>Name:</b></td><td style='padding:4px;'>${invoice.user?.fullName || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Email:</b></td><td style='padding:4px;'>${invoice.user?.email || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Phone:</b></td><td style='padding:4px;'>${invoice.user?.phoneNumber || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Job Title:</b></td><td style='padding:4px;'>${invoice.user?.jobTitle || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Company:</b></td><td style='padding:4px;'>${invoice.user?.company?.name || '-'}</td></tr>
+          <tr><td style='padding:4px;'><b>Address:</b></td><td style='padding:4px;'>${invoice.user?.address ? `${invoice.user.address.street}, ${invoice.user.address.city}, ${invoice.user.address.state}, ${invoice.user.address.country}` : '-'}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Invoice Items</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr style='background:#f5f5f5;'>
+            <th style='border:1px solid #bbb; padding:8px;'>Description</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Hours</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Rate</th>
+            <th style='border:1px solid #bbb; padding:8px;'>Amount</th>
+          </tr>
+          <tr>
+            <td style='border:1px solid #bbb; padding:8px;'>Consulting Services<br><span style='font-size:10pt;color:#888;'>Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${invoice.totalHours || '-'}</td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style='border:1px solid #bbb; padding:8px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        </table>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px; text-align:right;'><b>Subtotal:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+          <tr><td style='padding:4px; text-align:right;'><b>Tax:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} 0.00</td></tr>
+          <tr><td style='padding:4px; text-align:right;'><b>Total:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
+        </table>
+        <h3 style='margin-bottom: 4px;'>Review Status</h3>
+        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Reviewed:</b></td><td style='padding:4px; border:1px solid #bbb;'>${reviewedText}</td></tr>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Satisfied:</b></td><td style='padding:4px; border:1px solid #bbb;'>${satisfiedText}</td></tr>
+          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Approved:</b></td><td style='padding:4px; border:1px solid #bbb;'>${approvedText}</td></tr>
+          ${commentBlock}
+        </table>
+        <div style='margin-top:24px; color:#888; font-size:10pt;'>
+          Thank you for your business!<br>
+          ${invoice.user?.email ? `For any questions regarding this invoice, please contact ${invoice.user.email}` : ''}
+        </div>
+      </div>
+    `
+    doc.html(html, {
+      x: 32,
+      y: 32,
+      width: 530,
+      windowWidth: 700,
+      callback: function (doc) {
+        doc.save(`Invoice_${invoice.invoiceNumber || invoice.id}.pdf`)
+      }
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-gray-50 overflow-y-auto">
@@ -529,9 +711,9 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
                   <CardTitle className="text-base font-semibold flex items-center text-primary"><Calendar className="w-4 h-4 mr-2 text-primary" />Invoice Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Issue Date:</span><span className="font-medium">{formatDate(invoice.createdAt || invoice.startDate)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Period:</span><span className="font-medium">{formatDate(invoice.startDate)} - {formatDate(invoice.endDate)}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Last Updated:</span><span className="font-medium">{formatDate(invoice.updatedAt || invoice.endDate)}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Issue Date:</span><span className="font-medium">{typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Period:</span><span className="font-medium">{typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - {typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Last Updated:</span><span className="font-medium">{typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></div>
                 </CardContent>
               </Card>
               <Card className="bg-white dark:bg-neutral-800 border-none">
@@ -566,7 +748,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
                   </thead>
                   <tbody className=" dark:bg-neutral-900  divide-gray-200 dark:divide-neutral-800">
                     <tr>
-                      <td className="px-4 py-3"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {formatDate(invoice.startDate)} to {formatDate(invoice.endDate)}</span></td>
+                      <td className="px-4 py-3"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to {typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
                       <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{invoice.totalHours || '-'}</td>
                       <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{formatCurrency(invoice.user?.grossPay || 0, currencyInfo.code)}</td>
                       <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
@@ -599,101 +781,21 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
                 </CardContent>
               </Card>
             )}
-            <CardFooter className="flex-col border-t pt-4">
-              <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
-                <p>Thank you for your business!</p>
-                {invoice.user?.email && (<p className="mt-1">For any questions regarding this invoice, please contact {invoice.user.email}</p>)}
-              </div>
-            </CardFooter>
-
-            {/* --- Checks and Comments Section --- */}
-            <div className="mt-6 p-4 border rounded bg-white dark:bg-neutral-900">
-              <div className="flex flex-col md:flex-row md:items-center md:gap-6 gap-2">
-                <Label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(!!checked)} id="reviewed-check" /> Reviewed
-                </Label>
-                <Label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(!!checked)} id="satisfied-check" /> Satisfied
-                </Label>
-                <Label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={approved} onCheckedChange={checked => setApproved(!!checked)} id="approved-check" /> Approved
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-primary/30 text-primary hover:border-primary ml-auto"
-                >Save</Button>
-              </div>
-              <div className="mt-4">
-                <Label htmlFor="invoice-comment" className="block text-xs font-medium mb-1 text-muted-foreground">Add Comment</Label>
-                <Textarea
-                  id="invoice-comment"
-                  className="mb-2"
-                  rows={3}
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  placeholder="Write a comment..."
-                />
-                <div className="flex justify-end mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-primary/30 text-primary hover:border-primary"
-                    onClick={handleAddComment}
-                    disabled={!comment.trim() || addingComment}
-                  >{addingComment ? "Adding..." : "Add Comment"}</Button>
-                </div>
-                {commentDate && (
-                  <div className="mt-3 border rounded p-2 bg-gray-50 dark:bg-neutral-800">
-                    <div className="text-sm">{comment}</div>
-                    <div className="text-xs text-muted-foreground mt-1">{commentDate}</div>
-                  </div>
-                )}
-              </div>
-            </div>
           </CardContent>
-          <CardFooter className="flex justify-end gap-2 px-6 pb-4 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-            <Button asChild>
-              <Link href={`/dashboard/company-admin/invoices/${invoice.id}/download`}>
-                <Download className="h-4 w-4 mr-1" /> PDF
-              </Link>
-            </Button>
+          <CardFooter className="flex-col border-t pt-4">
+            <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
+              <p>Thank you for your business!</p>
+              {invoice.user?.email && (<p className="mt-1">For any questions regarding this invoice, please contact {invoice.user.email}</p>)}
+            </div>
           </CardFooter>
         </Card>
+        <CardFooter className="flex justify-end gap-2 px-6 pb-4 pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button onClick={handleDownloadPDF}>
+            <Download className="h-4 w-4 mr-1" /> PDF
+          </Button>
+        </CardFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function InvoiceActions() {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline">
-          <FileDown className="mr-2 h-4 w-4" /> Download
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56">
-        <div className="grid gap-2">
-          <h4 className="font-medium leading-none">Download Options</h4>
-          <p className="text-sm text-muted-foreground">Choose a download format</p>
-          <div className="grid gap-2 pt-2">
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> All Invoices (PDF)
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Selected Invoices (PDF)
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Export as CSV
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Export as Excel
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
   )
 }
