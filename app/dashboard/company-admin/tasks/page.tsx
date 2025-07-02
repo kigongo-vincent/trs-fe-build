@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X, Trash } from "lucide-react"
+import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X, Trash, Download } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskStatusChart } from "@/components/task-status-chart"
 import { TasksByDepartmentChart } from "@/components/tasks-by-department-chart"
@@ -18,6 +18,7 @@ import { EditTaskForm } from "@/components/edit-task-form"
 import { getProjects } from "@/services/projects"
 import { getAuthData } from "@/services/auth"
 import { toast } from "sonner"
+import DOMPurify from 'dompurify'
 
 export default function TasksPage() {
   const [summaryData, setSummaryData] = useState<TasksSummaryData | null>(null)
@@ -35,7 +36,7 @@ export default function TasksPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
-  const [projectsList, setProjectsList] = useState<{ id: string; name: string }[]>([])
+  const [projectsList, setProjectsList] = useState<{ id: string; name: string; departmentId: string }[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -43,6 +44,105 @@ export default function TasksPage() {
   // Get unique departments and projects for filters
   const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)))
   const projects = Array.from(new Set(tasks.map((task) => task.project.name)))
+
+  // Helpers for filter persistence and indicator
+  const FILTERS_KEY = "trs-tasks-filters"
+  const defaultFilters = {
+    searchTerm: "",
+    statusFilter: "all",
+    departmentFilter: "all",
+    projectFilter: "all",
+    durationFilter: "all",
+  }
+
+  // Controlled filter values (for the UI)
+  const [filterForm, setFilterForm] = useState({
+    searchTerm: "",
+    statusFilter: "all",
+    departmentFilter: "all",
+    projectFilter: "all",
+    durationFilter: "all",
+  })
+  // Applied filter values (used for filtering)
+  const [appliedFilters, setAppliedFilters] = useState({
+    searchTerm: "",
+    statusFilter: "all",
+    departmentFilter: "all",
+    projectFilter: "all",
+    durationFilter: "all",
+  })
+
+  // Loader state for Apply Filters
+  const [isApplying, setIsApplying] = useState(false)
+
+  // Helper: check if any filter is set (not default)
+  const isAnyFilterSet = Object.entries(filterForm).some(
+    ([key, value]) => value !== defaultFilters[key as keyof typeof defaultFilters]
+  )
+
+  // Update controlled filter values from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(FILTERS_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (parsed && typeof parsed === "object") {
+          setFilterForm({
+            searchTerm: parsed.searchTerm ?? "",
+            statusFilter: parsed.statusFilter ?? "all",
+            departmentFilter: parsed.departmentFilter ?? "all",
+            projectFilter: parsed.projectFilter ?? "all",
+            durationFilter: parsed.durationFilter ?? "all",
+          })
+        }
+      } catch { }
+    }
+  }, [])
+
+  // Save filters to localStorage (controlled values)
+  const handleSaveFilters = () => {
+    localStorage.setItem(
+      FILTERS_KEY,
+      JSON.stringify(filterForm)
+    )
+    toast.success("Filters saved!")
+  }
+
+  // Clear filters (controlled values and applied values)
+  const handleClearFilters = () => {
+    setFilterForm({
+      searchTerm: "",
+      statusFilter: "all",
+      departmentFilter: "all",
+      projectFilter: "all",
+      durationFilter: "all",
+    })
+    setAppliedFilters({
+      searchTerm: "",
+      statusFilter: "all",
+      departmentFilter: "all",
+      projectFilter: "all",
+      durationFilter: "all",
+    })
+    toast("Filters cleared")
+  }
+
+  // Apply filters (copy controlled values to applied values, with simulated delay)
+  const handleApplyFilters = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setIsApplying(true)
+    await new Promise(res => setTimeout(res, 1500))
+    setAppliedFilters({ ...filterForm })
+    setIsApplying(false)
+  }
+
+  // Indicator if any filter is active (not default)
+  const isFilterActive =
+    appliedFilters.searchTerm !== "" ||
+    appliedFilters.statusFilter !== "all" ||
+    appliedFilters.departmentFilter !== "all" ||
+    appliedFilters.projectFilter !== "all" ||
+    appliedFilters.durationFilter !== "all"
 
   useEffect(() => {
     async function loadTasksSummary() {
@@ -77,7 +177,7 @@ export default function TasksPage() {
         const authData = getAuthData()
         if (!authData?.user?.company?.id) return
         const response = await getProjects(authData.user.company.id)
-        setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name })))
+        setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })))
       } catch (err) {
         // handle error if needed
       }
@@ -88,10 +188,10 @@ export default function TasksPage() {
     fetchProjects()
   }, [])
 
-  // Filter tasks based on search and filters
+  // Filter tasks based on applied filters
   useEffect(() => {
     let filtered = tasks
-
+    const { searchTerm, departmentFilter, projectFilter, durationFilter } = appliedFilters
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
@@ -101,18 +201,14 @@ export default function TasksPage() {
           task.project.name.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
-
-    // Remove status filter logic
     // Department filter
     if (departmentFilter !== "all") {
       filtered = filtered.filter((task) => task.project.department.name === departmentFilter)
     }
-
     // Project filter
     if (projectFilter !== "all") {
       filtered = filtered.filter((task) => task.project.name === projectFilter)
     }
-
     // Duration filter
     if (durationFilter !== "all") {
       filtered = filtered.filter((task) => {
@@ -133,12 +229,10 @@ export default function TasksPage() {
         }
       })
     }
-
     // Only show tasks that are not drafts
     filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft")
-
     setFilteredTasks(filtered)
-  }, [tasks, searchTerm, departmentFilter, projectFilter, durationFilter])
+  }, [tasks, appliedFilters])
 
   const formatDuration = (duration: string) => {
     const minutes = Number.parseFloat(duration)
@@ -205,6 +299,18 @@ export default function TasksPage() {
   const handleViewTask = (task: Task) => {
     setSelectedTask(task)
     setIsTaskModalOpen(true)
+  }
+
+  // Helper to check if a file is an image
+  function isImageAttachment(attachment: any) {
+    if (attachment.file && attachment.file.type) {
+      return attachment.file.type.startsWith('image/')
+    }
+    if (attachment.type === 'file' && attachment.url && typeof attachment.url === 'string') {
+      // Try to guess from url extension
+      return /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment.url)
+    }
+    return false
   }
 
   if (error) {
@@ -355,21 +461,43 @@ export default function TasksPage() {
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
+        <form
+          className="flex w-full max-w-sm items-center space-x-2"
+          onSubmit={handleApplyFilters}
+        >
           <Input
             type="text"
             placeholder="Search tasks..."
             className="h-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={filterForm.searchTerm}
+            onChange={(e) => setFilterForm(f => ({ ...f, searchTerm: e.target.value }))}
           />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
+          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3" type="submit">
             <Search className="h-4 w-4" />
             <span className="sr-only md:not-sr-only md:ml-2">Search</span>
           </Button>
-        </div>
-        <div className="flex flex-row items-center gap-2">
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          {/* Filter indicator - improved */}
+          {isFilterActive && (
+            <span
+              title="Filters active"
+              className="ml-2 flex items-center"
+              aria-label="Filters active"
+            >
+              <span className="inline-block w-3 h-3 rounded-full bg-primary shadow ring-2 ring-primary/20 animate-pulse" />
+              {/*
+              // Uncomment below for a badge alternative:
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                Filters
+              </span>
+              */}
+            </span>
+          )}
+        </form>
+        <form
+          className="flex flex-row items-center gap-2"
+          onSubmit={handleApplyFilters}
+        >
+          <Select value={filterForm.departmentFilter} onValueChange={val => setFilterForm(f => ({ ...f, departmentFilter: val }))}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
@@ -382,7 +510,7 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
+          <Select value={filterForm.projectFilter} onValueChange={val => setFilterForm(f => ({ ...f, projectFilter: val }))}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Project" />
             </SelectTrigger>
@@ -395,7 +523,7 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={durationFilter} onValueChange={setDurationFilter}>
+          <Select value={filterForm.durationFilter} onValueChange={val => setFilterForm(f => ({ ...f, durationFilter: val }))}>
             <SelectTrigger className="h-9 w-[180px]">
               <SelectValue placeholder="Duration" />
             </SelectTrigger>
@@ -408,7 +536,30 @@ export default function TasksPage() {
               <SelectItem value="gt8">More than 8 hours</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+          {/* Apply/Clear filter buttons with loader and disabled state */}
+          <div className="flex gap-x-2 ml-4">
+            <Button
+              variant="default"
+              size="sm"
+              className="h-9 px-3"
+              type="submit"
+              disabled={!isAnyFilterSet || isApplying}
+              title="Apply filters"
+            >
+              {isApplying ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                  Applying...
+                </span>
+              ) : (
+                'Apply Filters'
+              )}
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 px-3" type="button" onClick={handleClearFilters} title="Clear all filters">
+              Clear Filters
+            </Button>
+          </div>
+        </form>
       </div>
 
       <Card>
@@ -507,7 +658,7 @@ export default function TasksPage() {
               <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
                 <DialogHeader className="flex flex-row items-center gap-4 w-full">
                   <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                    <Eye className="h-6 w-6" />
+                    {/* <Eye className="h-6 w-6" /> */}
                     {selectedTask?.title || "Task Details"}
                   </DialogTitle>
                 </DialogHeader>
@@ -539,19 +690,110 @@ export default function TasksPage() {
                       })()}
                       <Badge variant="secondary">{selectedTask.project.name}</Badge>
                     </CardTitle>
-                    <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm">
+                    <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm items-center">
                       <span className="flex items-center gap-1"><User className="h-4 w-4" />{(selectedTask as any).user?.fullName || 'No owner'}</span>
-                      <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />Created {new Date(selectedTask.createdAt).toLocaleDateString()}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4 text-green-600" />
+                        <span>Created: {new Date(selectedTask.createdAt).toLocaleDateString()} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {new Date(selectedTask.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="mx-2">|</span>
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span>Last Updated: {new Date(selectedTask.updatedAt).toLocaleDateString()} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {new Date(selectedTask.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </span>
                       <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{Number(selectedTask.duration) >= 60 ? `${Math.floor(Number(selectedTask.duration) / 60)}h ${Number(selectedTask.duration) % 60}m` : `${selectedTask.duration}m`}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="mb-4">
                       <div className="font-semibold mb-1">Description</div>
-                      <div className="rounded bg-muted p-3 text-sm min-h-[60px]">
-                        {selectedTask.description || 'No description provided'}
-                      </div>
+                      <div className="rounded bg-muted p-3 text-sm min-h-[60px] prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedTask.description || 'No description provided') }} />
                     </div>
+                    {/* Attachments & URLs */}
+                    {(Array.isArray((selectedTask as any).attachments) && (selectedTask as any).attachments.length > 0) && (
+                      <div className="mb-4">
+                        <div className="font-semibold mb-1 flex items-center gap-2">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground" /> Attachments
+                        </div>
+                        <div className="space-y-2">
+                          {(selectedTask as any).attachments.map((attachment: any) => {
+                            const isImage = attachment.type === 'file' && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment.url || '');
+                            if (attachment.type === 'url') {
+                              return (
+                                <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
+                                  <CardContent className="p-0">
+                                    <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 underline">
+                                      <Eye className="h-4 w-4" />
+                                      <span className="truncate max-w-xs">{attachment.name || attachment.url}</span>
+                                    </a>
+                                  </CardContent>
+                                </Card>
+                              );
+                            } else if (isImage) {
+                              return (
+                                <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
+                                  <CardContent className="p-0">
+                                    <div className="flex flex-col items-start gap-2">
+                                      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img
+                                          src={attachment.url}
+                                          alt={attachment.name}
+                                          className="rounded-lg max-h-48 object-contain border mb-2"
+                                          style={{ background: '#f8fafc' }}
+                                        />
+                                      </a>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium truncate max-w-xs">{attachment.name}</span>
+                                        <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
+                                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download image">
+                                            <Download className="h-4 w-4" />
+                                          </Button>
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            } else {
+                              // Default: file (not image)
+                              return (
+                                <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
+                                  <CardContent className="p-0">
+                                    <div className="flex items-center gap-3">
+                                      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                                        <Download className="h-4 w-4 text-muted-foreground" />
+                                        <span className="truncate max-w-xs">{attachment.name}</span>
+                                      </a>
+                                      <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
+                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download file">
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      </a>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            }
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {/* URLs (if present and not in attachments) */}
+                    {(Array.isArray((selectedTask as any).urls) && (selectedTask as any).urls.length > 0) && (
+                      <div className="mb-4">
+                        <div className="font-semibold mb-1 flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-blue-500" /> Links
+                        </div>
+                        <ul className="space-y-1">
+                          {(selectedTask as any).urls.map((u: any, idx: number) => (
+                            <li key={u.url || idx} className="flex items-center gap-2">
+                              <a href={u.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline flex items-center gap-1">
+                                <Eye className="h-4 w-4" />
+                                <span>{u.name || u.url}</span>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 {/* Project Info, Department Info, Timeline in one row */}
@@ -582,16 +824,6 @@ export default function TasksPage() {
                     <CardContent>
                       <div className="flex items-center gap-2 mb-2"><User className="h-4 w-4 text-muted-foreground" /><span className="font-medium">Head:</span> {selectedTask.project.department.head}</div>
                       <div className="rounded bg-muted p-3 text-sm"><span className="font-semibold">Description:</span> {selectedTask.project.department.description || 'No description'}</div>
-                    </CardContent>
-                  </Card>
-                  {/* Timeline */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-muted-foreground" />Timeline</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 mb-2"><div className="h-3 w-3 rounded-full bg-green-500" /><span className="font-medium">Created:</span> {new Date(selectedTask.createdAt).toLocaleString()}</div>
-                      <div className="flex items-center gap-2 mb-2"><div className="h-3 w-3 rounded-full bg-blue-500" /><span className="font-medium">Last Updated:</span> {new Date(selectedTask.updatedAt).toLocaleString()}</div>
                     </CardContent>
                   </Card>
                 </div>
@@ -647,7 +879,16 @@ export default function TasksPage() {
                   setTasks(response.data)
                   setFilteredTasks(response.data)
                   // Refresh summary
-                  await loadTasksSummary()
+                  setIsLoading(true)
+                  setError(null)
+                  try {
+                    const summaryRes = await fetchTasksSummary()
+                    setSummaryData(summaryRes.data)
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Failed to load tasks summary")
+                  } finally {
+                    setIsLoading(false)
+                  }
                   setDeleteDialogOpen(false)
                   setDeleteTaskId(null)
                 } catch (err: any) {

@@ -69,8 +69,11 @@ export interface UpdateTaskPayload {
   duration: number;
   title: string;
   description: string;
-  status: string;
+  status?: string;
   project: number;
+  department?: string;
+  urls?: { name: string; url: string }[];
+  attachments?: any[];
 }
 
 export async function fetchTasksSummary(): Promise<TasksSummaryResponse> {

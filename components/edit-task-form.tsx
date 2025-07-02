@@ -24,7 +24,6 @@ const formSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional(),
     duration: z.string().min(1, "Duration is required"),
-    status: z.string().min(1, "Status is required"),
     projectId: z.string().min(1, "Project is required"),
     departmentId: z.string().min(1, "Department is required"),
     attachments: z.array(z.any()).optional(),
@@ -37,7 +36,7 @@ interface EditTaskFormProps {
     task: any
     onClose: () => void
     onUpdated: () => void
-    projects: { id: string; name: string }[]
+    projects: { id: string; name: string; departmentId: string }[]
 }
 
 export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpdated, projects }) => {
@@ -64,13 +63,22 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
             title: task.title || "",
             description: task.description || "",
             duration: task.duration || "",
-            status: task.status || "active",
             projectId: task.projectId || (task.project?.id ?? ""),
             departmentId: task.project?.department?.id || "",
             attachments: Array.isArray(task.attachments) ? task.attachments : [],
             urls: Array.isArray(task.urls) ? task.urls : [],
         },
     })
+
+    // Helper: update departmentId when project changes and update form state for projectId
+    const handleProjectChange = (projectId: string, onChange: (value: string) => void) => {
+        onChange(projectId); // update form state
+        // Update departmentId to match the selected project's departmentId
+        const selectedProject = projects.find(p => p.id === projectId)
+        if (selectedProject && selectedProject.departmentId) {
+            form.setValue('departmentId', selectedProject.departmentId)
+        }
+    }
 
     const handleAddUrl = () => {
         if (newUrl.name && newUrl.url) {
@@ -95,16 +103,18 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
     const onSubmit = async (data: FormData) => {
         setSubmitting(true)
         try {
-            await updateTask(task.id, {
+            const payload = {
                 title: data.title,
                 description,
                 duration: Number(data.duration),
-                status: data.status,
                 project: Number(data.projectId),
-                // department: data.departmentId, // Uncomment if backend supports department
+                department: data.departmentId,
                 attachments,
                 urls,
-            })
+            }
+            console.log('EditTaskForm payload:', payload)
+            const res = await updateTask(task.id, payload)
+            console.log('EditTaskForm response:', res)
             toast.success("Task updated successfully")
             onUpdated()
             onClose()
@@ -180,33 +190,12 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
                             />
                             <FormField
                                 control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Status</FormLabel>
-                                        <FormControl>
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="active">Active</SelectItem>
-                                                    <SelectItem value="draft">Draft</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
                                 name="projectId"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Project</FormLabel>
                                         <FormControl>
-                                            <Select value={field.value} onValueChange={field.onChange}>
+                                            <Select value={field.value} onValueChange={val => handleProjectChange(val, field.onChange)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select project" />
                                                 </SelectTrigger>
