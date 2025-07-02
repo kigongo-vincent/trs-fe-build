@@ -1,4 +1,4 @@
-import { postRequest, getRequest } from "./api";
+import { postRequest, getRequest, putRequest } from "./api";
 
 interface CreateConsultantPayload {
   fullName: string;
@@ -169,4 +169,14 @@ export const getConsultantDashboard = async (
   return getRequest<ConsultantDashboardResponse>(
     `/company/consultants/dashboard/${consultantId}`
   );
+};
+
+export const updateConsultantStatus = async (
+  companyId: string,
+  consultantId: string,
+  status: "active" | "inactive" | "on-leave"
+): Promise<any> => {
+  return putRequest(`/company/consultants/${companyId}/${consultantId}`, {
+    status,
+  });
 };
