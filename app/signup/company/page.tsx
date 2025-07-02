@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { postRequest } from "@/services/api"
+import Image from "next/image"
+import { ModeToggle } from "@/components/mode-toggle"
 
 // Expanded list of company sectors
 const sectors = [
@@ -113,29 +115,40 @@ export default function CompanySignup() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded bg-primary">
-              <span className="text-xs font-bold text-white">TRS</span>
+    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 bg-card">
+      {/* Split layout */}
+      <div className="flex w-[90vw] min-h-[80vh] bg-card rounded-2xl shadow-lg shadow-gray-100 overflow-hidden relative z-10">
+        {/* Left: Image + testimonial */}
+        <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 dark:bg-black/60 relative">
+          <Image
+            src="https://images.pexels.com/photos/3727463/pexels-photo-3727463.jpeg"
+            alt="Signup background"
+            fill
+            className="object-cover object-center absolute inset-0 -z-10"
+            priority
+          />
+          {/* Logo */}
+          <div className="p-6">
+            <span className="text-lg font-bold text-white drop-shadow">Task Reporting System</span>
+          </div>
+          {/* Testimonial */}
+          <div className="p-6 text-white">
+            <p className="text-lg font-semibold mb-2">“Simply all the tools that my team and I need.”</p>
+            <div className="text-sm opacity-80">
+              <div className="font-bold">Wensi Nuwagaba</div>
+              <div>Chief Executive Officer</div>
             </div>
-            <span className="text-xl font-bold">Task Reporting System</span>
           </div>
         </div>
-      </header>
-      <main className="flex-1 flex items-center justify-center p-4 md:p-8 bg-muted/10">
-        <Card className="mx-auto max-w-md w-full shadow-lg">
-          <form onSubmit={handleSubmit}>
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Create Company Account</CardTitle>
-              <CardDescription>Enter your company and admin details to get started</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Right: Signup form */}
+        <div className="flex-1 flex flex-col justify-center items-center p-8">
+          <div className="w-full max-w-md">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">Create Company Account</h1>
+            <p className="text-muted-foreground mb-8">Enter your company and admin details to get started.</p>
+            <form onSubmit={handleSubmit} className="space-y-6">
               {error && <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">{error}</div>}
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Company Name</Label>
+              <div>
+                <Label htmlFor="name" className="mb-1">Company Name</Label>
                 <Input
                   id="name"
                   name="name"
@@ -143,11 +156,11 @@ export default function CompanySignup() {
                   value={formData.name}
                   onChange={handleChange}
                   required
+                  className="mt-1"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="sector">Company Sector</Label>
+              <div>
+                <Label htmlFor="sector" className="mb-1">Company Sector</Label>
                 <Popover open={open} onOpenChange={setOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -183,9 +196,8 @@ export default function CompanySignup() {
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+              <div>
+                <Label htmlFor="fullName" className="mb-1">Full Name</Label>
                 <Input
                   id="fullName"
                   name="fullName"
@@ -193,11 +205,11 @@ export default function CompanySignup() {
                   value={formData.fullName}
                   onChange={handleChange}
                   required
+                  className="mt-1"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+              <div>
+                <Label htmlFor="email" className="mb-1">Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -206,11 +218,11 @@ export default function CompanySignup() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  className="mt-1"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+              <div>
+                <Label htmlFor="password" className="mb-1">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -219,7 +231,7 @@ export default function CompanySignup() {
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    className="pr-10"
+                    className="mt-1 pr-10"
                     minLength={8}
                   />
                   <button
@@ -231,9 +243,7 @@ export default function CompanySignup() {
                   </button>
                 </div>
               </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-2">
-              <Button className="w-full" type="submit" disabled={isLoading}>
+              <Button className="w-full text-base font-semibold py-2.5" type="submit" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -243,23 +253,18 @@ export default function CompanySignup() {
                   "Create Account"
                 )}
               </Button>
-              <div className="text-center text-sm">
-                Already have an account?{" "}
-                <Link href="/" className="text-primary hover:underline">
-                  Sign in
-                </Link>
-              </div>
-            </CardFooter>
-          </form>
-        </Card>
-      </main>
-      <footer className="border-t py-4">
-        <div className="container flex flex-col items-center justify-between gap-4 md:flex-row px-4 md:px-6">
-          <p className="text-center text-sm text-muted-foreground md:text-left">
-            &copy; {new Date().getFullYear()} Task Reporting System (TRS). All rights reserved.
-          </p>
+            </form>
+            <div className="text-center text-sm mt-6 text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/" className="text-primary font-medium hover:underline">Sign in</Link>
+            </div>
+          </div>
         </div>
-      </footer>
+      </div>
+      {/* Theme selector at bottom center */}
+      <div className="absolute left-1/2 bottom-8 -translate-x-1/2 z-20">
+        <ModeToggle />
+      </div>
     </div>
   )
 }
