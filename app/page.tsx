@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ModeToggle } from "@/components/mode-toggle"
-import { login, storeAuthData } from "@/services/auth"
+import { login, storeAuthData, getUserRole, isAuthenticated } from "@/services/auth"
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -23,6 +23,27 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && isAuthenticated()) {
+      // Redirect to dashboard based on role
+      const role = getUserRole()
+      switch (role) {
+        case "Super Admin":
+          router.replace("/dashboard/super-admin")
+          break
+        case "Company Admin":
+          router.replace("/dashboard/company-admin")
+          break
+        case "Consultant":
+        case "Employee":
+          router.replace("/dashboard/employee")
+          break
+        default:
+          router.replace("/dashboard/employee")
+      }
+    }
+  }, [router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -42,19 +63,14 @@ export default function Home() {
 
       // Redirect based on role
       const roleName = response.data.user.role.name
-
-      switch (roleName) {
-        case "Super Admin":
-          router.push("/dashboard/super-admin")
-          break
-        case "Company Admin":
-          router.push("/dashboard/company-admin")
-          break
-        case "Consultant":
-          router.push("/dashboard/employee")
-          break
-        default:
-          router.push("/dashboard/employee")
+      if (roleName === "Super Admin") {
+        router.push("/dashboard/super-admin")
+      } else if (roleName === "Company Admin") {
+        router.push("/dashboard/company-admin")
+      } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
+        router.push("/dashboard/employee")
+      } else {
+        router.push("/dashboard/employee")
       }
     } catch (err) {
       console.error("Login error:", err)

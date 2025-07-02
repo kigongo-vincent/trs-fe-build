@@ -81,7 +81,7 @@ export default function AddConsultantPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined)
-  const [idImages, setIdImages] = useState<Attachment[]>([])
+  const [attachments, setAttachments] = useState<Attachment[]>([])
 
   // Consultant role ID
   const consultantRoleId = "0728a760-9495-4c9b-850b-d1f4ca5gb707"
@@ -196,26 +196,29 @@ export default function AddConsultantPage() {
 
       const companyId = authData.user.company.id
 
-      // Upload files if any
-      let idImageUrls: string[] = []
-      if (idImages.length > 0) {
-        try {
-          const uploadResults = await Promise.all(
-            idImages.map(async (att) => {
-              if (att.file) {
-                const res = await uploadFile(att.file)
-                return res.url
-              }
-              return null
-            })
-          )
-          idImageUrls = uploadResults.filter(Boolean) as string[]
-        } catch (uploadErr) {
-          setError("Failed to upload one or more ID documents. Please try again.")
-          setSubmitting(false)
-          return
-        }
-      }
+      // Separate file and url attachments
+      const fileAttachments = attachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+      const urlAttachments = attachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
+
+      // Convert files to base64
+      const toBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const match = result.match(/^data:([^;]+);base64,(.*)$/);
+            if (match) {
+              const mimetype = match[1];
+              const data = match[2];
+              resolve(`data:${mimetype};name=${file.name};base64,${data}`);
+            } else {
+              reject(new Error("Invalid base64 format"));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
 
       const payload: any = {
         fullName: formData.fullName,
@@ -227,6 +230,8 @@ export default function AddConsultantPage() {
         gross_pay: formData.grossPay,
         phoneNumber: formData.phoneNumber.trim(),
         currency: formData.currency,
+        attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+        id_images: urlAttachments.length > 0 ? urlAttachments.map(a => a.url) : undefined,
       }
 
       // Only add date_of_birth if it has a value
@@ -237,11 +242,6 @@ export default function AddConsultantPage() {
       // Only add days_to_come if it has values
       if (formData.daysToCome.length > 0) {
         payload.days_to_come = JSON.stringify(formData.daysToCome)
-      }
-
-      // Only add id_images if there are any
-      if (idImageUrls.length > 0) {
-        payload.id_images = idImageUrls
       }
 
       // Only add next_of_kin if any field has a value
@@ -431,7 +431,7 @@ export default function AddConsultantPage() {
             {/* ID Documents */}
             <div className="space-y-4 pt-6">
               <h2 className="text-lg font-semibold mb-2">ID Documents</h2>
-              <FileAttachment attachments={idImages} onAttachmentsChange={setIdImages} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
+              <FileAttachment attachments={attachments} onAttachmentsChange={setAttachments} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
               <p className="text-sm text-muted-foreground">You may upload up to 5 PDF files of the consultant's identification documents (e.g., passport, national ID, driver's license).</p>
             </div>
 

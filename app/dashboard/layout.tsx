@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { ModeToggle } from "@/components/mode-toggle"
 import { UserNav } from "@/components/user-nav"
 import { MainNav } from "@/components/main-nav"
@@ -11,6 +11,7 @@ import { DashboardSidebar } from "@/components/dashboard-sidebar"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
+import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 
 export default function DashboardLayout({
   children,
@@ -18,12 +19,17 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const pathname = usePathname()
-
-  // Determine user role from path
-  let userRole = "Consultant"
-  if (pathname.includes("super-admin")) userRole = "Super Admin"
-  else if (pathname.includes("company-admin")) userRole = "Company Admin"
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const router = useRouter()
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!isAuthenticated() || isTokenExpired()) {
+        router.replace("/")
+      } else {
+        setUserRole(getUserRole())
+      }
+    }
+  }, [router])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,7 +44,7 @@ export default function DashboardLayout({
           </div>
           <div className="flex items-center gap-2">
             <ModeToggle />
-            <UserNav role={userRole} />
+            <UserNav role={userRole || "Consultant"} />
           </div>
         </div>
       </header>
