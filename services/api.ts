@@ -281,3 +281,7 @@ export async function updatePackage(
 export async function fetchPackageById(id: string): Promise<any> {
   return getRequest(`/super-admin/packages/${id}`);
 }
+
+export async function fetchCompanies(): Promise<any> {
+  return getRequest("/super-admin/companies");
+}
