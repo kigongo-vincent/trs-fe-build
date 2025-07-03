@@ -19,6 +19,8 @@ import {
   User,
   CalendarIcon as CalendarIconComponent,
   FileText,
+  X,
+  LinkIcon,
 } from "lucide-react"
 import { CompletedTasksChart } from "@/components/completed-tasks-chart"
 import { Badge } from "@/components/ui/badge"
@@ -40,6 +42,8 @@ import {
   type TaskCompletionData,
   type TimeLog,
 } from "@/services/employee"
+import { IMAGE_BASE_URL } from "@/services/api"
+import DOMPurify from 'dompurify'
 
 export default function CompletedTasksPage() {
   const [selectedTask, setSelectedTask] = useState<TimeLog | null>(null)
@@ -324,7 +328,7 @@ export default function CompletedTasksPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <Input
             type="text"
@@ -339,49 +343,64 @@ export default function CompletedTasksPage() {
           </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-[240px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                <span>
-                  {formatDate(dateRange.from.toISOString())} - {formatDate(dateRange.to.toISOString())}
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                defaultMonth={dateRange.from}
-                selected={dateRange}
-                onSelect={handleDateRangeChange}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Project" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {uniqueProjects.map((project) => (
-                <SelectItem key={project} value={project}>
-                  {project}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="start-date" className="text-xs font-medium">Start Date</label>
+            <input
+              id="start-date"
+              type="date"
+              className="h-9 px-2 border rounded"
+              value={dateRange.from.toISOString().slice(0, 10)}
+              onChange={e => {
+                const newFrom = new Date(e.target.value)
+                setDateRange(r => ({ ...r, from: newFrom }))
+              }}
+              max={dateRange.to.toISOString().slice(0, 10)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="end-date" className="text-xs font-medium">End Date</label>
+            <input
+              id="end-date"
+              type="date"
+              className="h-9 px-2 border rounded"
+              value={dateRange.to.toISOString().slice(0, 10)}
+              onChange={e => {
+                const newTo = new Date(e.target.value)
+                setDateRange(r => ({ ...r, to: newTo }))
+              }}
+              min={dateRange.from.toISOString().slice(0, 10)}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="status-select" className="text-xs font-medium">Status</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="status-select" className="h-9 w-[120px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="project-select" className="text-xs font-medium">Project</label>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger id="project-select" className="h-9 w-[160px]">
+                <SelectValue placeholder="Project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {uniqueProjects.map((project, index) => (
+                  <SelectItem key={index} value={project}>
+                    {project}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -427,7 +446,7 @@ export default function CompletedTasksPage() {
                     <TableCell className="font-medium">
                       <div>
                         <div className="font-medium">{log.title}</div>
-                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">{log.description}</div>
+                        {/* <div className="text-sm text-muted-foreground truncate max-w-[200px]">{log.description}</div> */}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -460,99 +479,122 @@ export default function CompletedTasksPage() {
       </Card>
 
       {/* Task Details Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Time Log Details</DialogTitle>
-            <DialogDescription>Detailed information about the time log entry.</DialogDescription>
-          </DialogHeader>
-
-          {selectedTask && (
-            <div className="space-y-6 pt-2">
-              <div>
-                <h3 className="text-lg font-semibold text-primary">{selectedTask.title}</h3>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="outline">{selectedTask.project}</Badge>
-                  <Badge variant="outline" className={getStatusBadgeColor(selectedTask.status)}>
-                    {selectedTask.status}
-                  </Badge>
-                </div>
+      {selectedTask && isDialogOpen && (
+        <Dialog open={true} onOpenChange={open => { if (!open) setIsDialogOpen(false) }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Overlay */}
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
+            {/* Fullscreen Modal Content */}
+            <div
+              className="relative w-screen h-screen bg-background flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
+              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
+            >
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
+                <DialogHeader className="flex flex-row items-center gap-4 w-full">
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                    {selectedTask?.title || "Task Details"}
+                  </DialogTitle>
+                </DialogHeader>
+                <button
+                  onClick={() => setIsDialogOpen(false)}
+                  className="ml-auto rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Close"
+                >
+                  <span className="sr-only">Close</span>
+                  <X className="h-6 w-6" />
+                </button>
               </div>
-
-              <Separator />
-
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Duration</p>
-                      <p className="text-sm font-semibold">{formatDurationString(selectedTask.duration)}</p>
+              {/* Main Content */}
+              <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full flex flex-col gap-6">
+                {/* Header and Meta */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      {selectedTask.title}
+                      <Badge variant="outline" className={getStatusBadgeColor(selectedTask.status)}>{selectedTask.status}</Badge>
+                      <Badge variant="secondary">{selectedTask.project}</Badge>
+                    </CardTitle>
+                    <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm items-center">
+                      <span className="flex items-center gap-1"><User className="h-4 w-4" />{selectedTask.user?.fullName || 'No owner'}</span>
+                      <span className="flex items-center gap-1">
+                        <CalendarIconComponent className="h-4 w-4 text-green-600" />
+                        <span>Created: {formatDate(selectedTask.createdAt)} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {formatDateTime(selectedTask.createdAt)}</span>
+                        <span className="mx-2">|</span>
+                        <Clock className="h-4 w-4 text-blue-600" />
+                        <span>Last Updated: {formatDate(selectedTask.updatedAt)} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {formatDateTime(selectedTask.updatedAt)}</span>
+                      </span>
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{formatDurationString(selectedTask.duration)}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4">
+                      <div className="font-semibold mb-1">Description</div>
+                      <div className="rounded bg-muted p-3 text-sm min-h-[60px] prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedTask.description || 'No description provided') }} />
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <CalendarIconComponent className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Created</p>
-                      <p className="text-sm">{formatDateTime(selectedTask.createdAt)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <CalendarIconComponent className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
-                      <p className="text-sm">{formatDateTime(selectedTask.updatedAt)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Employee</p>
-                      <p className="text-sm font-semibold">{selectedTask.user.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{selectedTask.user.email}</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Employee Status</p>
-                    <Badge variant="outline" className={getStatusBadgeColor(selectedTask.user.status)}>
-                      {selectedTask.user.status}
-                    </Badge>
-                  </div>
-
-                  {selectedTask.user.jobTitle && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Job Title</p>
-                      <p className="text-sm">{selectedTask.user.jobTitle}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-medium text-muted-foreground">Description</p>
-                </div>
-                <div className="rounded-md bg-muted p-4">
-                  <p className="text-sm leading-relaxed">{selectedTask.description}</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Close
-                </Button>
+                    {/* Attachments Section */}
+                    {Array.isArray((selectedTask as any)?.attachments) && (selectedTask as any).attachments.length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base font-semibold">Attachments</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {(selectedTask as any).attachments.map((attachment: any) => (
+                              <div key={attachment.id || attachment.url || attachment.name} className="flex items-center gap-3 p-2 border rounded-md bg-muted/50">
+                                {/* Icon */}
+                                {attachment.type === "url" ? (
+                                  <LinkIcon className="h-5 w-5 text-blue-500" />
+                                ) : attachment.mimeType && attachment.mimeType.startsWith("image/") ? (
+                                  <img
+                                    src={IMAGE_BASE_URL + (attachment.url || '').replace(/^\//, '')}
+                                    alt={attachment.name}
+                                    className="h-12 w-12 object-cover rounded border"
+                                  />
+                                ) : (
+                                  <FileText className="h-5 w-5 text-muted-foreground" />
+                                )}
+                                {/* Name and URL */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium truncate text-sm">{attachment.name}</div>
+                                  {attachment.type === "url" && (
+                                    <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline truncate block">
+                                      {attachment.url}
+                                    </a>
+                                  )}
+                                  {attachment.type === "file" && attachment.size && (
+                                    <div className="text-xs text-muted-foreground">{(attachment.size / 1024).toFixed(1)} KB</div>
+                                  )}
+                                </div>
+                                {/* View/Download Button */}
+                                <div>
+                                  {attachment.type === "url" ? (
+                                    <Button asChild variant="ghost" size="icon">
+                                      <a href={attachment.url} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a>
+                                    </Button>
+                                  ) : (
+                                    <Button asChild variant="ghost" size="icon">
+                                      <a href={IMAGE_BASE_URL + (attachment.url || '').replace(/^\//, '')} target="_blank" rel="noopener noreferrer" download>
+                                        <Download className="h-4 w-4" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </CardContent>
+                </Card>
+                {/* Project Info, Department Info, Timeline in one row (if available) */}
+                {/* You can add more info here if your TimeLog type has project/department details */}
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </Dialog>
+      )}
     </div>
   )
 }
