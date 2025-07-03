@@ -109,7 +109,7 @@ export default function ProfilePage() {
                                 <span>Email: {user.email || "-"}</span>
                                 <span>Phone: {user.phoneNumber || "-"}</span>
                             </div>
-                            <Button variant="outline" size="sm">Edit Profile</Button>
+                            {/* <Button variant="outline" size="sm">Edit Profile</Button> */}
                         </div>
                     </CardContent>
                 </Card>

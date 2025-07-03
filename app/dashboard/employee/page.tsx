@@ -75,6 +75,42 @@ export default function EmployeeDashboard() {
     return "text-gray-400"
   }
 
+  // Helper to calculate percentage increase if not provided
+  function calculatePercentage(current: number, previous: number): number {
+    if (previous === 0) return 0;
+    return Math.round(((current - previous) / previous) * 100);
+  }
+
+  // Get today's and yesterday's hours from weekDistribution
+  const now = new Date();
+  const todayIdx = now.getDay(); // 0=Sun, 1=Mon, ...
+  const yesterdayIdx = (todayIdx - 1 + 7) % 7;
+  const weekDistribution = dashboardData?.weekDistribution ?? [];
+  const todayDist = weekDistribution.find((d) => d.day === todayIdx);
+  const yesterdayDist = weekDistribution.find((d) => d.day === yesterdayIdx);
+  const hoursTodayCount = todayDist ? todayDist.hours : 0;
+  const hoursYesterdayCount = yesterdayDist ? yesterdayDist.hours : 0;
+  const hoursTodayPercentage = calculatePercentage(hoursTodayCount, hoursYesterdayCount);
+
+  // For 'Hours This Month', compare to last month
+  const hoursMonthCount = dashboardData?.hoursMonth?.count ?? 0;
+  const hoursLastMonthCount = (dashboardData as any)?.hoursLastMonth?.count ?? 0;
+  const hoursMonthPercentage = calculatePercentage(hoursMonthCount, hoursLastMonthCount);
+
+  // For 'Hours Last Month', compare to two months ago if available
+  // If API provides hoursTwoMonthsAgo, use it; otherwise fallback to 0
+  const hoursTwoMonthsAgoCount = (dashboardData as any)?.hoursTwoMonthsAgo?.count ?? 0;
+  const hoursLastMonthPercentage = calculatePercentage(hoursLastMonthCount, hoursTwoMonthsAgoCount);
+
+  // Debug output
+  if (typeof window !== 'undefined') {
+    console.log('hoursMonthCount:', hoursMonthCount);
+    console.log('hoursLastMonthCount:', hoursLastMonthCount);
+    console.log('hoursTwoMonthsAgoCount:', hoursTwoMonthsAgoCount);
+    console.log('hoursMonthPercentage:', hoursMonthPercentage);
+    console.log('hoursLastMonthPercentage:', hoursLastMonthPercentage);
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
@@ -157,19 +193,19 @@ export default function EmployeeDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hours Today</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(dashboardData.hoursToday.count)}h</div>
+            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursTodayCount)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {getPercentageIcon(dashboardData.hoursToday.percentage)}
-              <span className={getPercentageColor(dashboardData.hoursToday.percentage)}>
-                {dashboardData.hoursToday.percentage > 0 ? "+" : ""}
-                {dashboardData.hoursToday.percentage}% from yesterday
+              {getPercentageIcon(hoursTodayPercentage)}
+              <span className={getPercentageColor(hoursTodayPercentage)}>
+                {hoursTodayPercentage > 0 ? "+" : ""}
+                {hoursTodayPercentage}% from yesterday
               </span>
             </div>
           </CardContent>
@@ -198,12 +234,29 @@ export default function EmployeeDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(dashboardData.hoursMonth.count)}h</div>
+            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursMonthCount)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {getPercentageIcon(dashboardData.hoursMonth.percentage)}
-              <span className={getPercentageColor(dashboardData.hoursMonth.percentage)}>
-                {dashboardData.hoursMonth.percentage > 0 ? "+" : ""}
-                {dashboardData.hoursMonth.percentage}% from last month
+              {getPercentageIcon(hoursMonthPercentage)}
+              <span className={getPercentageColor(hoursMonthPercentage)}>
+                {hoursMonthPercentage > 0 ? "+" : ""}
+                {hoursMonthPercentage}% from last month
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Hours Last Month</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursLastMonthCount)}h</div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {getPercentageIcon(hoursLastMonthPercentage)}
+              <span className={getPercentageColor(hoursLastMonthPercentage)}>
+                {hoursLastMonthPercentage > 0 ? "+" : ""}
+                {hoursLastMonthPercentage}% from previous month
               </span>
             </div>
           </CardContent>

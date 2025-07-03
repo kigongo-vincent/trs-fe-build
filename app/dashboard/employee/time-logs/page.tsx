@@ -251,12 +251,6 @@ export default function TimeLogsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Time Logs</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/employee/time-logs/demo">
-              <Type className="mr-2 h-4 w-4" />
-              Demo Features
-            </Link>
-          </Button>
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
               <Plus className="mr-2 h-4 w-4" /> Log Time
@@ -349,16 +343,6 @@ export default function TimeLogsPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Time Distribution</CardTitle>
-          <CardDescription>Hours logged by project over the past week</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TimeLogsChart />
-        </CardContent>
-      </Card>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full max-w-sm items-center space-x-2">
