@@ -46,17 +46,18 @@ export function middleware(request: NextRequest) {
     }
     const role = user?.role?.name;
     // Role-based protection
-    if (
-      pathname.startsWith("/dashboard/super-admin") &&
-      role !== "Super Admin"
-    ) {
-      const url = request.nextUrl.clone();
-      url.pathname =
-        role === "Company Admin"
-          ? "/dashboard/company-admin"
-          : "/dashboard/employee";
-      return NextResponse.redirect(url);
-    }
+    // REMOVE super-admin role check
+    // if (
+    //   pathname.startsWith("/dashboard/super-admin") &&
+    //   role !== "Super Admin"
+    // ) {
+    //   const url = request.nextUrl.clone();
+    //   url.pathname =
+    //     role === "Company Admin"
+    //       ? "/dashboard/company-admin"
+    //       : "/dashboard/employee";
+    //   return NextResponse.redirect(url);
+    // }
     if (
       pathname.startsWith("/dashboard/company-admin") &&
       role !== "Company Admin"

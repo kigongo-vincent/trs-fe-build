@@ -17,21 +17,6 @@ export default function DashboardPage() {
         router.replace("/")
         return
       }
-      const role = getUserRole()
-      switch (role) {
-        case "Super Admin":
-          router.replace("/dashboard/super-admin")
-          break
-        case "Company Admin":
-          router.replace("/dashboard/company-admin")
-          break
-        case "Consultant":
-        case "Employee":
-          router.replace("/dashboard/employee")
-          break
-        default:
-          router.replace("/dashboard/employee")
-      }
     }
   }, [router])
   return null

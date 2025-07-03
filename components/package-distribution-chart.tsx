@@ -1,17 +1,51 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import React from "react"
 
-const data = [
-  { name: "Basic", value: 35, companies: 9 },
-  { name: "Professional", value: 40, companies: 10 },
-  { name: "Enterprise", value: 20, companies: 5 },
-  { name: "Premium", value: 5, companies: 1 },
-]
+interface PackageType {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  durationType: string;
+  no_of_users: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"]
+interface PackageDistributionChartProps {
+  packages: PackageType[];
+  loading?: boolean;
+}
 
-export function PackageDistributionChart() {
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A28BFE", "#FF6F91"]
+
+export function PackageDistributionChart({ packages, loading }: PackageDistributionChartProps) {
+  // Group by package name and count number of packages per name
+  const data = React.useMemo(() => {
+    if (!packages || packages.length === 0) return [];
+    const map: Record<string, { name: string; value: number }> = {};
+    for (const pkg of packages) {
+      if (!map[pkg.name]) {
+        map[pkg.name] = { name: pkg.name, value: 1 };
+      } else {
+        map[pkg.name].value += 1;
+      }
+    }
+    return Object.values(map);
+  }, [packages]);
+
+  if (loading) {
+    return <Skeleton className="h-[350px] w-full rounded-md" />;
+  }
+
+  if (!data || data.length === 0) {
+    return <div className="text-center text-muted-foreground py-8">No package data available.</div>;
+  }
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <PieChart>
@@ -30,7 +64,7 @@ export function PackageDistributionChart() {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value, name) => [`${value}%`, "Percentage"]}
+          formatter={(value, name) => [`${value}`, "Packages"]}
           labelFormatter={(label) => `Package: ${label}`}
         />
         <Legend />
