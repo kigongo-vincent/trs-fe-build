@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Clear the .next folder to ensure a clean build
+rm -rf .next
+
+echo -e "\033[0;34m🧹 Cleared .next folder for a clean build.\033[0m"
+
 # Interactive Branch Merge and Push Script
 # Usage: ./merge-and-push.sh "Your commit message"
 
@@ -18,6 +23,24 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Step 0: Build the project and catch errors
+BUILD_CMD="pnpm build"
+echo -e "${BLUE}🔨 Step 0: Building the project...${NC}"
+$BUILD_CMD
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Build failed."
+    while true; do
+        read -p "Do you want to proceed with deployment anyway? (y/n): " yn
+        case $yn in
+            [Yy]* ) echo -e "${YELLOW}⚠️ Proceeding despite build errors...${NC}"; break;;
+            [Nn]* ) echo -e "${RED}Aborting deployment.${NC}"; exit 1;;
+            * ) echo "Please answer yes (y) or no (n).";;
+        esac
+    done
+fi
+
+echo -e "${GREEN}✅ Build succeeded or proceeding after error!${NC}"
 
 # Function to check if we're in a git repository
 check_git_repo() {

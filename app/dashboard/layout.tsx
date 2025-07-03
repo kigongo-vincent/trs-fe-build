@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { Suspense } from "react"
 
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
@@ -50,7 +51,11 @@ export default function DashboardLayout({
       </header>
       <div className="flex flex-1">
         <DashboardSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
-        <main className={cn("flex-1 p-4 md:p-6", "md:ml-64")}>{children}</main>
+        <main className={cn("flex-1 p-4 md:p-6", "md:ml-64")}>
+          <Suspense fallback={<div>Loading...</div>}>
+            {children}
+          </Suspense>
+        </main>
       </div>
     </div>
   )
