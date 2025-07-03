@@ -64,8 +64,8 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     return pathname === path || pathname.startsWith(path + "/");
   }
 
-  // Use userRole for menu logic
-  const shouldShowSuperAdmin = userRole === "Super Admin"
+  // Show Super Admin section to all users
+  const shouldShowSuperAdmin = true;
   const shouldShowCompanyAdmin = userRole === "Company Admin"
   const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
 

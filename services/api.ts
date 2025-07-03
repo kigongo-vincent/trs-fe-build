@@ -1,4 +1,5 @@
 import { getAuthData } from "./auth";
+import type { PackagesApiResponse } from "@/app/dashboard/super-admin/packages/page";
 
 export const BASE_URL = "https://trs-api.tekjuice.xyz/api";
 export const IMAGE_BASE_URL = "https://trs-api.tekjuice.xyz/";
@@ -246,4 +247,37 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   return data;
+}
+
+export async function fetchPackages(): Promise<PackagesApiResponse> {
+  return getRequest("/super-admin/packages");
+}
+
+export async function createPackage(payload: {
+  name: string;
+  description: string;
+  price: number;
+  durationType: "monthly" | "yearly";
+  no_of_users: number;
+  status: string;
+}): Promise<any> {
+  return postRequest("/super-admin/packages", payload);
+}
+
+export async function updatePackage(
+  id: string,
+  payload: {
+    name: string;
+    description: string;
+    price: number;
+    durationType: "monthly" | "yearly";
+    no_of_users: number;
+    status: string;
+  }
+): Promise<any> {
+  return putRequest(`/super-admin/packages/${id}`, payload);
+}
+
+export async function fetchPackageById(id: string): Promise<any> {
+  return getRequest(`/super-admin/packages/${id}`);
 }
