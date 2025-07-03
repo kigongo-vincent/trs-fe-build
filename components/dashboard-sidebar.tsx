@@ -33,7 +33,7 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined
+  const searchParams = useSearchParams()
   const profileSection = searchParams?.get('section') || ''
   const [mounted, setMounted] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({

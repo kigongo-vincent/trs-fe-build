@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     domains: ["images.pexels.com", "trs-api.tekjuice.xyz"],
   },
+  // output: 'export', // <-- DO NOT ENABLE THIS FOR APPS USING CLIENT COMPONENT HOOKS
 };
 
 export default nextConfig;
