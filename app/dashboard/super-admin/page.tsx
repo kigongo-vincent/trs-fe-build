@@ -7,35 +7,10 @@ import { ArrowRight, Building2, FileText, Package, Plus, Users } from "lucide-re
 import Link from "next/link"
 import { SuperAdminChart } from "@/components/super-admin-chart"
 import { RevenueChart } from "@/components/revenue-chart"
-import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 
 export default function SuperAdminDashboard() {
   const router = useRouter()
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (!isAuthenticated() || isTokenExpired()) {
-        router.replace("/")
-        return
-      }
-      const role = getUserRole()
-      if (role !== "Super Admin") {
-        switch (role) {
-          case "Company Admin":
-            router.replace("/dashboard/company-admin")
-            break
-          case "Consultant":
-          case "Employee":
-          case "Consultancy":
-            router.replace("/dashboard/employee")
-            break
-          default:
-            router.replace("/dashboard/employee")
-        }
-      }
-    }
-  }, [router])
 
   return (
     <div className="flex flex-col gap-4">

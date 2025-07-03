@@ -696,6 +696,15 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
   const [comment, setComment] = useState("")
   const [commentDate, setCommentDate] = useState<string>("")
   const [addingComment, setAddingComment] = useState(false)
+  const [savedChecks, setSavedChecks] = useState({ reviewed: false, satisfied: false, approved: false })
+  const [savingChecks, setSavingChecks] = useState(false)
+  const checksChanged = reviewed !== savedChecks.reviewed || satisfied !== savedChecks.satisfied || approved !== savedChecks.approved
+  const handleSaveChecks = async () => {
+    setSavingChecks(true)
+    await new Promise(res => setTimeout(res, 700))
+    setSavedChecks({ reviewed, satisfied, approved })
+    setSavingChecks(false)
+  }
   const handleAddComment = async () => {
     if (!comment.trim()) return
     setAddingComment(true)
@@ -879,6 +888,51 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
             </div>
           </CardFooter>
         </Card>
+        {/* Comment Section with Checks */}
+        <CardFooter className="flex-col items-start gap-2 px-6 pb-2 pt-2 border-t border-gray-200 dark:border-neutral-800">
+          <div className="w-full">
+            <div className="flex items-center my-4 gap-4 mb-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)} /> Reviewed
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(checked === true)} /> Satisfied
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={approved} onCheckedChange={checked => setApproved(checked === true)} /> Approved
+              </label>
+              {/* Save button for checks */}
+              <Button
+                size="sm"
+                variant="default"
+                className="ml-2"
+                onClick={handleSaveChecks}
+                disabled={!checksChanged || savingChecks}
+              >
+                {savingChecks ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="invoice-comment" className="text-xs">Comment</Label>
+              <Textarea
+                id="invoice-comment"
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={2}
+                className="resize-none"
+                disabled={addingComment}
+              />
+              <div className="flex items-center gap-2 mt-1">
+                <Button size="sm" variant="outline" onClick={handleAddComment} disabled={addingComment || !comment.trim()}>
+                  {addingComment ? 'Adding...' : 'Add Comment'}
+                </Button>
+                {commentDate && <span className="text-xs text-muted-foreground">Last commented: {commentDate}</span>}
+              </div>
+            </div>
+          </div>
+        </CardFooter>
+        {/* End Comment Section */}
         <CardFooter className="flex justify-end gap-2 px-6 pb-4 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
           <Button onClick={handleDownloadPDF}>
