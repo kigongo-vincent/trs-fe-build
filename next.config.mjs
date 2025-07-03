@@ -7,7 +7,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["images.pexels.com"],
+    domains: ["images.pexels.com", "trs-api.tekjuice.xyz"],
   },
 };
 

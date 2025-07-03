@@ -12,7 +12,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { getCompanyInvoicesSummary, getRequest } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
@@ -22,12 +22,61 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import jsPDF from "jspdf"
+import React from "react"
 
 // Helper function for date formatting (top-level, shared)
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric'
   })
+}
+
+// Utility for PDF table rendering with page breaks
+function renderTableWithPageBreaks(doc: any, headers: string[], rows: string[][], startY: number, options: { columnWidths: number[], marginLeft: number, marginRight: number }) {
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const { columnWidths, marginLeft, marginRight } = options
+  let y = startY
+  const rowHeight = 22
+  doc.setFontSize(11)
+  // Render header
+  doc.setFont(undefined, 'bold')
+  let x = marginLeft
+  headers.forEach((header, i) => {
+    doc.rect(x, y, columnWidths[i], rowHeight, 'S')
+    doc.text(header, x + 6, y + 15, { maxWidth: columnWidths[i] - 12 })
+    x += columnWidths[i]
+  })
+  doc.setFont(undefined, 'normal')
+  y += rowHeight
+  // Render rows
+  for (let r = 0; r < rows.length; r++) {
+    if (y + rowHeight > pageHeight - 32) {
+      doc.addPage()
+      y = 32
+      // Clear background for new page (optional, for white background)
+      doc.setFillColor(255, 255, 255)
+      doc.rect(0, 0, pageWidth, pageHeight, 'F')
+      // Repeat header
+      x = marginLeft
+      doc.setFont(undefined, 'bold')
+      headers.forEach((header, i) => {
+        doc.rect(x, y, columnWidths[i], rowHeight, 'S')
+        doc.text(header, x + 6, y + 15, { maxWidth: columnWidths[i] - 12 })
+        x += columnWidths[i]
+      })
+      doc.setFont(undefined, 'normal')
+      y += rowHeight
+    }
+    x = marginLeft
+    rows[r].forEach((cell, i) => {
+      doc.rect(x, y, columnWidths[i], rowHeight, 'S')
+      doc.text(String(cell), x + 6, y + 15, { maxWidth: columnWidths[i] - 12 })
+      x += columnWidths[i]
+    })
+    y += rowHeight
+  }
+  return y
 }
 
 export default function InvoicesPage() {
@@ -44,6 +93,9 @@ export default function InvoicesPage() {
   const [endDate, setEndDate] = useState<string>("")
   const [filterLoading, setFilterLoading] = useState(false)
   const [filterParams, setFilterParams] = useState<{ status: string, startDate: string, endDate: string }>({ status: "all", startDate: "", endDate: "" })
+
+  // Add a ref to InvoiceTable for PDF download
+  const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void } | null>(null)
 
   useEffect(() => {
     async function fetchSummary() {
@@ -102,12 +154,17 @@ export default function InvoicesPage() {
 
   const isFilterActive = status !== "all" || !!startDate || !!endDate
 
+  // Handler to trigger PDF from top button
+  const handleTopDownloadPDF = () => {
+    invoiceTableRef.current?.handleAllInvoicesPDF()
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
         <div className="flex items-center gap-2">
-          <InvoiceActions />
+          <InvoiceActions onDownloadAll={handleTopDownloadPDF} />
         </div>
       </div>
 
@@ -255,14 +312,17 @@ export default function InvoicesPage() {
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceTable currency={currency} searchTerm={searchTerm} filterParams={filterParams} />
+          <InvoiceTable ref={invoiceTableRef} currency={currency} searchTerm={searchTerm} filterParams={filterParams} />
         </CardContent>
       </Card>
     </div>
   )
 }
 
-function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string } }) {
+const InvoiceTable = React.forwardRef(function InvoiceTable(
+  { currency, searchTerm, filterParams }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string } },
+  ref: React.ForwardedRef<{ handleAllInvoicesPDF: () => void }>
+) {
   const [invoices, setInvoices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -418,6 +478,60 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
     })
   }
 
+  // PDF download for all visible invoices
+  const handleAllInvoicesPDF = () => {
+    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
+    const margin = 32
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const title = 'Company Invoices'
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    // Summations
+    let totalAmount = 0
+    let totalHours = 0
+    sortedInvoices.forEach(inv => {
+      totalAmount += Number(inv.amount) || 0
+      totalHours += Number(inv.totalHours) || 0
+    })
+    // Table headers and rows
+    const headers = ['Invoice #', 'Consultant', 'Period Start', 'Amount', 'Status', 'Hours']
+    const columnWidths = [100, 120, 80, 80, 100, 60]
+    const rows = sortedInvoices.map(inv => [
+      String(inv.invoiceNumber || inv.id),
+      inv.user?.fullName || '-',
+      typeof inv.startDate === 'string' ? formatDate(inv.startDate) : '-',
+      `${currency} ${(Number(inv.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      inv.status ? inv.status.toUpperCase() : '-',
+      String(inv.totalHours || '-')
+    ])
+    // Title
+    doc.setFontSize(18)
+    doc.text(title, margin, margin)
+    doc.setFontSize(10)
+    doc.setTextColor(120)
+    doc.text(`Generated: ${dateStr}`, margin, margin + 16)
+    doc.setTextColor(30)
+    doc.setFontSize(11)
+    // Table
+    let y = margin + 32
+    y = renderTableWithPageBreaks(doc, headers, rows, y, { columnWidths, marginLeft: margin, marginRight: margin })
+    // Summations
+    y += 16
+    doc.setFont(undefined, 'bold')
+    doc.text('Total Amount:', pageWidth - margin - 160, y)
+    doc.text(`${currency} ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 60, y, { align: 'right' })
+    y += 18
+    doc.text('Total Hours:', pageWidth - margin - 160, y)
+    doc.text(`${totalHours}`, pageWidth - margin - 60, y, { align: 'right' })
+    doc.setFont(undefined, 'normal')
+    y += 32
+    doc.setFontSize(10)
+    doc.setTextColor(120)
+    doc.text('Thank you for your business!', margin, y)
+    doc.save(`Company_Invoices_${dateStr.replace(/\s+/g, '_')}.pdf`)
+  }
+
+  useImperativeHandle(ref, () => ({ handleAllInvoicesPDF }))
+
   if (loading) {
     return <div className="h-[300px] flex items-center justify-center">Loading...</div>
   }
@@ -534,37 +648,13 @@ function InvoiceTable({ currency, searchTerm, filterParams }: { currency: string
       <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} />
     </>
   )
-}
+})
 
-function InvoiceActions() {
+function InvoiceActions({ onDownloadAll }: { onDownloadAll?: () => void }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline">
-          <FileDown className="mr-2 h-4 w-4" /> Download
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56">
-        <div className="grid gap-2">
-          <h4 className="font-medium leading-none">Download Options</h4>
-          <p className="text-sm text-muted-foreground">Choose a download format</p>
-          <div className="grid gap-2 pt-2">
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> All Invoices (PDF)
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Selected Invoices (PDF)
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Export as CSV
-            </Button>
-            <Button size="sm" className="w-full justify-start">
-              <Download className="mr-2 h-4 w-4" /> Export as Excel
-            </Button>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <Button variant="outline" onClick={onDownloadAll}>
+      <FileDown className="mr-2 h-4 w-4" /> Download PDF
+    </Button>
   )
 }
 

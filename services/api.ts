@@ -1,6 +1,7 @@
 import { getAuthData } from "./auth";
 
-const BASE_URL = "https://trs-api.tekjuice.xyz/api";
+export const BASE_URL = "https://trs-api.tekjuice.xyz/api";
+export const IMAGE_BASE_URL = "https://trs-api.tekjuice.xyz/";
 
 export interface UploadProgressEvent {
   loaded: number;
@@ -215,6 +216,12 @@ export async function getHoursByProject(companyID: string) {
 
 export async function getCompanyInvoicesSummary(companyID: string) {
   return getRequest(`/company/invoices/summary/${companyID}`);
+}
+
+export function getImage(path: string): string {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return IMAGE_BASE_URL + path.replace(/^\//, "");
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
