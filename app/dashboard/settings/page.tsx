@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { updatePassword, PasswordUpdateRequest, updateProfile, ProfileUpdateRequest, getAuthUser, getAuthData, storeAuthData } from "@/services/auth"
+import { updatePassword, PasswordUpdateRequest, updateProfile, ProfileUpdateRequest, getAuthUser, getAuthData, storeAuthData, getUserRole } from "@/services/auth"
 import { getDepartments } from "@/services/departments"
 import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
+import { BASE_URL, getImage } from "@/services/api"
 
 interface PasswordFormData {
   currentPassword: string;
@@ -157,11 +158,24 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
     const department = departments.find(dept => dept.id === departmentId);
     return department?.name || "";
+  };
+
+  // Helper to map API departments to local type
+  const mapApiDepartments = (apiDepartments: any[]): Department[] => {
+    return apiDepartments.map((dept) => ({
+      ...dept,
+      head: dept.head?.fullName ?? "",
+    }));
   };
 
   // Load user data and departments on component mount
@@ -184,6 +198,7 @@ export default function SettingsPage() {
         }
 
         setUser(currentUser);
+        setUserRole(getUserRole());
 
         // Initialize profile form with user data
         // Parse fullName to get firstName and lastName
@@ -230,7 +245,7 @@ export default function SettingsPage() {
         const departmentsResponse = await getDepartments(companyId);
 
         if (departmentsResponse.status === 200) {
-          setDepartments(departmentsResponse.data);
+          setDepartments(mapApiDepartments(departmentsResponse.data));
         } else {
           console.error("Failed to fetch departments:", departmentsResponse.message);
         }
@@ -320,6 +335,38 @@ export default function SettingsPage() {
     }
   };
 
+  // Avatar select handler: preview image but don't upload yet
+  const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setSelectedAvatarFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Avatar upload function (returns avatarUrl or throws)
+  const uploadAvatar = async (file: File): Promise<string> => {
+    const authData = getAuthData();
+    const token = authData?.token;
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const res = await fetch(`${BASE_URL}/profile/avatar`, {
+      method: "POST",
+      body: formData,
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to upload avatar");
+    }
+    const data = await res.json();
+    if (data?.avatarUrl) return data.avatarUrl;
+    throw new Error("Failed to update avatar");
+  };
+
   const handleProfileUpdate = async () => {
     if (!validateProfileForm()) {
       return;
@@ -328,6 +375,15 @@ export default function SettingsPage() {
     setIsUpdatingProfile(true);
 
     try {
+      let avatarUrl = user?.avatarUrl;
+      // If a new avatar is selected, upload it first
+      if (selectedAvatarFile) {
+        avatarUrl = await uploadAvatar(selectedAvatarFile);
+        setUser((prev: any) => ({ ...prev, avatarUrl }));
+        setAvatarPreview(null);
+        setSelectedAvatarFile(null);
+      }
+
       // Format the data properly for the API
       const requestData: any = {
         firstName: profileForm.firstName.trim(),
@@ -387,6 +443,11 @@ export default function SettingsPage() {
         requestData.officeDays = profileForm.officeDays
       }
 
+      // Attach avatarUrl if present
+      if (avatarUrl) {
+        requestData.avatarUrl = avatarUrl;
+      }
+
       const response = await updateProfile(requestData);
 
       // Update the local store with the new profile data
@@ -410,6 +471,7 @@ export default function SettingsPage() {
           address: profileForm.address,
           bankDetails: profileForm.bankDetails,
           officeDays: profileForm.officeDays,
+          avatarUrl: avatarUrl,
         };
 
         // Update local storage
@@ -509,252 +571,365 @@ export default function SettingsPage() {
     }
   };
 
+  // Avatar upload handler using fetch and BASE_URL
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // Get token from auth data
+      const authData = getAuthData();
+      const token = authData?.token;
+      console.log(token)
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const res = await fetch(`${BASE_URL}/profile/avatar`, {
+        method: "POST",
+        body: formData,
+        headers: token
+          ? {
+            Authorization: `Bearer ${token}`,
+          }
+          : undefined,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to upload avatar");
+      }
+
+      const data = await res.json();
+      if (data?.avatarUrl) {
+        setUser((prev: any) => ({ ...prev, avatarUrl: data.avatarUrl }));
+        if (authData) {
+          storeAuthData(authData.token, { ...user, avatarUrl: data.avatarUrl });
+        }
+        toast.success("Avatar updated successfully");
+      } else {
+        toast.error("Failed to update avatar");
+      }
+    } catch (error: any) {
+      toast.error("Failed to upload avatar", {
+        description: error?.message,
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Add handleNestedProfileChange above component return
+  const handleNestedProfileChange = (field: string, value: string) => {
+    const [parent, child] = field.split(".");
+    setProfileForm(prev => {
+      const parentValue = prev[parent as keyof ProfileFormData];
+      if (typeof parentValue === "object" && parentValue !== null) {
+        return {
+          ...prev,
+          [parent]: {
+            ...parentValue,
+            [child]: value,
+          },
+        };
+      }
+      return prev;
+    });
+    // Clear error when user starts typing
+    const parentError = profileErrors[parent as keyof ProfileFormErrors];
+    if (parentError && typeof parentError === "object" && parentError !== null && (child in parentError)) {
+      setProfileErrors(prev => ({
+        ...prev,
+        [parent]: {
+          ...parentError,
+          [child]: undefined,
+        },
+      }));
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        </div>
-        <div className="space-y-4">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-          <div className="h-64 w-full bg-muted animate-pulse rounded" />
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-      </div>
-
-      <Tabs defaultValue="profile" className="space-y-4">
+    <div className="max-w-4xl p-4">
+      <Tabs defaultValue="profile" className="w-full">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="profile" className="space-y-4">
+        <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>Manage your personal information</CardDescription>
+              <CardTitle>Profile Settings</CardTitle>
+              <CardDescription>Update your profile information</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src={isClient && user?.avatarUrl ? user.avatarUrl : "/placeholder.svg?height=80&width=80"}
-                    alt={isClient && user?.fullName ? user.fullName : "User"}
-                  />
-                  <AvatarFallback>
-                    {isClient && user?.fullName ? user.fullName.split(" ").map((n: string) => n[0]).join("") : "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                    Change Avatar
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                    Remove Avatar
-                  </Button>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="first-name">First Name</Label>
-                  <Input
-                    id="first-name"
-                    value={profileForm.firstName}
-                    onChange={(e) => handleProfileChange("firstName", e.target.value)}
-                    className={profileErrors.firstName ? "border-red-500" : ""}
-                  />
-                  {profileErrors.firstName && (
-                    <p className="text-sm text-red-500">{profileErrors.firstName}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last-name">Last Name</Label>
-                  <Input
-                    id="last-name"
-                    value={profileForm.lastName}
-                    onChange={(e) => handleProfileChange("lastName", e.target.value)}
-                    className={profileErrors.lastName ? "border-red-500" : ""}
-                  />
-                  {profileErrors.lastName && (
-                    <p className="text-sm text-red-500">{profileErrors.lastName}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => handleProfileChange("email", e.target.value)}
-                  className={profileErrors.email ? "border-red-500" : ""}
-                />
-                {profileErrors.email && (
-                  <p className="text-sm text-red-500">{profileErrors.email}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="job-title">Job Title</Label>
-                <Input
-                  id="job-title"
-                  value={profileForm.jobTitle}
-                  onChange={(e) => handleProfileChange("jobTitle", e.target.value)}
-                  className={profileErrors.jobTitle ? "border-red-500" : ""}
-                />
-                {profileErrors.jobTitle && (
-                  <p className="text-sm text-red-500">{profileErrors.jobTitle}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="department">Department (Optional)</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={profileForm.departmentId}
-                    onValueChange={(value) => handleProfileChange("departmentId", value)}
-                    disabled={loading}
-                  >
-                    <SelectTrigger id="department" className="flex-1">
-                      <SelectValue placeholder={loading ? "Loading departments..." : "Choose a department (optional)"}>
-                        {profileForm.departmentId ? getDepartmentNameById(profileForm.departmentId) : (loading ? "Loading departments..." : "Choose a department (optional)")}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.length === 0 && !loading ? (
-                        <SelectItem value="no-departments" disabled>
-                          No departments available
-                        </SelectItem>
-                      ) : (
-                        departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {profileForm.departmentId && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleProfileChange("departmentId", "")}
-                      disabled={loading}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-                {profileErrors.departmentId && (
-                  <p className="text-sm text-red-500">{profileErrors.departmentId}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={profileForm.bio}
-                  onChange={(e) => handleProfileChange("bio", e.target.value)}
-                  className={profileErrors.bio ? "border-red-500" : ""}
-                  placeholder="Tell us about yourself, your experience, and what you do..."
-                  rows={4}
-                  maxLength={500}
-                />
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>Share your professional background and interests</span>
-                  <span className={profileForm.bio.length > 450 ? "text-orange-500" : profileForm.bio.length > 400 ? "text-yellow-600" : ""}>
-                    {profileForm.bio.length}/500 characters
-                  </span>
-                </div>
-                {profileErrors.bio && (
-                  <p className="text-sm text-red-500">{profileErrors.bio}</p>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {userRole === "Consultant" ? (
+                  <>
+                    <div>
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={profileForm.firstName}
+                        onChange={e => handleProfileChange("firstName", e.target.value)}
+                        placeholder="Enter your first name"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.firstName ? "border-red-500" : ""}
+                      />
+                      {profileErrors.firstName && <p className="text-red-500 text-sm">{profileErrors.firstName}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileForm.lastName}
+                        onChange={e => handleProfileChange("lastName", e.target.value)}
+                        placeholder="Enter your last name"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.lastName ? "border-red-500" : ""}
+                      />
+                      {profileErrors.lastName && <p className="text-red-500 text-sm">{profileErrors.lastName}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="phoneNumber">Phone Number</Label>
+                      <Input
+                        id="phoneNumber"
+                        value={profileForm.phoneNumber || ""}
+                        onChange={e => handleProfileChange("phoneNumber", e.target.value)}
+                        placeholder="Enter your phone number"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.phoneNumber ? "border-red-500" : ""}
+                      />
+                      {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
+                    </div>
+                    <div className="col-span-1">
+                      <Label>Avatar</Label>
+                      <div className="flex items-center">
+                        <Avatar>
+                          <AvatarImage src={avatarPreview || getImage(user?.avatarUrl) || ""} alt={user?.fullName || "User Avatar"} />
+                          <AvatarFallback>
+                            {user?.fullName
+                              ? user.fullName
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")
+                              : "UA"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Button
+                          variant="outline"
+                          className="ml-4"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUpdatingProfile}
+                        >
+                          {selectedAvatarFile ? "Change Selected" : "Change Avatar"}
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={handleAvatarSelect}
+                          className="hidden"
+                        />
+                        {avatarPreview && (
+                          <Button
+                            variant="ghost"
+                            className="ml-2 text-xs text-red-500"
+                            onClick={() => { setAvatarPreview(null); setSelectedAvatarFile(null); }}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={profileForm.firstName}
+                        onChange={e => handleProfileChange("firstName", e.target.value)}
+                        placeholder="Enter your first name"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.firstName ? "border-red-500" : ""}
+                      />
+                      {profileErrors.firstName && <p className="text-red-500 text-sm">{profileErrors.firstName}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileForm.lastName}
+                        onChange={e => handleProfileChange("lastName", e.target.value)}
+                        placeholder="Enter your last name"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.lastName ? "border-red-500" : ""}
+                      />
+                      {profileErrors.lastName && <p className="text-red-500 text-sm">{profileErrors.lastName}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={profileForm.email}
+                        onChange={e => handleProfileChange("email", e.target.value)}
+                        placeholder="Enter your email"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.email ? "border-red-500" : ""}
+                      />
+                      {profileErrors.email && <p className="text-red-500 text-sm">{profileErrors.email}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="phoneNumber">Phone Number</Label>
+                      <Input
+                        id="phoneNumber"
+                        value={profileForm.phoneNumber || ""}
+                        onChange={e => handleProfileChange("phoneNumber", e.target.value)}
+                        placeholder="Enter your phone number"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.phoneNumber ? "border-red-500" : ""}
+                      />
+                      {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
+                    </div>
+                    <div className="col-span-1">
+                      <Label>Avatar</Label>
+                      <div className="flex items-center">
+                        <Avatar>
+                          <AvatarImage src={avatarPreview || getImage(user?.avatarUrl) || ""} alt={user?.fullName || "User Avatar"} />
+                          <AvatarFallback>
+                            {user?.fullName
+                              ? user.fullName
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")
+                              : "UA"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Button
+                          variant="outline"
+                          className="ml-4"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUpdatingProfile}
+                        >
+                          {selectedAvatarFile ? "Change Selected" : "Change Avatar"}
+                        </Button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={handleAvatarSelect}
+                          className="hidden"
+                        />
+                        {avatarPreview && (
+                          <Button
+                            variant="ghost"
+                            className="ml-2 text-xs text-red-500"
+                            onClick={() => { setAvatarPreview(null); setSelectedAvatarFile(null); }}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end">
+            <CardFooter>
               <Button
                 onClick={handleProfileUpdate}
                 disabled={isUpdatingProfile}
+                className="mr-2"
               >
-                {isUpdatingProfile ? "Saving..." : "Save Changes"}
+                {isUpdatingProfile ? "Updating..." : "Update Profile"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/dashboard")}
+              >
+                Cancel
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
-
-        <TabsContent value="password" className="space-y-4">
+        <TabsContent value="password">
           <Card>
             <CardHeader>
-              <CardTitle>Password</CardTitle>
-              <CardDescription>Change your password</CardDescription>
+              <CardTitle>Change Password</CardTitle>
+              <CardDescription>Update your account password</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                  className={passwordErrors.currentPassword ? "border-red-500" : ""}
-                />
-                {passwordErrors.currentPassword && (
-                  <p className="text-sm text-red-500">{passwordErrors.currentPassword}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                  className={passwordErrors.newPassword ? "border-red-500" : ""}
-                />
-                {passwordErrors.newPassword && (
-                  <p className="text-sm text-red-500">{passwordErrors.newPassword}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                  className={passwordErrors.confirmPassword ? "border-red-500" : ""}
-                />
-                {passwordErrors.confirmPassword && (
-                  <p className="text-sm text-red-500">{passwordErrors.confirmPassword}</p>
-                )}
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePasswordChange("currentPassword", e.target.value)}
+                    placeholder="Enter your current password"
+                    disabled={isUpdatingPassword}
+                    className={passwordErrors.currentPassword ? "border-red-500" : ""}
+                  />
+                  {passwordErrors.currentPassword && <p className="text-red-500 text-sm">{passwordErrors.currentPassword}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePasswordChange("newPassword", e.target.value)}
+                    placeholder="Enter your new password"
+                    disabled={isUpdatingPassword}
+                    className={passwordErrors.newPassword ? "border-red-500" : ""}
+                  />
+                  {passwordErrors.newPassword && <p className="text-red-500 text-sm">{passwordErrors.newPassword}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePasswordChange("confirmPassword", e.target.value)}
+                    placeholder="Confirm your new password"
+                    disabled={isUpdatingPassword}
+                    className={passwordErrors.confirmPassword ? "border-red-500" : ""}
+                  />
+                  {passwordErrors.confirmPassword && <p className="text-red-500 text-sm">{passwordErrors.confirmPassword}</p>}
+                </div>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end">
+            <CardFooter>
               <Button
                 onClick={handlePasswordUpdate}
                 disabled={isUpdatingPassword}
+                className="mr-2"
               >
                 {isUpdatingPassword ? "Updating..." : "Update Password"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/dashboard")}
+              >
+                Cancel
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

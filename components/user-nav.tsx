@@ -15,6 +15,7 @@ import {
 import { LogOut, Settings, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { getAuthUser, clearAuth } from "@/services/auth"
+import { getImage } from "@/services/api"
 
 interface UserNavProps {
   role: string
@@ -78,7 +79,7 @@ export function UserNav({ role }: UserNavProps) {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage
-              src={isClient && user?.avatarUrl ? user.avatarUrl : "/placeholder.svg?height=32&width=32"}
+              src={isClient && user?.avatarUrl ? getImage(user.avatarUrl) : "/placeholder.svg?height=32&width=32"}
               alt={isClient && user?.fullName ? user.fullName : "User avatar"}
             />
             <AvatarFallback>{isClient ? getUserInitials() : "U"}</AvatarFallback>
