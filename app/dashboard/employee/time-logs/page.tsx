@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,8 @@ import { getProjects } from "@/services/projects"
 import { getAuthUser } from "@/services/auth"
 import { putRequest } from "@/services/api"
 import { Label } from "@/components/ui/label"
+import TaskDetailModal from "@/components/TaskDetailModal"
+import { toast } from "sonner"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
@@ -37,6 +39,19 @@ export default function TimeLogsPage() {
   const [editTimeLog, setEditTimeLog] = useState<TimeLog | null>(null)
   const [projects, setProjects] = useState<any[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTimeLogId, setDeleteTimeLogId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [summaryStats, setSummaryStats] = useState(() => {
+    // initial value for summaryStats
+    return {
+      hoursToday: 0,
+      hoursWeek: 0,
+      hoursMonth: 0,
+      billableHours: 0,
+      billableRate: 0,
+    }
+  })
 
   // Fetch time logs data
   useEffect(() => {
@@ -75,7 +90,8 @@ export default function TimeLogsPage() {
   }, [])
 
   // Calculate summary statistics
-  const summaryStats = useMemo(() => {
+  useEffect(() => {
+    // recalculate summaryStats when timeLogs change
     const today = new Date()
     const startOfWeek = new Date(today)
     startOfWeek.setDate(today.getDate() - today.getDay())
@@ -90,34 +106,27 @@ export default function TimeLogsPage() {
       const logDate = new Date(log.createdAt)
       const duration = Number.parseFloat(log.duration)
 
-      // Today's hours
       if (logDate.toDateString() === today.toDateString()) {
         hoursToday += duration
       }
-
-      // This week's hours
       if (logDate >= startOfWeek) {
         hoursWeek += duration
       }
-
-      // This month's hours
       if (logDate >= startOfMonth) {
         hoursMonth += duration
       }
-
-      // Billable hours (assuming active status means billable)
       if (log.status === "active") {
         billableHours += duration
       }
     })
 
-    return {
-      hoursToday: hoursToday / 60, // Convert to hours
+    setSummaryStats({
+      hoursToday: hoursToday / 60,
       hoursWeek: hoursWeek / 60,
       hoursMonth: hoursMonth / 60,
       billableHours: billableHours / 60,
       billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
-    }
+    })
   }, [timeLogs])
 
   // Get unique projects for filter
@@ -191,6 +200,8 @@ export default function TimeLogsPage() {
     status: "active",
     project: ""
   })
+  const [editAttachments, setEditAttachments] = useState<Attachment[]>([])
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false)
   useEffect(() => {
     if (editTimeLog) {
       setEditForm({
@@ -198,8 +209,9 @@ export default function TimeLogsPage() {
         description: editTimeLog.description,
         duration: editTimeLog.duration,
         status: editTimeLog.status,
-        project: editTimeLog.project || ""
+        project: editTimeLog.projectId || ""
       })
+      setEditAttachments([]) // TODO: Load real attachments if available
     }
   }, [editTimeLog])
 
@@ -210,23 +222,63 @@ export default function TimeLogsPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editTimeLog) return
-    // Validation (simple)
-    if (!editForm.title.trim() || !editForm.description.trim() || !editForm.duration || !editForm.project) return
+    // Validation (same as add form)
+    if (!editForm.title.trim()) {
+      toast.error("Please enter a task title")
+      return
+    }
+    if (!editForm.description.trim()) {
+      toast.error("Please enter a task description")
+      return
+    }
+    if (!editForm.duration || Number(editForm.duration) <= 0) {
+      toast.error("Please enter valid time in minutes")
+      return
+    }
+    setIsEditSubmitting(true)
     try {
+      // Separate file and url attachments
+      const fileAttachments = editAttachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+      const urlAttachments = editAttachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
+      // Convert files to base64
+      const toBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const match = result.match(/^data:([^;]+);base64,(.*)$/);
+            if (match) {
+              const mimetype = match[1];
+              const data = match[2];
+              resolve(`data:${mimetype};name=${file.name};base64,${data}`);
+            } else {
+              reject(new Error("Invalid base64 format"));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
       await putRequest(`/consultants/time-logs/${editTimeLog.id}`, {
         title: editForm.title.trim(),
         description: editForm.description.trim(),
         duration: Number(editForm.duration),
         status: editForm.status,
-        project: editForm.project
+        project: editForm.project,
+        attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+        urls: urlAttachments.length > 0 ? urlAttachments : undefined,
       })
-      setIsEditDialogOpen(false)
-      setEditTimeLog(null)
-      // Refresh time logs
+      toast.success("Time log updated successfully!")
+      setLoading(true)
       const data = await fetchEmployeeTimeLogs()
       setTimeLogs(data)
+      setIsEditDialogOpen(false)
+      setEditTimeLog(null)
     } catch (err) {
-      // handle error
+      toast.error((err as Error)?.message || "Failed to update time log")
+    } finally {
+      setIsEditSubmitting(false)
+      setLoading(false)
     }
   }
 
@@ -493,22 +545,36 @@ export default function TimeLogsPage() {
                           <span className="text-sm text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right flex items-center justify-end">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={() => handleViewDetails(log)}
+                          aria-label="View"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
-                        >
-                          Edit
-                        </Button>
+                        {log.status === "draft" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
+                              aria-label="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => { setDeleteDialogOpen(true); setDeleteTimeLogId(log.id); }}
+                              aria-label="Delete"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   )
@@ -520,62 +586,13 @@ export default function TimeLogsPage() {
       </Card>
 
       {/* Time Log Details Dialog */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Time Log Details</DialogTitle>
-            <DialogDescription>Detailed view of the time log entry</DialogDescription>
-          </DialogHeader>
-
-          {selectedTimeLog && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold">{selectedTimeLog.title}</h3>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="outline">{selectedTimeLog.project}</Badge>
-                  <Badge
-                    variant="outline"
-                    className={
-                      selectedTimeLog.status === "active"
-                        ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                        : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
-                    }
-                  >
-                    {selectedTimeLog.status.charAt(0).toUpperCase() + selectedTimeLog.status.slice(1)}
-                  </Badge>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    {formatDurationString(selectedTimeLog.duration)}
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Created on {formatDate(selectedTimeLog.createdAt)}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Description</h4>
-                <RichTextEditor
-                  value={selectedTimeLog.description}
-                  onChange={() => { }} // Read-only
-                  readOnly={true}
-                  className="border rounded-md"
-                />
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Attachments</h4>
-                <FileAttachment
-                  attachments={getMockAttachments(selectedTimeLog)}
-                  onAttachmentsChange={() => { }} // Read-only
-                  maxFiles={10}
-                  maxSize={10 * 1024 * 1024}
-                />
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <TaskDetailModal
+        open={isDetailDialogOpen}
+        onClose={() => setIsDetailDialogOpen(false)}
+        task={selectedTimeLog}
+        attachments={selectedTimeLog ? getMockAttachments(selectedTimeLog) : []}
+        urls={[]}
+      />
 
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -583,6 +600,9 @@ export default function TimeLogsPage() {
           <DialogHeader>
             <DialogTitle>Edit Time Log</DialogTitle>
             <DialogDescription>Update your time log entry</DialogDescription>
+            <Button type="button" variant="ghost" className="absolute top-4 right-4" onClick={() => setIsEditDialogOpen(false)} aria-label="Close">
+              <X className="h-5 w-5" />
+            </Button>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -595,14 +615,14 @@ export default function TimeLogsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editProject">Project *</Label>
+              <Label htmlFor="editProject">Project (optional)</Label>
               <Select
                 value={editForm.project}
                 onValueChange={value => handleEditInputChange("project", value)}
                 disabled={isLoadingProjects}
               >
                 <SelectTrigger id="editProject">
-                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
+                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
                 </SelectTrigger>
                 <SelectContent>
                   {isLoadingProjects ? (
@@ -622,18 +642,24 @@ export default function TimeLogsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editDuration">Duration (minutes) *</Label>
-              <Input
-                id="editDuration"
-                type="number"
-                min={1}
-                value={editForm.duration}
-                onChange={e => handleEditInputChange("duration", e.target.value)}
-                required
-              />
+              <Label htmlFor="editDuration">Time (minutes) *</Label>
+              <div className="flex items-center">
+                <Input
+                  id="editDuration"
+                  type="number"
+                  min={1}
+                  value={editForm.duration}
+                  onChange={e => handleEditInputChange("duration", e.target.value)}
+                  required
+                />
+                <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {editForm.duration && Number(editForm.duration) > 0 && `${Math.floor(Number(editForm.duration) / 60)}h ${Number(editForm.duration) % 60}m`}
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editStatus">Status *</Label>
+              <Label htmlFor="editStatus">Status</Label>
               <Select
                 value={editForm.status}
                 onValueChange={value => handleEditInputChange("status", value)}
@@ -642,23 +668,89 @@ export default function TimeLogsPage() {
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editDescription">Description *</Label>
+              <Label htmlFor="editDescription">Task Description *</Label>
               <RichTextEditor
                 value={editForm.description}
                 onChange={val => handleEditInputChange("description", val)}
-                placeholder="Task description"
+                placeholder="Describe the task you worked on with rich formatting..."
+                className="min-h-[200px]"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoadingProjects}>
-              Save Changes
-            </Button>
+            <FileAttachment
+              attachments={editAttachments}
+              onAttachmentsChange={setEditAttachments}
+              maxFiles={10}
+              maxSize={10 * 1024 * 1024}
+              acceptedFileTypes={["image/*", "application/pdf"]}
+              showUrlInput={true}
+            />
+            <div className="flex justify-between gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isEditSubmitting || isLoadingProjects}>
+                {isEditSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Time Log</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this time log? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!deleteTimeLogId) return
+                setIsDeleting(true)
+                try {
+                  const { deleteRequest } = await import("@/services/api")
+                  await deleteRequest(`/consultants/time-logs/${deleteTimeLogId}`)
+                  toast.success("Time log deleted successfully")
+                  // Refresh time logs
+                  const data = await fetchEmployeeTimeLogs()
+                  setTimeLogs(data)
+                  setDeleteDialogOpen(false)
+                  setDeleteTimeLogId(null)
+                } catch (err: any) {
+                  toast.error(err?.message || "Failed to delete time log")
+                } finally {
+                  setIsDeleting(false)
+                }
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
