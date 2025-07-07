@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,11 @@ export default function TimeLogsPage() {
       billableRate: 0,
     }
   })
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false)
+  const [publishLogId, setPublishLogId] = useState<string | null>(null)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishAllDialogOpen, setPublishAllDialogOpen] = useState(false)
+  const [isPublishingAll, setIsPublishingAll] = useState(false)
 
   // Fetch time logs data
   useEffect(() => {
@@ -282,6 +287,44 @@ export default function TimeLogsPage() {
     }
   }
 
+  // Add publish single draft handler
+  const handlePublishDraft = async (logId: string) => {
+    setIsPublishing(true)
+    try {
+      await putRequest(`/consultants/time-logs/${logId}`, { status: 'active' })
+      toast.success('Draft published successfully!')
+      setLoading(true)
+      const data = await fetchEmployeeTimeLogs()
+      setTimeLogs(data)
+      setPublishDialogOpen(false)
+      setPublishLogId(null)
+    } catch (err) {
+      toast.error((err as Error)?.message || 'Failed to publish draft')
+    } finally {
+      setIsPublishing(false)
+      setLoading(false)
+    }
+  }
+
+  // Add publish all drafts handler
+  const handlePublishAllDrafts = async () => {
+    setIsPublishingAll(true)
+    try {
+      const draftLogs = timeLogs.filter(log => log.status === 'draft')
+      await Promise.all(draftLogs.map(log => putRequest(`/consultants/time-logs/${log.id}`, { status: 'active' })))
+      toast.success('All drafts published successfully!')
+      setLoading(true)
+      const data = await fetchEmployeeTimeLogs()
+      setTimeLogs(data)
+      setPublishAllDialogOpen(false)
+    } catch (err) {
+      toast.error((err as Error)?.message || 'Failed to publish all drafts')
+    } finally {
+      setIsPublishingAll(false)
+      setLoading(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -300,8 +343,7 @@ export default function TimeLogsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Time Logs</h1>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
@@ -465,7 +507,24 @@ export default function TimeLogsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Time Logs</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>
+            Time Logs
+            </span>
+
+          {timeLogs.some(log => log.status === 'draft') && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setPublishAllDialogOpen(true)}
+              disabled={isPublishingAll || loading}
+              className="flex items-center gap-2"
+            >
+              {isPublishingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Publish All Drafts
+            </Button>
+          )}
+          </CardTitle>
           <CardDescription>
             Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
           </CardDescription>
@@ -572,6 +631,15 @@ export default function TimeLogsPage() {
                               aria-label="Delete"
                             >
                               <Trash className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => { setPublishDialogOpen(true); setPublishLogId(log.id); }}
+                              aria-label="Publish"
+                              disabled={isPublishing || loading}
+                            >
+                              {isPublishing && publishLogId === log.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             </Button>
                           </>
                         )}
@@ -749,6 +817,62 @@ export default function TimeLogsPage() {
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish Draft Confirmation Dialog */}
+      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish Draft</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to publish this draft? This will make the time log active.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setPublishDialogOpen(false)}
+              disabled={isPublishing}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => publishLogId && handlePublishDraft(publishLogId)}
+              disabled={isPublishing}
+            >
+              {isPublishing ? 'Publishing...' : 'Publish'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Publish All Drafts Confirmation Dialog */}
+      <Dialog open={publishAllDialogOpen} onOpenChange={setPublishAllDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish All Drafts</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to publish all draft time logs? This will make all drafts active.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setPublishAllDialogOpen(false)}
+              disabled={isPublishingAll}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handlePublishAllDrafts}
+              disabled={isPublishingAll}
+            >
+              {isPublishingAll ? 'Publishing...' : 'Publish All'}
             </Button>
           </div>
         </DialogContent>
