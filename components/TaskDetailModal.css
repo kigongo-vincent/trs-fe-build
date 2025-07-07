@@ -1,0 +1,3 @@
+.hide-default-close > [data-radix-dialog-close] {
+  display: none !important;
+}
