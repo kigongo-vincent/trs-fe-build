@@ -39,27 +39,7 @@ export default function CompanyAdminDashboard() {
   const router = useRouter()
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (!isAuthenticated() || isTokenExpired()) {
-        router.replace("/")
-        return
-      }
-      const role = getUserRole()
-      if (role !== "Company Admin") {
-        switch (role) {
-          case "Super Admin":
-            router.replace("/dashboard/super-admin")
-            break
-          case "Consultant":
-          case "Employee":
-          case "Consultancy":
-            router.replace("/dashboard/employee")
-            break
-          default:
-            router.replace("/dashboard/employee")
-        }
-      }
-    }
+    // No authentication or role check, always allow access
   }, [router])
 
   useEffect(() => {

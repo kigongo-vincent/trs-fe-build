@@ -1,3 +1,4 @@
+"use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -6,18 +7,240 @@ import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { LicenseStatusChart } from "@/components/license-status-chart"
+import { useEffect, useState } from "react"
+import { fetchLicenseKeys, LicenseKey, fetchLicenseKeySummary, LicenseKeySummaryItem } from "@/services/api"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog"
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { toast } from "sonner"
+import { fetchCompanies, fetchPackages, createLicenseKey } from "@/services/api"
+import { Loader2 } from "lucide-react"
+
+const createLicenseSchema = z.object({
+  companyId: z.string().min(1, "Company is required"),
+  packageId: z.string().min(1, "Package is required"),
+  expiryDate: z.string().min(1, "Expiry date is required"),
+  status: z.string().min(1, "Status is required"),
+})
+type CreateLicenseForm = z.infer<typeof createLicenseSchema>
 
 export default function LicensesPage() {
+  const [licenses, setLicenses] = useState<LicenseKey[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [tab, setTab] = useState<string>("all")
+  const [search, setSearch] = useState("")
+
+  // Summary state
+  const [summary, setSummary] = useState<LicenseKeySummaryItem[]>([])
+  const [summaryLoading, setSummaryLoading] = useState(true)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+
+  const [modalOpen, setModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [companies, setCompanies] = useState<any[]>([])
+  const [packages, setPackages] = useState<any[]>([])
+  const [loadingDropdowns, setLoadingDropdowns] = useState(true)
+
+  const form = useForm<CreateLicenseForm>({
+    resolver: zodResolver(createLicenseSchema),
+    defaultValues: {
+      companyId: "",
+      packageId: "",
+      expiryDate: "",
+      status: "active",
+    },
+  })
+
+  useEffect(() => {
+    async function loadLicenses() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetchLicenseKeys()
+        setLicenses(res.data || [])
+      } catch (err: any) {
+        setError("Failed to fetch licenses")
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadLicenses()
+  }, [])
+
+  useEffect(() => {
+    async function loadSummary() {
+      setSummaryLoading(true)
+      setSummaryError(null)
+      try {
+        const res = await fetchLicenseKeySummary()
+        setSummary(res.data || [])
+      } catch (err: any) {
+        setSummaryError("Failed to fetch summary")
+      } finally {
+        setSummaryLoading(false)
+      }
+    }
+    loadSummary()
+  }, [])
+
+  useEffect(() => {
+    async function loadDropdowns() {
+      setLoadingDropdowns(true)
+      try {
+        const [companiesRes, packagesRes] = await Promise.all([
+          fetchCompanies(),
+          fetchPackages(),
+        ])
+        setCompanies(companiesRes.data || [])
+        setPackages(packagesRes.data || [])
+      } catch (err) {
+        toast.error("Failed to load companies or packages")
+      } finally {
+        setLoadingDropdowns(false)
+      }
+    }
+    if (modalOpen) loadDropdowns()
+  }, [modalOpen])
+
+  // Filtering logic
+  const filteredLicenses = licenses.filter((license) => {
+    // Tab filter
+    if (tab === "active" && license.status.toLowerCase() !== "active") return false
+    if (tab === "expiring" && license.status.toLowerCase() !== "expiring soon") return false
+    if (tab === "expired" && license.status.toLowerCase() !== "expired") return false
+    // Search filter
+    if (search) {
+      const s = search.toLowerCase()
+      return (
+        license.key.toLowerCase().includes(s) ||
+        license.company.name.toLowerCase().includes(s) ||
+        license.package.name.toLowerCase().includes(s)
+      )
+    }
+    return true
+  })
+
+  // Helper to get summary value by label
+  const getSummaryValue = (label: string) => {
+    const item = summary.find(s => s.label === label)
+    return item ? item.value : 0
+  }
+
+  const handleCreateLicense = async (data: CreateLicenseForm) => {
+    setIsSubmitting(true)
+    try {
+      await createLicenseKey(data)
+      toast.success("License created!", { description: "A new license key was generated." })
+      setModalOpen(false)
+      form.reset()
+      // Refresh licenses
+      const res = await fetchLicenseKeys()
+      setLicenses(res.data || [])
+      // Optionally refresh summary
+      const summaryRes = await fetchLicenseKeySummary()
+      setSummary(summaryRes.data || [])
+    } catch (err: any) {
+      toast.error("Error", { description: err.message || "Failed to create license" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">License Keys</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/dashboard/super-admin/licenses/new">
-              <Plus className="mr-2 h-4 w-4" /> Generate License
-            </Link>
-          </Button>
+          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Generate License
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Generate License</DialogTitle>
+                <DialogDescription>Fill in the details to generate a new license key.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleCreateLicense)} className="space-y-4">
+                  <FormField control={form.control} name="companyId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange} disabled={loadingDropdowns || isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select a company" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {companies.map((company) => (
+                            <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="packageId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Package</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange} disabled={loadingDropdowns || isSubmitting}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select a package" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {packages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <FormField control={form.control} name="expiryDate" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Expiry Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" className="w-[max-content]" placeholder="YYYY-MM-DD" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                    <div className="flex-1">
+                      <FormField control={form.control} name="status" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select value={field.value} onValueChange={field.onChange} disabled={isSubmitting}>
+                            <FormControl>
+                              <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="expiring soon">Expiring Soon</SelectItem>
+                              <SelectItem value="expired">Expired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                      Generate
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -28,8 +251,8 @@ export default function LicensesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">165</div>
-            <p className="text-xs text-muted-foreground">+15 from last month</p>
+            <div className="text-2xl font-bold">{summaryLoading ? "-" : getSummaryValue("Total Licenses")}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
         <Card>
@@ -38,8 +261,8 @@ export default function LicensesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">132</div>
-            <p className="text-xs text-muted-foreground">80% of total</p>
+            <div className="text-2xl font-bold">{summaryLoading ? "-" : getSummaryValue("Active Licenses")}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
         <Card>
@@ -48,7 +271,7 @@ export default function LicensesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
+            <div className="text-2xl font-bold">{summaryLoading ? "-" : getSummaryValue("Expiring Licenses")}</div>
             <p className="text-xs text-muted-foreground">Within 30 days</p>
           </CardContent>
         </Card>
@@ -58,13 +281,13 @@ export default function LicensesPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground">9% of total</p>
+            <div className="text-2xl font-bold">{summaryLoading ? "-" : getSummaryValue("Expired Licenses")}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue={tab} className="space-y-4" onValueChange={setTab}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList>
             <TabsTrigger value="all">All Licenses</TabsTrigger>
@@ -75,11 +298,11 @@ export default function LicensesPage() {
           <div className="flex w-full sm:w-auto items-center gap-2">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search licenses..." className="w-full pl-8" />
+              <Input type="search" placeholder="Search licenses..." className="w-full pl-8" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
         </div>
-        <TabsContent value="all" className="space-y-4">
+        <TabsContent value={tab} className="space-y-4">
           <div className="rounded-md border">
             <div className="relative w-full overflow-auto">
               <table className="w-full caption-bottom text-sm">
@@ -94,75 +317,44 @@ export default function LicensesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-mono text-xs">TK-ACME-PRO-2023-05-12</td>
-                    <td className="p-4 align-middle">Acme Corp</td>
-                    <td className="p-4 align-middle">Premium</td>
-                    <td className="p-4 align-middle">
-                      <Badge className="bg-green-500">Active</Badge>
-                    </td>
-                    <td className="p-4 align-middle">May 12, 2024</td>
-                    <td className="p-4 align-middle text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href="/dashboard/super-admin/licenses/1">View</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                  <tr className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-mono text-xs">TK-TECH-ENT-2023-02-03</td>
-                    <td className="p-4 align-middle">TechSolutions Inc</td>
-                    <td className="p-4 align-middle">Enterprise</td>
-                    <td className="p-4 align-middle">
-                      <Badge className="bg-green-500">Active</Badge>
-                    </td>
-                    <td className="p-4 align-middle">Feb 3, 2024</td>
-                    <td className="p-4 align-middle text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href="/dashboard/super-admin/licenses/2">View</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                  <tr className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-mono text-xs">TK-GLOB-STD-2023-03-15</td>
-                    <td className="p-4 align-middle">Global Innovations</td>
-                    <td className="p-4 align-middle">Standard</td>
-                    <td className="p-4 align-middle">
-                      <Badge className="bg-yellow-500">Expiring Soon</Badge>
-                    </td>
-                    <td className="p-4 align-middle">Jun 15, 2023</td>
-                    <td className="p-4 align-middle text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href="/dashboard/super-admin/licenses/3">View</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                  <tr className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4 align-middle font-mono text-xs">TK-STAR-BAS-2023-05-02</td>
-                    <td className="p-4 align-middle">Startup Labs</td>
-                    <td className="p-4 align-middle">Basic</td>
-                    <td className="p-4 align-middle">
-                      <Badge className="bg-red-500">Expired</Badge>
-                    </td>
-                    <td className="p-4 align-middle">May 2, 2023</td>
-                    <td className="p-4 align-middle text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href="/dashboard/super-admin/licenses/4">View</Link>
-                      </Button>
-                    </td>
-                  </tr>
+                  {loading ? (
+                    <tr><td colSpan={6} className="text-center py-6">Loading...</td></tr>
+                  ) : error ? (
+                    <tr><td colSpan={6} className="text-center py-6 text-red-500">{error}</td></tr>
+                  ) : filteredLicenses.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No licenses found.</td></tr>
+                  ) : (
+                    filteredLicenses.map((license) => (
+                      <tr key={license.id} className="border-b transition-colors hover:bg-muted/50">
+                        <td className="p-4 align-middle font-mono text-xs">{license.key}</td>
+                        <td className="p-4 align-middle">{license.company.name}</td>
+                        <td className="p-4 align-middle">{license.package.name}</td>
+                        <td className="p-4 align-middle">
+                          <Badge className={
+                            license.status.toLowerCase() === "active"
+                              ? "bg-green-500"
+                              : license.status.toLowerCase() === "expiring soon"
+                                ? "bg-yellow-500"
+                                : license.status.toLowerCase() === "expired"
+                                  ? "bg-red-500"
+                                  : "bg-gray-400"
+                          }>
+                            {license.status.charAt(0).toUpperCase() + license.status.slice(1)}
+                          </Badge>
+                        </td>
+                        <td className="p-4 align-middle">{license.expiryDate}</td>
+                        <td className="p-4 align-middle text-right">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dashboard/super-admin/licenses/${license.id}`}>View</Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
-        </TabsContent>
-        <TabsContent value="active" className="space-y-4">
-          {/* Similar table with only active licenses */}
-        </TabsContent>
-        <TabsContent value="expiring" className="space-y-4">
-          {/* Similar table with only expiring licenses */}
-        </TabsContent>
-        <TabsContent value="expired" className="space-y-4">
-          {/* Similar table with only expired licenses */}
         </TabsContent>
       </Tabs>
 

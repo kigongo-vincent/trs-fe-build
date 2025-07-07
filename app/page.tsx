@@ -66,17 +66,16 @@ export default function Home() {
       storeAuthData(response.data.token, response.data.user)
 
       // Redirect based on role
-      // const roleName = response.data.user.role.name
-      // if (roleName === "Super Admin") {
-      //   router.push("/dashboard/super-admin")
-      // } else if (roleName === "Company Admin") {
-      //   router.push("/dashboard/company-admin")
-      // } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
-      //   router.push("/dashboard/employee")
-      // } else {
-      //   router.push("/dashboard/employee")
-      // }
-      router.push("/dashboard")
+      const roleName = response.data.user.role.name
+      if (roleName === "Super Admin") {
+        router.push("/dashboard/super-admin/companies")
+      } else if (roleName === "Company Admin") {
+        router.push("/dashboard/company-admin")
+      } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
+        router.push("/dashboard/employee")
+      } else {
+        router.push("/dashboard/employee")
+      }
     } catch (err) {
       console.error("Login error:", err)
       setError("Invalid email or password. Please try again.")

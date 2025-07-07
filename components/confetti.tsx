@@ -7,74 +7,24 @@ import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { PartyPopper, Cake } from "lucide-react"
 
-// Helper function to parse birthday date from various formats
+// Helper function to parse birthday date from yyyy-mm-dd format only
 function parseBirthdayDate(dateString: string): Date | null {
     if (!dateString) return null
 
-    // Try different date formats
-    const formats = [
-        // YYYY-MM-DD (ISO format)
-        /^\d{4}-\d{2}-\d{2}$/,
-        // DD-MM-YYYY
-        /^\d{2}-\d{2}-\d{4}$/,
-        // MM/DD/YYYY
-        /^\d{1,2}\/\d{1,2}\/\d{4}$/,
-        // DD/MM/YYYY
-        /^\d{1,2}\/\d{1,2}\/\d{4}$/,
-        // MM-DD-YYYY
-        /^\d{1,2}-\d{1,2}-\d{4}$/,
-    ]
-
-    try {
-        // First try direct Date constructor (handles most formats)
-        const date = new Date(dateString)
-        if (!isNaN(date.getTime())) {
-            return date
-        }
-
-        // Handle specific formats manually
-        if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
-            // DD-MM-YYYY format
-            const [day, month, year] = dateString.split('-')
-            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-        }
-
-        if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateString)) {
-            // Try MM/DD/YYYY first (US format)
-            const parts = dateString.split('/')
-            const month = parseInt(parts[0]) - 1
-            const day = parseInt(parts[1])
-            const year = parseInt(parts[2])
-
-            // Validate the date
-            const date = new Date(year, month, day)
-            if (date.getMonth() === month && date.getDate() === day && date.getFullYear() === year) {
-                return date
-            }
-
-            // If invalid, try DD/MM/YYYY (European format)
-            const day2 = parseInt(parts[0])
-            const month2 = parseInt(parts[1]) - 1
-            const year2 = parseInt(parts[2])
-
-            const date2 = new Date(year2, month2, day2)
-            if (date2.getMonth() === month2 && date2.getDate() === day2 && date2.getFullYear() === year2) {
-                return date2
-            }
-        }
-
-        if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(dateString)) {
-            // MM-DD-YYYY format
-            const [month, day, year] = dateString.split('-')
-            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
-        }
-
-        console.warn(`Could not parse birthday date: ${dateString}`)
-        return null
-    } catch (error) {
-        console.error(`Error parsing birthday date: ${dateString}`, error)
+    // Only accept YYYY-MM-DD (ISO format)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        console.warn(`Birthday date is not in yyyy-mm-dd format: ${dateString}`)
         return null
     }
+
+    // Parse as UTC date
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(Date.UTC(year, month - 1, day))
+    if (!isNaN(date.getTime())) {
+        return date
+    }
+    console.warn(`Could not parse birthday date: ${dateString}`)
+    return null
 }
 
 // Helper function to check if birthday celebration was already shown today
@@ -258,15 +208,29 @@ export function Confetti() {
         // Trigger confetti immediately on load (only for authenticated users)
         triggerConfetti()
 
+        // Listen for user data updates (e.g., after login or profile update)
+        const handleUserDataUpdated = () => {
+            triggerConfetti()
+        }
+        window.addEventListener('userDataUpdated', handleUserDataUpdated)
+        // Listen for storage changes (e.g., login in another tab)
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'user' || e.key === 'token') {
+                triggerConfetti()
+            }
+        }
+        window.addEventListener('storage', handleStorage)
+
         // Optional: You can also trigger confetti on window focus for testing
         const handleFocus = () => {
             // Uncomment the line below if you want confetti on window focus too
             // triggerConfetti()
         }
-
         window.addEventListener('focus', handleFocus)
 
         return () => {
+            window.removeEventListener('userDataUpdated', handleUserDataUpdated)
+            window.removeEventListener('storage', handleStorage)
             window.removeEventListener('focus', handleFocus)
         }
     }, [])

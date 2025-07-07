@@ -125,6 +125,34 @@ export default function PackageDetailsPage() {
                                     <div className="text-xs">{new Date(pkg.updatedAt).toLocaleString()}</div>
                                 </div>
                             </div>
+                            {/* Companies Section */}
+                            {Array.isArray(pkg.companies) && pkg.companies.length > 0 && (
+                                <div className="px-8 pb-8">
+                                    <h3 className="text-lg font-semibold mb-4">Companies Using This Package</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full text-sm border rounded-lg">
+                                            <thead>
+                                                <tr className="bg-muted/40">
+                                                    <th className="px-4 py-2 text-left">Name</th>
+                                                    <th className="px-4 py-2 text-left">Sector</th>
+                                                    <th className="px-4 py-2 text-left">Status</th>
+                                                    <th className="px-4 py-2 text-left">Created At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {pkg.companies.map((company: any) => (
+                                                    <tr key={company.id} className="border-t">
+                                                        <td className="px-4 py-2 font-medium">{company.name}</td>
+                                                        <td className="px-4 py-2">{company.sector || '-'}</td>
+                                                        <td className="px-4 py-2"><Badge>{company.status}</Badge></td>
+                                                        <td className="px-4 py-2">{new Date(company.createdAt).toLocaleDateString()}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
                             {/* <div className="sticky bottom-0 left-0 w-full bg-background/80 backdrop-blur border-t px-8 py-4 flex justify-end gap-2 z-10 rounded-b-2xl"></div> */}
                         </div>
                     </CardContent>

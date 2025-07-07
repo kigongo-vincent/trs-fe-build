@@ -1,3 +1,4 @@
+"use client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -8,33 +9,68 @@ import { CompanyEmployeesChart } from "@/components/company-employees-chart"
 import { CompanyActivityChart } from "@/components/company-activity-chart"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { useEffect, useState } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { fetchCompanyById, getCompanySummary } from "@/services/api"
+import { getAllConsultants } from "@/services/consultants"
+import React from "react"
 
-export default function CompanyDetailsPage({ params }: { params: { id: string } }) {
-  // In a real app, you would fetch the company data based on the ID
-  const companyId = params.id
+export default function CompanyDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(params)
+  const companyId = unwrappedParams.id
+  const [company, setCompany] = useState<any>(null)
+  const [consultants, setConsultants] = useState<any[]>([])
+  const [summary, setSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Mock company data
-  const company = {
-    id: companyId,
-    name: "Acme Corp",
-    website: "acme.com",
-    email: "info@acme.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Main St, San Francisco, CA 94105",
-    status: "Active",
-    package: "Premium",
-    joinedDate: "Jan 12, 2023",
-    employees: 42,
-    departments: 5,
-    projects: 12,
-    tasks: 156,
-    logo: "/placeholder.svg?height=40&width=40",
-    contactPerson: {
-      name: "John Smith",
-      position: "CTO",
-      email: "john@acme.com",
-      phone: "+1 (555) 987-6543",
-    },
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      fetchCompanyById(companyId),
+      getAllConsultants(companyId),
+      getCompanySummary(companyId)
+    ])
+      .then(([companyData, consultantsData, summaryData]) => {
+        setCompany(companyData.data)
+        setConsultants(consultantsData.data)
+        setSummary((summaryData as any).data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Error fetching company, consultants, or summary:", err)
+        setLoading(false)
+      })
+  }, [companyId])
+
+  // Skeletons
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-6 w-16" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-64 md:col-span-2" />
+          <Skeleton className="h-64" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!company) {
+    return <div className="p-8 text-center text-muted-foreground">Company not found.</div>
   }
 
   return (
@@ -46,8 +82,8 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <span className="sr-only">Back</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{company.name}</h1>
-        <Badge className="ml-2 bg-green-500">{company.status}</Badge>
+        <h1 className="text-2xl font-bold tracking-tight">{company.name || '_'}</h1>
+        <Badge className="ml-2 bg-green-500">{company.status || '_'}</Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -70,54 +106,50 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
                     <Building2 className="h-8 w-8" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold">{company.name}</h3>
-                    <p className="text-sm text-muted-foreground">{company.website}</p>
+                    <h3 className="text-lg font-semibold">{company.name || '_'}</h3>
+                    <p className="text-sm text-muted-foreground">{company.sector || '_'}</p>
                   </div>
                 </div>
-
                 <div className="grid gap-2">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.email}</span>
+                    <span>{company.email || '_'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.phone}</span>
+                    <span>{company.phone || '_'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.address}</span>
+                    <span>{company.address || '_'}</span>
                   </div>
                 </div>
               </div>
-
               <div className="flex-1 space-y-4">
                 <h3 className="font-medium">Primary Contact</h3>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback>{company.contactPerson.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{consultants?.[0]?.fullName?.charAt(0) || '_'}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{company.contactPerson.name}</p>
-                    <p className="text-sm text-muted-foreground">{company.contactPerson.position}</p>
+                    <p className="font-medium">{consultants?.[0]?.fullName || '_'}</p>
+                    <p className="text-sm text-muted-foreground">{consultants?.[0]?.jobTitle || '_'}</p>
                   </div>
                 </div>
-
                 <div className="grid gap-2">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.contactPerson.email}</span>
+                    <span>{consultants?.[0]?.email || '_'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.contactPerson.phone}</span>
+                    <span>{consultants?.[0]?.phoneNumber || '_'}</span>
                   </div>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle>Subscription</CardTitle>
@@ -128,55 +160,39 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
               <div>
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">Current Package</h3>
-                  <Badge>{company.package}</Badge>
+                  <Badge>{company.package || '_'}</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">Renewed on Jan 12, 2024</p>
+                <p className="text-sm text-muted-foreground mt-1">Joined on {company.createdAt ? new Date(company.createdAt).toLocaleDateString() : '_'}</p>
               </div>
-
               <Separator />
-
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Employees</span>
-                  <span className="font-medium">{company.employees} / 50</span>
+                  <span className="font-medium">{consultants.length} / 50</span>
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
-                    style={{ width: `${(company.employees / 50) * 100}%` }}
+                    style={{ width: `${(consultants.length / 50) * 100}%` }}
                   ></div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Storage</span>
-                  <span className="font-medium">45 GB / 100 GB</span>
-                </div>
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "45%" }}></div>
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Projects</span>
-                  <span className="font-medium">{company.projects} / 20</span>
+                  <span className="font-medium">0 / 20</span>
                 </div>
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(company.projects / 20) * 100}%` }}
-                  ></div>
+                  <div className="h-full bg-primary rounded-full" style={{ width: `0%` }}></div>
                 </div>
               </div>
-
               <Button className="w-full">Manage Subscription</Button>
             </div>
           </CardContent>
         </Card>
       </div>
-
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -184,7 +200,7 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{company.employees}</div>
+            <div className="text-2xl font-bold">{summary ? summary.consultants : consultants.length}</div>
             <p className="text-xs text-muted-foreground">Active users</p>
           </CardContent>
         </Card>
@@ -194,7 +210,7 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{company.departments}</div>
+            <div className="text-2xl font-bold">{summary ? summary.departments : (company.departments?.length ?? 0)}</div>
             <p className="text-xs text-muted-foreground">Across company</p>
           </CardContent>
         </Card>
@@ -204,7 +220,7 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{company.projects}</div>
+            <div className="text-2xl font-bold">{summary ? summary.projects : 0}</div>
             <p className="text-xs text-muted-foreground">Active projects</p>
           </CardContent>
         </Card>
@@ -214,20 +230,18 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{company.tasks}</div>
-            <p className="text-xs text-muted-foreground">Total tasks</p>
+            <div className="text-2xl font-bold">{summary ? summary.totalMinutes : 0}</div>
+            <p className="text-xs text-muted-foreground">Total minutes</p>
           </CardContent>
         </Card>
       </div>
-
       <Tabs defaultValue="employees" className="space-y-4">
         <TabsList>
           <TabsTrigger value="employees">Employees</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          {/* <TabsTrigger value="settings">Settings</TabsTrigger> */}
         </TabsList>
-
         <TabsContent value="employees" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -235,9 +249,9 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
                 <CardTitle>Employees</CardTitle>
                 <CardDescription>Manage company employees</CardDescription>
               </div>
-              <Button>
+              {/* <Button>
                 <User className="mr-2 h-4 w-4" /> Add Employee
-              </Button>
+              </Button> */}
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -254,107 +268,42 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>JS</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">John Smith</p>
-                              <p className="text-xs text-muted-foreground">john@acme.com</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 align-middle">Engineering</td>
-                        <td className="p-4 align-middle">CTO</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Active</Badge>
-                        </td>
-                        <td className="p-4 align-middle">Jan 15, 2023</td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>SD</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">Sarah Davis</p>
-                              <p className="text-xs text-muted-foreground">sarah@acme.com</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 align-middle">Marketing</td>
-                        <td className="p-4 align-middle">Director</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Active</Badge>
-                        </td>
-                        <td className="p-4 align-middle">Feb 3, 2023</td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>RJ</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">Robert Johnson</p>
-                              <p className="text-xs text-muted-foreground">robert@acme.com</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 align-middle">Sales</td>
-                        <td className="p-4 align-middle">Manager</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Active</Badge>
-                        </td>
-                        <td className="p-4 align-middle">Mar 15, 2023</td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>EW</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">Emily Wilson</p>
-                              <p className="text-xs text-muted-foreground">emily@acme.com</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 align-middle">HR</td>
-                        <td className="p-4 align-middle">Specialist</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Active</Badge>
-                        </td>
-                        <td className="p-4 align-middle">Apr 2, 2023</td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
+                      {consultants.length ? (
+                        consultants.map((user: any) => (
+                          <tr key={user.id} className="border-b transition-colors hover:bg-muted/50">
+                            <td className="p-4 align-middle">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback>{user.fullName?.split(" ").map((n: string) => n[0]).join("") || '_'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-sm font-medium">{user.fullName || '_'}</p>
+                                  <p className="text-xs text-muted-foreground">{user.email || '_'}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 align-middle">{user.department?.name || '_'}</td>
+                            <td className="p-4 align-middle">{user.jobTitle || '_'}</td>
+                            <td className="p-4 align-middle">
+                              <Badge className={user.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>{user.status}</Badge>
+                            </td>
+                            <td className="p-4 align-middle">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '_'}</td>
+                            <td className="p-4 align-middle text-right">
+                              <Button variant="ghost" size="sm">
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-muted-foreground">No employees found.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
-
               <div className="flex items-center justify-end space-x-2 py-4">
                 <Button variant="outline" size="sm">
                   Previous
@@ -365,7 +314,6 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Employee Distribution</CardTitle>
@@ -376,7 +324,6 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="activity" className="space-y-4">
           <Card>
             <CardHeader>
@@ -388,7 +335,6 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="billing" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -415,50 +361,11 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
                     </thead>
                     <tbody>
                       <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">INV-001</td>
-                        <td className="p-4 align-middle">Jan 1, 2024</td>
-                        <td className="p-4 align-middle">$499.00</td>
+                        <td className="p-4 align-middle">-</td>
+                        <td className="p-4 align-middle">-</td>
+                        <td className="p-4 align-middle">-</td>
                         <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Paid</Badge>
-                        </td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            <Download className="mr-2 h-4 w-4" /> Download
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">INV-002</td>
-                        <td className="p-4 align-middle">Feb 1, 2024</td>
-                        <td className="p-4 align-middle">$499.00</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Paid</Badge>
-                        </td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            <Download className="mr-2 h-4 w-4" /> Download
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">INV-003</td>
-                        <td className="p-4 align-middle">Mar 1, 2024</td>
-                        <td className="p-4 align-middle">$499.00</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Paid</Badge>
-                        </td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm">
-                            <Download className="mr-2 h-4 w-4" /> Download
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className="border-b transition-colors hover:bg-muted/50">
-                        <td className="p-4 align-middle">INV-004</td>
-                        <td className="p-4 align-middle">Apr 1, 2024</td>
-                        <td className="p-4 align-middle">$499.00</td>
-                        <td className="p-4 align-middle">
-                          <Badge className="bg-green-500">Paid</Badge>
+                          <Badge className="bg-green-500">-</Badge>
                         </td>
                         <td className="p-4 align-middle text-right">
                           <Button variant="ghost" size="sm">
@@ -473,7 +380,6 @@ export default function CompanyDetailsPage({ params }: { params: { id: string } 
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>

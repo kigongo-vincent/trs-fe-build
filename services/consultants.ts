@@ -111,6 +111,51 @@ interface ConsultantDashboardResponse {
   data: ConsultantDashboardData;
 }
 
+// Consultant Invoice Types
+export interface ConsultantInvoiceSummaryItem {
+  label: string;
+  amount: number | null;
+  currency?: string;
+}
+
+export interface ConsultantInvoiceSummaryResponse {
+  status: number;
+  message: string;
+  data: ConsultantInvoiceSummaryItem[];
+}
+
+export interface ConsultantInvoiceListItem {
+  id: string;
+  invoiceNumber: string;
+  startDate: string;
+  endDate: string;
+  totalHours: string;
+  amount: string;
+  currency?: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConsultantInvoiceListResponse {
+  status: number;
+  message: string;
+  data: ConsultantInvoiceListItem[];
+}
+
+export interface ConsultantMonthlySummaryItem {
+  label: string;
+  amount: number;
+  currency?: string;
+}
+
+export interface ConsultantMonthlySummaryResponse {
+  status: number;
+  message: string;
+  data: ConsultantMonthlySummaryItem[];
+}
+
 // Helper functions
 export const formatMinutesToHours = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
@@ -180,3 +225,31 @@ export const updateConsultantStatus = async (
     status,
   });
 };
+
+// Consultant Invoice API functions
+export async function fetchConsultantInvoiceSummary(): Promise<
+  ConsultantInvoiceSummaryItem[]
+> {
+  const result: ConsultantInvoiceSummaryResponse = await getRequest(
+    "/invoices/consultant/summary"
+  );
+  return result.data;
+}
+
+export async function fetchConsultantInvoices(): Promise<
+  ConsultantInvoiceListItem[]
+> {
+  const result: ConsultantInvoiceListResponse = await getRequest(
+    "/invoices/consultant/list"
+  );
+  return result.data;
+}
+
+export async function fetchConsultantMonthlySummary(): Promise<
+  ConsultantMonthlySummaryItem[]
+> {
+  const result: ConsultantMonthlySummaryResponse = await getRequest(
+    "/invoices/consultant/monthly-summary"
+  );
+  return result.data;
+}

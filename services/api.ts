@@ -285,3 +285,183 @@ export async function fetchPackageById(id: string): Promise<any> {
 export async function fetchCompanies(): Promise<any> {
   return getRequest("/super-admin/companies");
 }
+
+export async function fetchCompanyById(id: string): Promise<any> {
+  return getRequest(`/super-admin/companies/${id}`);
+}
+
+// Type for a single license key
+export interface LicenseKey {
+  id: string;
+  key: string;
+  status: string;
+  expiryDate: string;
+  company: {
+    id: string;
+    name: string;
+    sector: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  package: {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    durationType: string;
+    no_of_users: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Type for the API response
+export interface LicenseKeysApiResponse {
+  status: number;
+  message: string;
+  data: LicenseKey[];
+}
+
+// Fetch all license keys
+export async function fetchLicenseKeys(): Promise<LicenseKeysApiResponse> {
+  return getRequest<LicenseKeysApiResponse>("/super-admin/license-keys");
+}
+
+// Type for license key summary item
+export interface LicenseKeySummaryItem {
+  label: string;
+  value: number;
+}
+
+// Type for the summary API response
+export interface LicenseKeySummaryApiResponse {
+  status: number;
+  message: string;
+  data: LicenseKeySummaryItem[];
+}
+
+// Fetch license key summary
+export async function fetchLicenseKeySummary(): Promise<LicenseKeySummaryApiResponse> {
+  return getRequest<LicenseKeySummaryApiResponse>(
+    "/super-admin/license-keys/summary"
+  );
+}
+
+// Create license key payload type
+export interface CreateLicenseKeyPayload {
+  companyId: string;
+  packageId: string;
+  expiryDate: string;
+  status: string;
+}
+
+// Create license key
+export async function createLicenseKey(
+  payload: CreateLicenseKeyPayload
+): Promise<any> {
+  return postRequest("/super-admin/license-keys", payload);
+}
+
+// Type for super-admin packages summary item
+export interface PackagesSummaryItem {
+  label: string;
+  value: string | number;
+}
+
+// Type for the summary API response
+export interface PackagesSummaryApiResponse {
+  status: number;
+  message: string;
+  data: PackagesSummaryItem[];
+}
+
+// Fetch super-admin packages summary
+export async function fetchPackagesSummary(): Promise<PackagesSummaryApiResponse> {
+  return getRequest<PackagesSummaryApiResponse>(
+    "/super-admin/packages/summary"
+  );
+}
+
+// Type for companies summary item
+export interface CompaniesSummaryItem {
+  label: string;
+  value: number;
+}
+
+// Type for the companies summary API response
+export interface CompaniesSummaryApiResponse {
+  status: number;
+  message: string;
+  data: CompaniesSummaryItem[];
+}
+
+// Fetch super-admin companies summary
+export async function fetchCompaniesSummary(): Promise<CompaniesSummaryApiResponse> {
+  return getRequest<CompaniesSummaryApiResponse>(
+    "/super-admin/companies/summary"
+  );
+}
+
+export interface CompanyInvoiceStat {
+  label: string;
+  count: number;
+  amount: number;
+}
+
+export interface CompanyInvoiceStatsApiResponse {
+  status: number;
+  message: string;
+  data: CompanyInvoiceStat[];
+}
+
+export async function fetchCompanyInvoiceStats(): Promise<CompanyInvoiceStatsApiResponse> {
+  return getRequest<CompanyInvoiceStatsApiResponse>(
+    "/super-admin/company-invoices/stats"
+  );
+}
+
+export interface CompanyInvoice {
+  id: string;
+  invoiceNumber: string;
+  companyName: string;
+  amount: number;
+  status: "Paid" | "Pending" | "Overdue";
+  date: string;
+  // Add more fields as needed based on actual API response
+}
+
+export interface CompanyInvoicesApiResponse {
+  status: number;
+  message: string;
+  data: CompanyInvoice[];
+}
+
+export async function fetchCompanyInvoices(): Promise<CompanyInvoicesApiResponse> {
+  return getRequest<CompanyInvoicesApiResponse>(
+    "/super-admin/company-invoices"
+  );
+}
+
+// Payload type for creating a company invoice
+export interface CreateCompanyInvoicePayload {
+  companyId: string;
+  amount: number;
+  currency: string;
+  invoiceDate: string;
+  dueDate: string;
+  status: string;
+}
+
+// Create company invoice
+export async function createCompanyInvoice(
+  payload: CreateCompanyInvoicePayload
+): Promise<any> {
+  return postRequest("/super-admin/company-invoices", payload);
+}
