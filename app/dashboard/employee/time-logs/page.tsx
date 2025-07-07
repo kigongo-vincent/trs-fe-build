@@ -57,6 +57,8 @@ export default function TimeLogsPage() {
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishAllDialogOpen, setPublishAllDialogOpen] = useState(false)
   const [isPublishingAll, setIsPublishingAll] = useState(false)
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>("")
 
   // Fetch time logs data
   useEffect(() => {
@@ -453,24 +455,24 @@ export default function TimeLogsPage() {
           </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-[240px] justify-start text-left font-normal">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                <span>May 5, 2025 - May 11, 2025</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                defaultMonth={new Date(2025, 4)}
-                selected={{
-                  from: new Date(2025, 4, 5),
-                  to: new Date(2025, 4, 11),
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <label htmlFor="start-date" className="text-sm text-muted-foreground">Start:</label>
+            <Input
+              id="start-date"
+              type="date"
+              className="h-9 w-[140px]"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+            />
+            <label htmlFor="end-date" className="text-sm text-muted-foreground">End:</label>
+            <Input
+              id="end-date"
+              type="date"
+              className="h-9 w-[140px]"
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+            />
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-9 w-[120px]">
               <SelectValue placeholder="Status" />
@@ -498,10 +500,7 @@ export default function TimeLogsPage() {
             <Filter className="mr-2 h-4 w-4" />
             Filters
           </Button>
-          <Button variant="outline" size="sm" className="h-9">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+
         </div>
       </div>
 
@@ -509,21 +508,27 @@ export default function TimeLogsPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>
-            Time Logs
+              Time Logs
             </span>
 
-          {timeLogs.some(log => log.status === 'draft') && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setPublishAllDialogOpen(true)}
-              disabled={isPublishingAll || loading}
-              className="flex items-center gap-2"
-            >
-              {isPublishingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              Publish All Drafts
-            </Button>
-          )}
+            <span className="flex items-center space-x-3">
+              <Button variant="outline" size="sm" className="h-9">
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              {timeLogs.some(log => log.status === 'draft') && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setPublishAllDialogOpen(true)}
+                  disabled={isPublishingAll || loading}
+                  className="flex items-center gap-2"
+                >
+                  {isPublishingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Publish All Drafts
+                </Button>
+              )}
+            </span>
           </CardTitle>
           <CardDescription>
             Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
@@ -559,13 +564,11 @@ export default function TimeLogsPage() {
                   <TableHead>Project</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Attachments</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTimeLogs.map((log) => {
-                  const attachments = getMockAttachments(log)
                   return (
                     <TableRow key={log.id}>
                       <TableCell>{formatDate(log.createdAt)}</TableCell>
@@ -593,16 +596,6 @@ export default function TimeLogsPage() {
                         >
                           {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {attachments.length > 0 ? (
-                          <div className="flex items-center gap-1">
-                            <Paperclip className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">{attachments.length}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
                       </TableCell>
                       <TableCell className="text-right flex items-center justify-end">
                         <Button

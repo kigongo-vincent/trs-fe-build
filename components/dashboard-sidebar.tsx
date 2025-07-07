@@ -276,6 +276,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       <span>Consultants</span>
                     </Link>
                     <Link
+                      href="/dashboard/company-admin/board-members"
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        isActive("/dashboard/company-admin/board-members") && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <Users className="h-4 w-4" />
+                      <span>Board Members</span>
+                    </Link>
+                    <Link
                       href="/dashboard/company-admin/tasks"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
