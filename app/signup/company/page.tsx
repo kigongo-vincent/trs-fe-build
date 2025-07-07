@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Check, ChevronsUpDown } from "lucide-react"
-import { postRequest } from "@/services/api"
+import { signupCompany, storeAuthData, getUserRole } from "@/services/auth"
 import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
 
@@ -91,24 +91,22 @@ export default function CompanySignup() {
     setError(null)
 
     try {
-      const response = await postRequest<{
-        status: number
-        message: string
-        data: {
-          user: any
-          token: string
-        }
-      }>("/company/signup", formData)
-
-      // Store token in localStorage
-      localStorage.setItem("token", response.data.token)
-      localStorage.setItem("user", JSON.stringify(response.data.user))
-
-      // Redirect to company admin dashboard
-      router.push("/dashboard/company-admin")
-    } catch (err) {
+      const response = await signupCompany(formData)
+      storeAuthData(response.data.token, response.data.user)
+      // Redirect based on role, benchmarking from login
+      const roleName = getUserRole() || ""
+      if (roleName === "Super Admin") {
+        router.push("/dashboard/super-admin/companies")
+      } else if (roleName === "Company Admin") {
+        router.push("/dashboard/company-admin")
+      } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
+        router.push("/dashboard/employee")
+      } else {
+        router.push("/dashboard/employee")
+      }
+    } catch (err: any) {
       console.error("Signup error:", err)
-      setError(err instanceof Error ? err.message : "An error occurred during signup")
+      setError(err.message || "An error occurred during signup")
     } finally {
       setIsLoading(false)
     }

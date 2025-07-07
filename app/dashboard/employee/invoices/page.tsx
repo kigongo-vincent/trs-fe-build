@@ -15,41 +15,35 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { format, addDays, isAfter, isBefore, isEqual, startOfMonth, endOfMonth } from "date-fns"
 import {
-  InvoiceSummaryData,
-  MonthlySalaryData,
-  Invoice,
-  fetchInvoiceSummary,
-  fetchMonthlySalary,
-  fetchInvoices
-} from "@/services/employee"
+  ConsultantInvoiceSummaryItem,
+  ConsultantInvoiceListItem,
+  ConsultantMonthlySummaryItem,
+  fetchConsultantInvoiceSummary,
+  fetchConsultantInvoices,
+  fetchConsultantMonthlySummary
+} from "@/services/consultants"
 import type { DateRange } from "react-day-picker"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { format as formatDateFns } from "date-fns"
 
 export default function InvoicesPage() {
-  const [summaryData, setSummaryData] = useState<InvoiceSummaryData>({
-    currentMonth: { amount: 0, hours: 0 },
-    lastMonth: { amount: 0, hours: 0 },
-    yearToDate: { amount: 0, invoiceCount: 0 },
-    hourlyRate: 0
-  })
-  const [monthlySalaryData, setMonthlySalaryData] = useState<MonthlySalaryData[]>([])
-  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [summaryData, setSummaryData] = useState<ConsultantInvoiceSummaryItem[]>([])
+  const [monthlySummaryData, setMonthlySummaryData] = useState<ConsultantMonthlySummaryItem[]>([])
+  const [invoices, setInvoices] = useState<ConsultantInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [isInvoicesLoading, setIsInvoicesLoading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [summaryResult, salaryResult, invoicesResult] = await Promise.all([
-          fetchInvoiceSummary(),
-          fetchMonthlySalary(),
-          fetchInvoices()
+        const [summaryResult, monthlySummaryResult, invoicesResult] = await Promise.all([
+          fetchConsultantInvoiceSummary(),
+          fetchConsultantMonthlySummary(),
+          fetchConsultantInvoices()
         ])
-        setSummaryData(summaryResult)
-        setMonthlySalaryData(salaryResult)
+        setSummaryData(Array.isArray(summaryResult) ? summaryResult : [])
+        setMonthlySummaryData(Array.isArray(monthlySummaryResult) ? monthlySummaryResult : [])
         setInvoices(Array.isArray(invoicesResult) ? invoicesResult : [])
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -60,47 +54,6 @@ export default function InvoicesPage() {
 
     fetchData()
   }, [])
-
-  // Set default date range to current month on mount if not set
-  useEffect(() => {
-    if (!dateRange) {
-      const now = new Date()
-      setDateRange({ from: startOfMonth(now), to: endOfMonth(now) })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Helper to format date as DD-MM-YYYY for API
-  const formatDateForAPI = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}-${month}-${year}`
-  }
-
-  // Fetch invoices when dateRange changes
-  useEffect(() => {
-    const fetchFilteredInvoices = async () => {
-      setIsInvoicesLoading(true)
-      try {
-        let invoicesResult: Invoice[]
-        if (dateRange?.from && dateRange?.to) {
-          invoicesResult = await fetchInvoices(
-            formatDateForAPI(dateRange.from),
-            formatDateForAPI(dateRange.to)
-          )
-        } else {
-          invoicesResult = await fetchInvoices()
-        }
-        setInvoices(Array.isArray(invoicesResult) ? invoicesResult : [])
-      } catch (error) {
-        console.error("Error fetching filtered invoices:", error)
-      } finally {
-        setIsInvoicesLoading(false)
-      }
-    }
-    fetchFilteredInvoices()
-  }, [dateRange])
 
   const SummaryCardSkeleton = () => (
     <Card>
@@ -135,7 +88,7 @@ export default function InvoicesPage() {
     </TableRow>
   )
 
-  const getStatusBadgeStyles = (status: Invoice['status']) => {
+  const getStatusBadgeStyles = (status: string) => {
     switch (status) {
       case 'processing':
         return 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800'
@@ -154,15 +107,9 @@ export default function InvoicesPage() {
     return true
   })
 
-  // Helper for date range label
-  const getDateRangeLabel = () => {
-    if (dateRange?.from && dateRange?.to) {
-      return `${format(dateRange.from, 'LLL dd, yyyy')} - ${format(dateRange.to, 'LLL dd, yyyy')}`
-    }
-    if (dateRange?.from) {
-      return format(dateRange.from, 'LLL dd, yyyy')
-    }
-    return 'Filter by date range'
+  // Helper to get currency code (default to USD)
+  function getCurrencyCode(currency?: string) {
+    return currency ? currency.toUpperCase() : 'USD';
   }
 
   return (
@@ -185,52 +132,34 @@ export default function InvoicesPage() {
             <SummaryCardSkeleton />
           </>
         ) : (
-          <>
-            <Card>
+          summaryData.map((item, idx) => (
+            <Card key={idx}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Current Month</CardTitle>
+                <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${summaryData.currentMonth.amount.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Based on {summaryData.currentMonth.hours} hours</p>
+                <div className="text-2xl font-bold">
+                  {item.amount !== null
+                    ? `${Number(item.amount).toFixed(2)} ${getCurrencyCode(item.currency)}`
+                    : '--'}
+                </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Last Month</CardTitle>
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${summaryData.lastMonth.amount.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">Based on {summaryData.lastMonth.hours} hours</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Year to Date</CardTitle>
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${summaryData.yearToDate.amount.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">{summaryData.yearToDate.invoiceCount} invoices processed</p>
-              </CardContent>
-            </Card>
-            {/* i  */}
-          </>
+          ))
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Salary</CardTitle>
-          <CardDescription>Your salary over the past 12 months</CardDescription>
+          <CardTitle>Monthly Earnings</CardTitle>
+          <CardDescription>Your earnings over the past 12 months</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-[350px] w-full" />
           ) : (
-            <MonthlySalaryChart data={monthlySalaryData} />
+            <MonthlySalaryChart data={monthlySummaryData} />
           )}
         </CardContent>
       </Card>
@@ -244,13 +173,6 @@ export default function InvoicesPage() {
           </Button>
         </div>
         <div className="flex flex-row items-center gap-2">
-          <div className="w-[300px]">
-            <DateRangePicker
-              className="w-full"
-              value={dateRange}
-              onChange={setDateRange}
-            />
-          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Status" />
@@ -305,10 +227,12 @@ export default function InvoicesPage() {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                     <TableCell>
-                      {format(new Date(invoice.periodStart), 'MMM yyyy')}
+                      {`${format(new Date(invoice.startDate), 'MMM yyyy')}`}
                     </TableCell>
-                    <TableCell>{invoice.hours}</TableCell>
-                    <TableCell>${(invoice.amount / 100).toFixed(2)}</TableCell>
+                    <TableCell>{invoice.totalHours}</TableCell>
+                    <TableCell>
+                      {Number(invoice.amount).toFixed(2)} {getCurrencyCode(invoice.currency)}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -318,7 +242,7 @@ export default function InvoicesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(invoice.processedAt), 'MMM d, yyyy')}
+                      {format(new Date(invoice.updatedAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

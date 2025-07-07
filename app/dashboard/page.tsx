@@ -12,12 +12,7 @@ import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 export default function DashboardPage() {
   const router = useRouter()
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (!isAuthenticated() || isTokenExpired()) {
-        router.replace("/")
-        return
-      }
-    }
+    // No authentication check, always allow access
   }, [router])
   return null
 }

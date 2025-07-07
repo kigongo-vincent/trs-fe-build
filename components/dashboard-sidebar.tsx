@@ -92,8 +92,8 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
       </div>
       <ScrollArea className="flex-1 px-2 py-4">
         <div className="space-y-4">
-          {/* Super Admin Section */}
-          {shouldShowSuperAdmin && (
+          {/* Super Admin Section: Only for Super Admin */}
+          {userRole === "Super Admin" && (
             <>
               <div className="px-3 py-2">
                 <div className="space-y-1">
@@ -110,6 +110,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 </div>
               </div>
 
+              {/* Administration Section: Only for Super Admin */}
               <div className="px-3 py-2">
                 <div
                   className="flex items-center justify-between py-2 cursor-pointer"
@@ -169,6 +170,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 )}
               </div>
 
+              {/* Analytics Section: Only for Super Admin */}
               <div className="px-3 py-2">
                 <div
                   className="flex items-center justify-between py-2 cursor-pointer"

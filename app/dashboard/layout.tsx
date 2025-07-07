@@ -24,11 +24,7 @@ export default function DashboardLayout({
   const router = useRouter()
   useEffect(() => {
     if (typeof window !== "undefined") {
-      if (!isAuthenticated() || isTokenExpired()) {
-        router.replace("/")
-      } else {
-        setUserRole(getUserRole())
-      }
+      setUserRole(getUserRole())
     }
   }, [router])
 

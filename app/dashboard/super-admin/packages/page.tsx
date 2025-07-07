@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { PackageDistributionChart } from "@/components/package-distribution-chart"
 import { useEffect, useState } from "react"
-import { fetchPackages, createPackage, updatePackage } from "@/services/api"
+import { fetchPackages, createPackage, updatePackage, fetchPackagesSummary, type PackagesSummaryItem } from "@/services/api"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
@@ -59,6 +59,9 @@ export default function PackagesPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingPackage, setEditingPackage] = useState<PackageType | null>(null)
+  const [summary, setSummary] = useState<PackagesSummaryItem[] | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(true)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadPackages() {
@@ -74,6 +77,22 @@ export default function PackagesPage() {
       }
     }
     loadPackages()
+  }, [])
+
+  useEffect(() => {
+    async function loadSummary() {
+      setSummaryLoading(true)
+      setSummaryError(null)
+      try {
+        const res = await fetchPackagesSummary()
+        setSummary(res.data)
+      } catch (err: any) {
+        setSummaryError("Failed to fetch summary")
+      } finally {
+        setSummaryLoading(false)
+      }
+    }
+    loadSummary()
   }, [])
 
   // Filter and search logic
@@ -345,7 +364,7 @@ export default function PackagesPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {loading ? (
+        {summaryLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -358,50 +377,22 @@ export default function PackagesPage() {
               </CardContent>
             </Card>
           ))
-        ) : (
-          <>
-            <Card>
+        ) : summaryError ? (
+          <div className="col-span-4 text-center text-red-500 py-8">{summaryError}</div>
+        ) : summary && summary.length > 0 ? (
+          summary.map((item, idx) => (
+            <Card key={item.label}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Packages</CardTitle>
+                <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{totalPackages}</div>
-                <p className="text-xs text-muted-foreground">{packages.map(p => p.name).join(", ")}</p>
+                <div className="text-2xl font-bold">{item.label === "Monthly Revenue" ? `$${item.value}` : item.value}</div>
+                {/* Optionally add a description or extra info here if needed */}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">+12 from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">$0.00</div>
-                <p className="text-xs text-muted-foreground">Sum of all active monthly packages</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Most Popular</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">-</div>
-                <p className="text-xs text-muted-foreground">No active packages</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
+          ))
+        ) : null}
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">

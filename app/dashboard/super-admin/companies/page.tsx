@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { CompaniesByPackageChart } from "@/components/companies-by-package-chart"
 import { useEffect, useState } from "react"
-import { fetchCompanies } from "@/services/api"
+import { fetchCompanies, fetchCompaniesSummary } from "@/services/api"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function CompaniesPage() {
@@ -16,6 +16,8 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState("all")
   const [search, setSearch] = useState("")
+  const [stats, setStats] = useState<any[]>([])
+  const [statsLoading, setStatsLoading] = useState(true)
 
   useEffect(() => {
     async function loadCompanies() {
@@ -30,6 +32,29 @@ export default function CompaniesPage() {
     }
     loadCompanies()
   }, [])
+
+  useEffect(() => {
+    async function loadStats() {
+      setStatsLoading(true)
+      try {
+        const res = await fetchCompaniesSummary()
+        setStats(res.data || [])
+      } catch (e) {
+        setStats([])
+      }
+      setStatsLoading(false)
+    }
+    loadStats()
+  }, [])
+
+  function getStat(label: string) {
+    return stats.find((s) => s.label === label)?.value ?? 0
+  }
+  const totalCompanies = getStat("Total Companies")
+  const activeCompanies = getStat("Active Companies")
+  const trialCompanies = getStat("Trial Companies")
+  const totalUsers = getStat("Total Users")
+  const averageUsers = totalCompanies > 0 ? Math.floor(totalUsers / totalCompanies) : 0
 
   // Filtering logic
   const filteredCompanies = companies.filter((company) => {
@@ -52,11 +77,11 @@ export default function CompaniesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Companies</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
+          {/* <Button asChild>
             <Link href="/dashboard/super-admin/companies/new">
               <Plus className="mr-2 h-4 w-4" /> Add Company
             </Link>
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -67,8 +92,8 @@ export default function CompaniesPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+2 from last month</p>
+            <div className="text-2xl font-bold">{statsLoading ? <Skeleton className="h-6 w-12" /> : totalCompanies}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
         <Card>
@@ -77,8 +102,8 @@ export default function CompaniesPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">22</div>
-            <p className="text-xs text-muted-foreground">92% of total</p>
+            <div className="text-2xl font-bold">{statsLoading ? <Skeleton className="h-6 w-12" /> : activeCompanies}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
         <Card>
@@ -87,8 +112,8 @@ export default function CompaniesPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-muted-foreground">8% of total</p>
+            <div className="text-2xl font-bold">{statsLoading ? <Skeleton className="h-6 w-12" /> : trialCompanies}</div>
+            <p className="text-xs text-muted-foreground">&nbsp;</p>
           </CardContent>
         </Card>
         <Card>
@@ -97,7 +122,7 @@ export default function CompaniesPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">{statsLoading ? <Skeleton className="h-6 w-12" /> : averageUsers}</div>
             <p className="text-xs text-muted-foreground">Per company</p>
           </CardContent>
         </Card>
