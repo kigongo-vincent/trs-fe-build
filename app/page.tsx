@@ -89,9 +89,9 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       {/* Split layout */}
-      <div className="flex w-[80vw] min-h-[80vh] bg-white rounded-2xl shadow-lg shadow-gray-100 overflow-hidden relative z-10">
+      <div className="flex w-[80vw] min-h-[80vh] bg-white dark:bg-card rounded-2xl shadow-lg shadow-gray-100 dark:shadow-gray-900 overflow-hidden relative z-10">
         {/* Left: Image + testimonial */}
         <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 relative">
           <Image
@@ -119,7 +119,7 @@ export default function Home() {
         {/* Right: Login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-8">
           <div className="w-full max-w-md">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-gray-900">Welcome back to TRS</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">Welcome back to TRS</h1>
             <p className="text-gray-500 mb-8">Log in to manage your team and tasks efficiently.</p>
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
@@ -127,6 +127,7 @@ export default function Home() {
                 <Input
                   id="email"
                   name="email"
+                  autoComplete="off"
                   type="email"
                   placeholder="alex.jordan@gmail.com"
                   value={formData.email}
@@ -139,6 +140,7 @@ export default function Home() {
                 <Label htmlFor="password" className="mb-1">Password</Label>
                 <div className="relative">
                   <Input
+                    autoComplete="off"
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}

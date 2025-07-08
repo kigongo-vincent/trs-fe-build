@@ -5,6 +5,15 @@ rm -rf .next
 
 echo -e "\033[0;34m🧹 Cleared .next folder for a clean build.\033[0m"
 
+# Build check step
+BUILD_CMD="pnpm build"
+echo -e "${BLUE}🔨 Running build check: ${YELLOW}$BUILD_CMD${NC}"
+if ! $BUILD_CMD; then
+    echo -e "${RED}❌ Build failed. Aborting deployment.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Build succeeded. Proceeding with deployment.${NC}"
+
 # Interactive Branch Merge and Push Script
 # Usage: ./merge-and-push.sh "Your commit message"
 
