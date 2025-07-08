@@ -12,6 +12,7 @@ import { EmployeePerformanceChart } from "@/components/employee-performance-char
 import { getRequest } from "@/services/api"
 import { useEffect, useState } from "react"
 import { getAuthData } from "@/services/auth"
+import DashboardSidebarWithSuspense from "@/components/dashboard-sidebar"
 
 export default function AnalyticsPage() {
   // Get companyId from session
@@ -26,12 +27,12 @@ export default function AnalyticsPage() {
     if (!companyId) return;
     async function fetchAnalytics() {
       try {
-        const dailyHoursRes = await getRequest(`/company/analytics/daily-hours-current-month/${companyId}`);
-        setDailyHours(Array.isArray(dailyHoursRes?.data) ? dailyHoursRes.data : Array.isArray(dailyHoursRes) ? dailyHoursRes : []);
-        const hoursPerDeptRes = await getRequest(`/company/analytics/hours-per-department/${companyId}`);
-        setHoursPerDept(Array.isArray(hoursPerDeptRes?.data) ? hoursPerDeptRes.data : Array.isArray(hoursPerDeptRes) ? hoursPerDeptRes : []);
-        const topConsultantsRes = await getRequest(`/company/analytics/top-consultants-by-hours-current-month/${companyId}`);
-        setTopConsultants(Array.isArray(topConsultantsRes?.data) ? topConsultantsRes.data : Array.isArray(topConsultantsRes) ? topConsultantsRes : []);
+        const dailyHoursRes = await getRequest<{ data?: any[] }>(`/company/analytics/daily-hours-current-month/${companyId}`);
+        setDailyHours(Array.isArray(dailyHoursRes?.data) ? dailyHoursRes.data : Array.isArray(dailyHoursRes) ? (dailyHoursRes as any) : []);
+        const hoursPerDeptRes = await getRequest<{ data?: any[] }>(`/company/analytics/hours-per-department/${companyId}`);
+        setHoursPerDept(Array.isArray(hoursPerDeptRes?.data) ? hoursPerDeptRes.data : Array.isArray(hoursPerDeptRes) ? (hoursPerDeptRes as any) : []);
+        const topConsultantsRes = await getRequest<{ data?: any[] }>(`/company/analytics/top-consultants-by-hours-current-month/${companyId}`);
+        setTopConsultants(Array.isArray(topConsultantsRes?.data) ? topConsultantsRes.data : Array.isArray(topConsultantsRes) ? (topConsultantsRes as any) : []);
       } catch (err) {
         console.error("[Analytics] Error fetching analytics data:", err);
       }

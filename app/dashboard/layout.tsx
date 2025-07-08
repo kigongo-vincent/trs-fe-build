@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { ModeToggle } from "@/components/mode-toggle"
 import { UserNav } from "@/components/user-nav"
 import { MainNav } from "@/components/main-nav"
-import { DashboardSidebar } from "@/components/dashboard-sidebar"
+import DashboardSidebarWithSuspense from "@/components/dashboard-sidebar"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
@@ -59,7 +59,7 @@ export default function DashboardLayout({
         </div>
       </header>
       <div className="flex flex-1">
-        <DashboardSidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+        <DashboardSidebarWithSuspense open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className={cn("flex-1 p-4 md:p-6", "md:ml-64")}>
           <Suspense fallback={<div>Loading...</div>}>
             {children}
