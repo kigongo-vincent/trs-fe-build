@@ -315,6 +315,10 @@ export default function SettingsPage() {
       }
     }
 
+    if (!profileForm.bio.trim()) {
+      errors.bio = "Bio is required";
+    }
+
     setProfileErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -347,43 +351,25 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
-  // Avatar upload function (returns avatarUrl or throws)
-  const uploadAvatar = async (file: File): Promise<string> => {
-    const authData = getAuthData();
-    const token = authData?.token;
-    const formData = new FormData();
-    formData.append("avatar", file);
-    const res = await fetch(`${BASE_URL}/profile/avatar`, {
-      method: "POST",
-      body: formData,
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to upload avatar");
-    }
-    const data = await res.json();
-    if (data?.avatarUrl) return data.avatarUrl;
-    throw new Error("Failed to update avatar");
-  };
-
   const handleProfileUpdate = async () => {
     if (!validateProfileForm()) {
+      // Collect all error messages from profileErrors
+      const errorMessages = Object.values(profileErrors)
+        .flatMap(err => {
+          if (!err) return [];
+          if (typeof err === 'string') return [err];
+          // For nested error objects (nextOfKin, address, bankDetails)
+          return Object.values(err).filter(Boolean);
+        })
+        .filter(Boolean)
+        .join('\n');
+      toast.error(errorMessages || "Please fix the errors in the form before submitting.");
       return;
     }
 
     setIsUpdatingProfile(true);
 
     try {
-      let avatarUrl = user?.avatarUrl;
-      // If a new avatar is selected, upload it first
-      if (selectedAvatarFile) {
-        avatarUrl = await uploadAvatar(selectedAvatarFile);
-        setUser((prev: any) => ({ ...prev, avatarUrl }));
-        setAvatarPreview(null);
-        setSelectedAvatarFile(null);
-      }
-
       // Format the data properly for the API
       const requestData: any = {
         firstName: profileForm.firstName.trim(),
@@ -392,60 +378,77 @@ export default function SettingsPage() {
         email: profileForm.email.trim(),
         jobTitle: profileForm.jobTitle.trim(),
         bio: profileForm.bio.trim(),
-      }
+      };
 
       // Only add departmentId if it has a value
       if (profileForm.departmentId && profileForm.departmentId.trim()) {
-        requestData.departmentId = profileForm.departmentId
+        requestData.departmentId = profileForm.departmentId;
       }
 
       // Only add phoneNumber if it has a value
       if (profileForm.phoneNumber && profileForm.phoneNumber.trim()) {
-        requestData.phoneNumber = profileForm.phoneNumber.trim()
+        requestData.phoneNumber = profileForm.phoneNumber.trim();
       }
 
       // Only add dateOfBirth if it has a value
       if (profileForm.dateOfBirth && profileForm.dateOfBirth.trim()) {
-        requestData.dateOfBirth = new Date(profileForm.dateOfBirth).toISOString()
+        requestData.dateOfBirth = new Date(profileForm.dateOfBirth).toISOString();
       }
 
       // Only add nextOfKin if any field has a value
-      if (profileForm.nextOfKin.name?.trim() || profileForm.nextOfKin.relationship?.trim() || profileForm.nextOfKin.phoneNumber?.trim() || profileForm.nextOfKin.email?.trim()) {
-        requestData.nextOfKin = {}
-        if (profileForm.nextOfKin.name?.trim()) requestData.nextOfKin.name = profileForm.nextOfKin.name.trim()
-        if (profileForm.nextOfKin.relationship?.trim()) requestData.nextOfKin.relationship = profileForm.nextOfKin.relationship.trim()
-        if (profileForm.nextOfKin.phoneNumber?.trim()) requestData.nextOfKin.phoneNumber = profileForm.nextOfKin.phoneNumber.trim()
-        if (profileForm.nextOfKin.email?.trim()) requestData.nextOfKin.email = profileForm.nextOfKin.email.trim()
+      if (
+        profileForm.nextOfKin.name?.trim() ||
+        profileForm.nextOfKin.relationship?.trim() ||
+        profileForm.nextOfKin.phoneNumber?.trim() ||
+        profileForm.nextOfKin.email?.trim()
+      ) {
+        requestData.nextOfKin = {};
+        if (profileForm.nextOfKin.name?.trim()) requestData.nextOfKin.name = profileForm.nextOfKin.name.trim();
+        if (profileForm.nextOfKin.relationship?.trim()) requestData.nextOfKin.relationship = profileForm.nextOfKin.relationship.trim();
+        if (profileForm.nextOfKin.phoneNumber?.trim()) requestData.nextOfKin.phoneNumber = profileForm.nextOfKin.phoneNumber.trim();
+        if (profileForm.nextOfKin.email?.trim()) requestData.nextOfKin.email = profileForm.nextOfKin.email.trim();
       }
 
       // Only add address if any field has a value
-      if (profileForm.address.street.trim() || profileForm.address.city.trim() || profileForm.address.state.trim() || profileForm.address.country.trim() || profileForm.address.postalCode.trim()) {
-        requestData.address = {}
-        if (profileForm.address.street.trim()) requestData.address.street = profileForm.address.street.trim()
-        if (profileForm.address.city.trim()) requestData.address.city = profileForm.address.city.trim()
-        if (profileForm.address.state.trim()) requestData.address.state = profileForm.address.state.trim()
-        if (profileForm.address.country.trim()) requestData.address.country = profileForm.address.country.trim()
-        if (profileForm.address.postalCode.trim()) requestData.address.postalCode = profileForm.address.postalCode.trim()
+      if (
+        profileForm.address.street.trim() ||
+        profileForm.address.city.trim() ||
+        profileForm.address.state.trim() ||
+        profileForm.address.country.trim() ||
+        profileForm.address.postalCode.trim()
+      ) {
+        requestData.address = {};
+        if (profileForm.address.street.trim()) requestData.address.street = profileForm.address.street.trim();
+        if (profileForm.address.city.trim()) requestData.address.city = profileForm.address.city.trim();
+        if (profileForm.address.state.trim()) requestData.address.state = profileForm.address.state.trim();
+        if (profileForm.address.country.trim()) requestData.address.country = profileForm.address.country.trim();
+        if (profileForm.address.postalCode.trim()) requestData.address.postalCode = profileForm.address.postalCode.trim();
       }
 
       // Only add bankDetails if any field has a value
-      if (profileForm.bankDetails.accountName.trim() || profileForm.bankDetails.accountNumber.trim() || profileForm.bankDetails.bankName.trim() || profileForm.bankDetails.swiftCode.trim() || profileForm.bankDetails.routingNumber.trim()) {
-        requestData.bankDetails = {}
-        if (profileForm.bankDetails.accountName.trim()) requestData.bankDetails.accountName = profileForm.bankDetails.accountName.trim()
-        if (profileForm.bankDetails.accountNumber.trim()) requestData.bankDetails.accountNumber = profileForm.bankDetails.accountNumber.trim()
-        if (profileForm.bankDetails.bankName.trim()) requestData.bankDetails.bankName = profileForm.bankDetails.bankName.trim()
-        if (profileForm.bankDetails.swiftCode.trim()) requestData.bankDetails.swiftCode = profileForm.bankDetails.swiftCode.trim()
-        if (profileForm.bankDetails.routingNumber.trim()) requestData.bankDetails.routingNumber = profileForm.bankDetails.routingNumber.trim()
+      if (
+        profileForm.bankDetails.accountName.trim() ||
+        profileForm.bankDetails.accountNumber.trim() ||
+        profileForm.bankDetails.bankName.trim() ||
+        profileForm.bankDetails.swiftCode.trim() ||
+        profileForm.bankDetails.routingNumber.trim()
+      ) {
+        requestData.bankDetails = {};
+        if (profileForm.bankDetails.accountName.trim()) requestData.bankDetails.accountName = profileForm.bankDetails.accountName.trim();
+        if (profileForm.bankDetails.accountNumber.trim()) requestData.bankDetails.accountNumber = profileForm.bankDetails.accountNumber.trim();
+        if (profileForm.bankDetails.bankName.trim()) requestData.bankDetails.bankName = profileForm.bankDetails.bankName.trim();
+        if (profileForm.bankDetails.swiftCode.trim()) requestData.bankDetails.swiftCode = profileForm.bankDetails.swiftCode.trim();
+        if (profileForm.bankDetails.routingNumber.trim()) requestData.bankDetails.routingNumber = profileForm.bankDetails.routingNumber.trim();
       }
 
       // Only add officeDays if it has a value
       if (profileForm.officeDays && profileForm.officeDays.trim()) {
-        requestData.officeDays = profileForm.officeDays
+        requestData.officeDays = profileForm.officeDays;
       }
 
-      // Attach avatarUrl if present
-      if (avatarUrl) {
-        requestData.avatarUrl = avatarUrl;
+      // If a new avatar is selected, add it as base64 string (profileImage)
+      if (selectedAvatarFile && avatarPreview) {
+        requestData.profileImage = avatarPreview;
       }
 
       const response = await updateProfile(requestData);
@@ -471,7 +474,7 @@ export default function SettingsPage() {
           address: profileForm.address,
           bankDetails: profileForm.bankDetails,
           officeDays: profileForm.officeDays,
-          avatarUrl: avatarUrl,
+          // avatarUrl will be updated by backend if profileImage is processed
         };
 
         // Update local storage
@@ -486,10 +489,8 @@ export default function SettingsPage() {
         }
       }
 
-      toast.success("Profile updated successfully", {
-        description: response.message || "Your profile has been updated.",
-      });
-
+      // Redirect to profile page after update
+      router.push("/dashboard/profile");
     } catch (error: any) {
       console.error("Profile update error:", error);
 
@@ -568,55 +569,6 @@ export default function SettingsPage() {
       }
     } finally {
       setIsUpdatingPassword(false);
-    }
-  };
-
-  // Avatar upload handler using fetch and BASE_URL
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingAvatar(true);
-    try {
-      // Get token from auth data
-      const authData = getAuthData();
-      const token = authData?.token;
-      console.log(token)
-      const formData = new FormData();
-      formData.append("avatar", file);
-
-      const res = await fetch(`${BASE_URL}/profile/avatar`, {
-        method: "POST",
-        body: formData,
-        headers: token
-          ? {
-            Authorization: `Bearer ${token}`,
-          }
-          : undefined,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to upload avatar");
-      }
-
-      const data = await res.json();
-      if (data?.avatarUrl) {
-        setUser((prev: any) => ({ ...prev, avatarUrl: data.avatarUrl }));
-        if (authData) {
-          storeAuthData(authData.token, { ...user, avatarUrl: data.avatarUrl });
-        }
-        toast.success("Avatar updated successfully");
-      } else {
-        toast.error("Failed to update avatar");
-      }
-    } catch (error: any) {
-      toast.error("Failed to upload avatar", {
-        description: error?.message,
-      });
-    } finally {
-      setIsUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -710,6 +662,18 @@ export default function SettingsPage() {
                       />
                       {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
                     </div>
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        value={profileForm.bio}
+                        onChange={e => handleProfileChange("bio", e.target.value)}
+                        placeholder="Enter your bio"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.bio ? "border-red-500" : ""}
+                      />
+                      {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
+                    </div>
                     <div className="col-span-1">
                       <Label>Avatar</Label>
                       <div className="flex items-center">
@@ -801,6 +765,30 @@ export default function SettingsPage() {
                         className={profileErrors.phoneNumber ? "border-red-500" : ""}
                       />
                       {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="jobTitle">Job Title</Label>
+                      <Input
+                        id="jobTitle"
+                        value={profileForm.jobTitle}
+                        onChange={e => handleProfileChange("jobTitle", e.target.value)}
+                        placeholder="Enter your job title"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.jobTitle ? "border-red-500" : ""}
+                      />
+                      {profileErrors.jobTitle && <p className="text-red-500 text-sm">{profileErrors.jobTitle}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea
+                        id="bio"
+                        value={profileForm.bio}
+                        onChange={e => handleProfileChange("bio", e.target.value)}
+                        placeholder="Enter your bio"
+                        disabled={isUpdatingProfile}
+                        className={profileErrors.bio ? "border-red-500" : ""}
+                      />
+                      {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
                     </div>
                     <div className="col-span-1">
                       <Label>Avatar</Label>
