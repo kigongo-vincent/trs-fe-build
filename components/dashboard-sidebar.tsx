@@ -335,6 +335,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       <span>Analytics</span>
                     </Link>
                     <Link
+                      href="/dashboard/company-admin/packages"
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        isActive("/dashboard/company-admin/packages") && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <Package className="h-4 w-4" />
+                      <span>Packages</span>
+                    </Link>
+                    <Link
                       href="/dashboard/company-admin/reports"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",

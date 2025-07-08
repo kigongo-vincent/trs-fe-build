@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
+import { Badge } from "@/components/ui/badge"
+import { Package } from "lucide-react"
+import Link from "next/link"
 
 export default function DashboardLayout({
   children,
@@ -21,10 +24,13 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [planName, setPlanName] = useState<string>("Trial")
   const router = useRouter()
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUserRole(getUserRole())
+      const storedPlan = localStorage.getItem("companyPlanName")
+      if (storedPlan) setPlanName(storedPlan)
     }
   }, [router])
 
@@ -41,7 +47,14 @@ export default function DashboardLayout({
           </div>
           <div className="flex items-center gap-2">
             <ModeToggle />
-            <UserNav role={userRole || "Consultant"} />
+            {userRole === "Company Admin" && (
+              <Link href="/dashboard/company-admin/packages" passHref legacyBehavior>
+                <a className="flex items-center gap-1 text-xs h-8 px-3 border rounded-md border-primary/30 hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30" style={{ textDecoration: 'none' }}>
+                  <Package className="h-4 w-4 mr-1 text-yellow-500" /> {planName}
+                </a>
+              </Link>
+            )}
+            <UserNav role={userRole || "Consultant"} planName={planName} />
           </div>
         </div>
       </header>

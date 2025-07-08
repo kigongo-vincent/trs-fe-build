@@ -12,16 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User, Package } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { getAuthUser, clearAuth } from "@/services/auth"
 import { getImage } from "@/services/api"
+import { Badge } from "@/components/ui/badge"
 
 interface UserNavProps {
   role: string
+  planName?: string
 }
 
-export function UserNav({ role }: UserNavProps) {
+export function UserNav({ role, planName }: UserNavProps) {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [isClient, setIsClient] = useState(false)
@@ -92,10 +94,15 @@ export function UserNav({ role }: UserNavProps) {
             <p className="text-sm font-medium leading-none">
               {isClient && user?.fullName ? user.fullName : "User"}
             </p>
-            <p className="text-xs leading-none text-muted-foreground">
+            <p className="text-xs leading-none text-muted-foreground max-w-[180px] truncate hover:whitespace-normal hover:overflow-visible" title={isClient && user?.email ? user.email : undefined}>
               {isClient && user?.email ? user.email : "user@example.com"}
             </p>
             <p className="text-xs font-medium text-primary mt-1">{displayRole}</p>
+            {isClient && user?.role?.name === "Company Admin" && (
+              <Badge variant="outline" className="mt-1 w-fit flex items-center gap-1 text-xs">
+                <Package className="h-3 w-3 mr-1 text-yellow-500" /> {planName || "Trial"}
+              </Badge>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
