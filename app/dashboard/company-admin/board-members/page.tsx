@@ -9,23 +9,23 @@ import { Input } from "@/components/ui/input"
 import { Users, Pencil, Trash, UserX, Plus, Loader2 } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { getBoardMembers, createBoardMember, updateBoardMember, deleteBoardMember } from "@/services/api"
+import { getAuthData } from "@/services/auth"
+import { useEffect } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 interface BoardMember {
-    id: number
-    name: string
+    id: string
     email: string
-    role: string
-    active: boolean
+    status: string
+    fullName: string
+    // add other fields as needed
 }
 
-const initialMembers: BoardMember[] = [
-    { id: 1, name: "Alice Johnson", email: "alice@company.com", role: "Chairperson", active: true },
-    { id: 2, name: "Bob Smith", email: "bob@company.com", role: "Member", active: true },
-    { id: 3, name: "Carol Lee", email: "carol@company.com", role: "Secretary", active: false },
-]
-
 export default function BoardMembersPage() {
-    const [members, setMembers] = useState<BoardMember[]>(initialMembers)
+    const [members, setMembers] = useState<BoardMember[]>([])
+    const [loading, setLoading] = useState(true)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [editMember, setEditMember] = useState<BoardMember | null>(null)
@@ -33,67 +33,132 @@ export default function BoardMembersPage() {
     const [deleteMember, setDeleteMember] = useState<BoardMember | null>(null)
     const [isDeactivating, setIsDeactivating] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    const [form, setForm] = useState({ name: "", email: "", role: "" })
+    const [form, setForm] = useState({ name: "", email: "" })
     const [isDeactivateOpen, setIsDeactivateOpen] = useState(false)
     const [deactivateMember, setDeactivateMember] = useState<BoardMember | null>(null)
-    const [isActivateOpen, setIsActivateOpen] = useState(false)
-    const [activateMember, setActivateMember] = useState<BoardMember | null>(null)
+
+    const companyId = getAuthData()?.user?.company?.id
+
+    // Add this helper at the top of the component
+    function isDeactivated(status: string) {
+        return status === "inactive" || status === "suspended";
+    }
+
+    // Add a type guard for BoardMember
+    function isBoardMember(m: any): m is BoardMember {
+        return (
+            typeof m.id === 'string' &&
+            typeof m.email === 'string' &&
+            typeof m.status === 'string' &&
+            typeof m.fullName === 'string'
+        )
+    }
+
+    // Fetch members
+    useEffect(() => {
+        if (!companyId) return
+        setLoading(true)
+        getBoardMembers(companyId)
+            .then(res => {
+                // If API returns { data: [...] }
+                const members = Array.isArray(res.data) ? res.data.map((m: any) => {
+                    return {
+                        id: String(m.id),
+                        email: m.email,
+                        status: m.status,
+                        fullName: m.fullName || m.name || m.firstName || m.email,
+                    }
+                }).filter(isBoardMember) : []
+                setMembers(members)
+            })
+            .catch(() => setMembers([]))
+            .finally(() => setLoading(false))
+    }, [companyId])
 
     // Create
-    const handleCreate = () => {
-        setMembers([
-            ...members,
-            {
-                id: members.length ? Math.max(...members.map(m => m.id)) + 1 : 1,
-                name: form.name,
-                email: form.email,
-                role: form.role,
-                active: true,
-            },
-        ])
-        setForm({ name: "", email: "", role: "" })
-        setIsCreateOpen(false)
+    const handleCreate = async () => {
+        if (!companyId) return
+        setLoading(true)
+        try {
+            await createBoardMember({ fullName: form.name, email: form.email, companyId })
+            // Refetch members
+            const res = await getBoardMembers(companyId)
+            const members = Array.isArray(res.data) ? res.data.map((m: any) => {
+                return {
+                    id: String(m.id),
+                    email: m.email,
+                    status: m.status,
+                    fullName: m.fullName || m.name || m.firstName || m.email,
+                }
+            }).filter(isBoardMember) : []
+            setMembers(members)
+        } catch (e: any) {
+            toast("Error creating member", {
+                description: e?.message || "An error occurred while creating the member.",
+                style: { background: '#fee2e2', color: '#b91c1c' },
+            })
+        } finally {
+            setForm({ name: "", email: "" })
+            setIsCreateOpen(false)
+            setLoading(false)
+        }
     }
 
     // Edit
-    const handleEdit = () => {
+    const handleEdit = async () => {
         if (!editMember) return
-        setMembers(members.map(m => m.id === editMember.id ? { ...editMember, ...form } : m))
-        setEditMember(null)
-        setForm({ name: "", email: "", role: "" })
-        setIsEditOpen(false)
+        setLoading(true)
+        try {
+            await updateBoardMember({ memberId: editMember.id, fullName: form.name, email: form.email })
+            // Refetch members
+            if (companyId) {
+                const res = await getBoardMembers(companyId)
+                const members = Array.isArray(res.data) ? res.data.map((m: any) => {
+                    return {
+                        id: String(m.id),
+                        email: m.email,
+                        status: m.status,
+                        fullName: m.fullName || m.name || m.firstName || m.email,
+                    }
+                }).filter(isBoardMember) : []
+                setMembers(members)
+            }
+        } catch (e: any) {
+            toast("Error updating member", {
+                description: e?.message || "An error occurred while updating the member.",
+                style: { background: '#fee2e2', color: '#b91c1c' },
+            })
+        } finally {
+            setEditMember(null)
+            setForm({ name: "", email: "" })
+            setIsEditOpen(false)
+            setLoading(false)
+        }
     }
 
     // Delete
-    const handleDelete = () => {
-        if (!deleteMember) return
-        setIsDeleting(true)
-        setTimeout(() => {
-            setMembers(members.filter(m => m.id !== deleteMember.id))
-            setDeleteMember(null)
-            setIsDeleteOpen(false)
-            setIsDeleting(false)
-        }, 800)
-    }
-
-    // Deactivate
-    const handleDeactivate = () => {
+    const handleDelete = async () => {
         if (!deactivateMember) return
         setIsDeactivating(true)
-        setTimeout(() => {
-            setMembers(members.map(m => m.id === deactivateMember.id ? { ...m, active: false } : m))
+        try {
+            await deleteBoardMember(deactivateMember.id)
+            if (companyId) {
+                const res = await getBoardMembers(companyId)
+                const members = Array.isArray(res.data) ? res.data.map((m: any) => {
+                    return {
+                        id: String(m.id),
+                        email: m.email,
+                        status: m.status,
+                        fullName: m.fullName || m.name || m.firstName || m.email,
+                    }
+                }).filter(isBoardMember) : []
+                setMembers(members)
+            }
+        } finally {
             setDeactivateMember(null)
             setIsDeactivateOpen(false)
             setIsDeactivating(false)
-        }, 800)
-    }
-
-    // Activate
-    const handleActivate = () => {
-        if (!activateMember) return
-        setMembers(members.map(m => m.id === activateMember.id ? { ...m, active: true } : m))
-        setActivateMember(null)
-        setIsActivateOpen(false)
+        }
     }
 
     return (
@@ -116,63 +181,80 @@ export default function BoardMembersPage() {
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
-                                <TableHead>Role</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {members.map(member => (
-                                <TableRow key={member.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar>
-                                                {/* Optionally use a placeholder image or just fallback */}
-                                                {/* <AvatarImage src="/placeholder-user.jpg" alt={member.name} /> */}
-                                                <AvatarFallback>{member.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
-                                            </Avatar>
-                                            <span>{member.name}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{member.email}</TableCell>
-                                    <TableCell>{member.role}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={member.active ? "default" : "outline"} className={member.active ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800" : "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"}>
-                                            {member.active ? "Active" : "Inactive"}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right flex gap-2 justify-end">
-                                        <Button size="icon" variant="ghost" onClick={() => {
-                                            setEditMember(member)
-                                            setForm({ name: member.name, email: member.email, role: member.role })
-                                            setIsEditOpen(true)
-                                        }} aria-label="Edit">
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button size="icon" variant="ghost" onClick={() => {
-                                            setDeleteMember(member)
-                                            setIsDeleteOpen(true)
-                                        }} aria-label="Delete">
-                                            <Trash className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                        {member.active ? (
-                                            <Button size="icon" variant="ghost" onClick={() => {
-                                                setDeactivateMember(member)
-                                                setIsDeactivateOpen(true)
-                                            }} aria-label="Deactivate" disabled={isDeactivating}>
-                                                {isDeactivating && deactivateMember?.id === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4 text-yellow-600" />}
-                                            </Button>
-                                        ) : (
-                                            <Button size="icon" variant="ghost" onClick={() => {
-                                                setActivateMember(member)
-                                                setIsActivateOpen(true)
-                                            }} aria-label="Activate">
-                                                <Users className="h-4 w-4 text-green-600" />
-                                            </Button>
-                                        )}
-                                    </TableCell>
+                            {loading ? (
+                                Array.from({ length: 4 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell><div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                                        <TableCell className="text-right flex gap-2 justify-end"><Skeleton className="h-8 w-8 rounded" /><Skeleton className="h-8 w-8 rounded" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : members.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center">No board members found.</TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                members.map(member => (
+                                    <TableRow key={member.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar>
+                                                    <AvatarFallback>{member.fullName ? member.fullName.split(" ").map(n => n[0]).join("") : member.email[0]}</AvatarFallback>
+                                                </Avatar>
+                                                <span>{member.fullName}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{member.email}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={member.status === "active" ? "default" : isDeactivated(member.status) ? "destructive" : "outline"}
+                                                className={
+                                                    member.status === "active"
+                                                        ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                                        : isDeactivated(member.status)
+                                                            ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800"
+                                                            : "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                                                }
+                                            >
+                                                {member.status === "active"
+                                                    ? "Active"
+                                                    : member.status === "pending"
+                                                        ? "Pending"
+                                                        : isDeactivated(member.status)
+                                                            ? "Deactivated"
+                                                            : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className={`text-right flex gap-2 justify-end${isDeactivated(member.status) ? ' pointer-events-none bg-transparent hover:bg-transparent' : ''}`}>
+                                            {!isDeactivated(member.status) ? (
+                                                <>
+                                                    <Button size="icon" variant="ghost" onClick={() => {
+                                                        setEditMember(member)
+                                                        setForm({ name: member.fullName || "", email: member.email })
+                                                        setIsEditOpen(true)
+                                                    }} aria-label="Edit">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => {
+                                                        setDeactivateMember(member)
+                                                        setIsDeactivateOpen(true)
+                                                    }} aria-label="Deactivate" disabled={isDeactivating}>
+                                                        {isDeactivating && deactivateMember?.id === member.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4 text-yellow-600" />}
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <span className="text-gray-400">_</span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -188,10 +270,9 @@ export default function BoardMembersPage() {
                     <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreate(); }}>
                         <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                         <Input placeholder="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-                        <Input placeholder="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} required />
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                            <Button type="submit">Add</Button>
+                            <Button type="submit" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}</Button>
                         </div>
                     </form>
                 </DialogContent>
@@ -207,32 +288,15 @@ export default function BoardMembersPage() {
                     <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEdit(); }}>
                         <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                         <Input placeholder="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-                        <Input placeholder="Role" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} required />
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
-                            <Button type="submit">Save</Button>
+                            <Button type="submit" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
                         </div>
                     </form>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Board Member</DialogTitle>
-                        <DialogDescription>Are you sure you want to delete this board member? This action cannot be undone.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                            {isDeleting ? "Deleting..." : "Delete"}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Deactivate Confirmation Dialog */}
             <Dialog open={isDeactivateOpen} onOpenChange={setIsDeactivateOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -241,24 +305,9 @@ export default function BoardMembersPage() {
                     </DialogHeader>
                     <div className="flex justify-end gap-2 mt-4">
                         <Button variant="outline" onClick={() => setIsDeactivateOpen(false)} disabled={isDeactivating}>Cancel</Button>
-                        <Button variant="destructive" onClick={handleDeactivate} disabled={isDeactivating}>
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeactivating}>
+                            {isDeactivating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             {isDeactivating ? "Deactivating..." : "Deactivate"}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Activate Confirmation Dialog */}
-            <Dialog open={isActivateOpen} onOpenChange={setIsActivateOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Activate Board Member</DialogTitle>
-                        <DialogDescription>Are you sure you want to activate this board member? They will be marked as active.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <Button variant="outline" onClick={() => setIsActivateOpen(false)}>Cancel</Button>
-                        <Button variant="default" onClick={handleActivate}>
-                            Activate
                         </Button>
                     </div>
                 </DialogContent>

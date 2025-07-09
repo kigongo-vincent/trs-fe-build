@@ -448,7 +448,19 @@ export default function SettingsPage() {
 
       // If a new avatar is selected, add it as base64 string (profileImage)
       if (selectedAvatarFile && avatarPreview) {
-        requestData.profileImage = avatarPreview;
+        // avatarPreview is like: data:image/png;base64,iVBORw0KGgo...
+        // We need to insert ;name=filename before ;base64
+        const [meta, base64Data] = avatarPreview.split(',');
+        if (meta && base64Data) {
+          // meta: data:image/png;base64
+          const match = meta.match(/^data:(.*);base64$/);
+          const mimetype = match ? match[1] : 'application/octet-stream';
+          const filename = selectedAvatarFile.name;
+          const newMeta = `data:${mimetype};name=${filename};base64`;
+          requestData.profileImage = `${newMeta},${base64Data}`;
+        } else {
+          requestData.profileImage = avatarPreview; // fallback
+        }
       }
 
       const response = await updateProfile(requestData);
@@ -506,8 +518,10 @@ export default function SettingsPage() {
           description: "Please enter a valid email address.",
         });
       } else {
+        // Show actual error from server if available
+        let serverError = error?.response?.data?.error || error?.error || error?.message;
         toast.error("Failed to update profile", {
-          description: error.message || "An unexpected error occurred. Please try again.",
+          description: serverError || "An unexpected error occurred. Please try again.",
         });
       }
     } finally {

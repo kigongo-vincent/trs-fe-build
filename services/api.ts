@@ -465,3 +465,29 @@ export async function createCompanyInvoice(
 ): Promise<any> {
   return postRequest("/super-admin/company-invoices", payload);
 }
+
+// Board Members API
+export async function getBoardMembers(companyId: string): Promise<any> {
+  return getRequest(`/company/board-members/${companyId}`);
+}
+
+export async function createBoardMember(data: {
+  fullName: string;
+  email: string;
+  companyId: string;
+}): Promise<any> {
+  return postRequest(`/company/board-members`, data);
+}
+
+export async function updateBoardMember(data: {
+  memberId: string;
+  fullName: string;
+  email: string;
+  status?: string;
+}): Promise<any> {
+  return putRequest(`/company/board-members`, data);
+}
+
+export async function deleteBoardMember(memberId: string): Promise<any> {
+  return deleteRequest(`/company/board-members/${memberId}`);
+}
