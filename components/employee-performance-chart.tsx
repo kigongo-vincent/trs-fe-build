@@ -1,33 +1,41 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const defaultData = [
-  { name: "John Smith", hours: 42, tasks: 12, efficiency: 95 },
-  { name: "Sarah Johnson", hours: 40, tasks: 10, efficiency: 92 },
-  { name: "Emily Davis", hours: 38, tasks: 9, efficiency: 88 },
-  { name: "Michael Brown", hours: 36, tasks: 8, efficiency: 85 },
-  { name: "Jessica Wilson", hours: 35, tasks: 7, efficiency: 82 },
-  { name: "Robert Taylor", hours: 34, tasks: 7, efficiency: 80 },
-  { name: "Amanda Martinez", hours: 32, tasks: 6, efficiency: 78 },
-  { name: "David Anderson", hours: 30, tasks: 5, efficiency: 75 },
-]
+  { name: "John Doe", hours: 40, tasks: 12 },
+  { name: "Jane Smith", hours: 35, tasks: 8 },
+  { name: "Mike Johnson", hours: 42, tasks: 15 },
+  { name: "Sarah Wilson", hours: 38, tasks: 10 },
+  { name: "David Brown", hours: 45, tasks: 18 },
+];
 
-export function EmployeePerformanceChart({ data = defaultData }: { data?: { name: string; hours: number; tasks: number; efficiency: number }[] }) {
+type EmployeePerformanceChartProps = {
+  data?: { name: string; hours: number }[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  isLoading?: boolean;
+};
+
+export function EmployeePerformanceChart({ data = defaultData, xAxisLabel = 'Employee', yAxisLabel = 'Hours Logged', isLoading = false }: EmployeePerformanceChartProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-[350px] w-full" />
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-        <XAxis type="number" />
-        <YAxis type="category" dataKey="name" width={120} />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "hours") return [`${value} hours`, "Hours Logged"]
-            if (name === "efficiency") return [`${value}%`, "Efficiency"]
-            return [value, name]
-          }}
-        />
-        <Bar dataKey="hours" fill="#4f46e5" radius={[0, 4, 4, 0]} name="Hours Logged" />
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+        <XAxis dataKey="name" label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }} />
+        <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+        <Tooltip formatter={(value, name) => [`${value} hours`, "Hours Logged"]} />
+        <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[0, 4, 4, 0]} name="Hours Logged" />
       </BarChart>
     </ResponsiveContainer>
   )

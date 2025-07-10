@@ -89,7 +89,7 @@ export default function ProfilePage() {
                 <Card className="w-full">
                     <CardContent className="flex flex-col items-center gap-4 py-8 w-full">
                         <Avatar className="h-24 w-24 mb-2 bg-primary/10">
-                            <AvatarImage src={user.avatarUrl || undefined} alt={user.fullName || "User"} />
+                            <AvatarImage src={user.profileImage || undefined} alt={user.fullName || "User"} />
                             <AvatarFallback className="flex flex-col items-center justify-center h-full w-full text-4xl text-primary">
                                 {user.fullName ? (
                                     <span>{getUserInitials()}</span>
@@ -185,7 +185,7 @@ export default function ProfilePage() {
     }
     return (
         <div className="flex flex-col items-start justify-start min-h-[80vh] w-full bg-muted/10 p-4">
-            <h1 className="text-2xl font-bold tracking-tight mb-4">Profile</h1>
+            <h1 className="text-2xl font-bold tracking-tight mb-4 text-primary">Profile</h1>
             <div className="w-full">
                 {SectionComponent}
             </div>

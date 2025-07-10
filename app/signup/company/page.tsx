@@ -141,7 +141,7 @@ export default function CompanySignup() {
         {/* Right: Signup form */}
         <div className="flex-1 flex flex-col justify-center items-center p-8">
           <div className="w-full max-w-md">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">Create Company Account</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-primary">Create Company Account</h1>
             <p className="text-muted-foreground mb-8">Enter your company and admin details to get started.</p>
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">{error}</div>}

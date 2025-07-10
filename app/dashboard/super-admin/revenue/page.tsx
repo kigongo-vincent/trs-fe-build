@@ -14,7 +14,7 @@ export default function RevenuePage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold tracking-tight">Revenue</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Revenue</h1>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
           <DateRangePicker />
           <Button>

@@ -63,7 +63,7 @@ export default function InvoicePage({ params }: InvoicePageProps) {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">Invoice {invoice.number}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Invoice {invoice.number}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">

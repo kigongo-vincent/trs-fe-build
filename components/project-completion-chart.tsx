@@ -1,6 +1,7 @@
 "use client"
 
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const defaultData = [
   { month: "Jan", completion: 65 },
@@ -22,7 +23,7 @@ export function ProjectCompletionChart({ data = defaultData }: { data?: { month:
         <Line
           type="monotone"
           dataKey="completion"
-          stroke="#4f46e5"
+          stroke={GRAPH_PRIMARY_COLOR}
           activeDot={{ r: 8 }}
           name="Project Completion Rate"
         />

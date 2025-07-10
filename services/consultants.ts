@@ -23,7 +23,7 @@ export interface Consultant {
   status: string;
   jobTitle: string | null;
   bio: string | null;
-  avatarUrl: string | null;
+  profileImage: string | null;
   createdAt: string;
   updatedAt: string;
   department: {

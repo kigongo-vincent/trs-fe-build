@@ -152,7 +152,7 @@ export default function NewTimeLogPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Log Time</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Log Time</h1>
       </div>
 
       <Card className="max-w-4xl">

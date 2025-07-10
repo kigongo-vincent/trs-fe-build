@@ -154,7 +154,7 @@ export default function EmployeeDashboard() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">My Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">My Dashboard</h1>
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
               <Plus className="mr-2 h-4 w-4" /> Log Time
@@ -183,7 +183,7 @@ export default function EmployeeDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">My Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">My Dashboard</h1>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">

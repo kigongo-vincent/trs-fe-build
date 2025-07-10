@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ConsultantsByDepartmentChart } from "@/components/consultants-by-department-chart"
 import Link from "next/link"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 import {
   type Consultant,
   type DepartmentSummary,
@@ -189,7 +190,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -218,7 +219,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -247,7 +248,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -276,7 +277,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -305,7 +306,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -334,7 +335,7 @@ export default function ConsultantsPage() {
             status: "active",
             jobTitle: "Frontend Developer",
             bio: null,
-            avatarUrl: null,
+            profileImage: null,
             resetToken: null,
             resetTokenExpires: null,
             createdAt: "2024-01-01T00:00:00Z",
@@ -508,7 +509,7 @@ export default function ConsultantsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Consultants</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Consultants</h1>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/company-admin/consultants/add">
@@ -529,7 +530,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalConsultants}</div>
+                <div className="text-2xl text-primary font-bold">{totalConsultants}</div>
                 {newHires > 0 && <p className="text-xs text-muted-foreground">+{newHires} from last month</p>}
               </>
             )}
@@ -545,7 +546,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{activeConsultants}</div>
+                <div className="text-2xl font-bold text-primary">{activeConsultants}</div>
                 <p className="text-xs text-muted-foreground">
                   {totalConsultants > 0
                     ? `${Math.round((activeConsultants / totalConsultants) * 100)}% of total consultants`
@@ -565,7 +566,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{onLeaveConsultants}</div>
+                <div className="text-2xl font-bold text-primary">{onLeaveConsultants}</div>
                 <p className="text-xs text-muted-foreground">
                   {totalConsultants > 0
                     ? `${Math.round((onLeaveConsultants / totalConsultants) * 100)}% of total consultants`
@@ -585,7 +586,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{newHires}</div>
+                <div className="text-2xl font-bold text-primary">{newHires}</div>
                 <p className="text-xs text-muted-foreground">In the last 30 days</p>
               </>
             )}
@@ -595,7 +596,7 @@ export default function ConsultantsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Consultants by Department</CardTitle>
+          <CardTitle className="text-primary">Consultants by Department</CardTitle>
           <CardDescription>Distribution of consultants across departments</CardDescription>
         </CardHeader>
         <CardContent>
@@ -708,7 +709,7 @@ export default function ConsultantsPage() {
                           <div className="flex items-center gap-3">
                             <Avatar>
                               <AvatarImage
-                                src={consultant?.avatarUrl || "/placeholder.svg"}
+                                src={consultant?.profileImage || "/placeholder.svg"}
                                 alt={consultant?.fullName || "User"}
                               />
                               <AvatarFallback>
@@ -844,7 +845,7 @@ export default function ConsultantsPage() {
                       {/* Hours Overview */}
                       <Card>
                         <CardHeader>
-                          <CardTitle>Hours Overview</CardTitle>
+                          <CardTitle className="text-primary">Hours Overview</CardTitle>
                           <CardDescription>Time tracked across different periods</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -863,7 +864,7 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold">
+                                <div className="text-2xl font-bold text-primary">
                                   {formatMinutesToHours(dashboardData?.hoursToday.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursToday.count || 0} minutes</p>
@@ -883,7 +884,7 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold">
+                                <div className="text-2xl font-bold text-primary">
                                   {formatMinutesToHours(dashboardData?.hoursWeek.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursWeek.count || 0} minutes</p>
@@ -903,7 +904,7 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold">
+                                <div className="text-2xl font-bold text-primary">
                                   {formatMinutesToHours(dashboardData?.hoursMonth.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursMonth.count || 0} minutes</p>
@@ -923,7 +924,7 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold">
+                                <div className="text-2xl font-bold text-primary">
                                   {formatMinutesToHours(dashboardData?.hoursLastMonth?.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursLastMonth?.count || 0} minutes</p>
@@ -943,7 +944,7 @@ export default function ConsultantsPage() {
                                     formatter={(value: number) => [`${value.toFixed(1)}h`, "Hours"]}
                                     labelFormatter={(label) => `${label}`}
                                   />
-                                  <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                  <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
                                 </BarChart>
                               </ResponsiveContainer>
                             ) : (
@@ -963,7 +964,7 @@ export default function ConsultantsPage() {
                     <div className="flex flex-col gap-8">
                       <Card>
                         <CardHeader>
-                          <CardTitle>Recent Activity</CardTitle>
+                          <CardTitle className="text-primary">Recent Activity</CardTitle>
                           <CardDescription>Latest time logs and tasks</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -1032,7 +1033,7 @@ export default function ConsultantsPage() {
                         <CardHeader>
                           <div className="flex items-center justify-between">
                             <div>
-                              <CardTitle>Time Logs by Date Range</CardTitle>
+                              <CardTitle className="text-primary">Time Logs by Date Range</CardTitle>
                               <CardDescription>View time logs within a specific time period</CardDescription>
                             </div>
                             <div className="flex items-center gap-4">
@@ -1202,7 +1203,7 @@ export default function ConsultantsPage() {
                         <CardContent className="pt-8 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
                           <Avatar className="h-28 w-28 mx-auto md:mx-0">
                             <AvatarImage
-                              src={selectedConsultant?.avatarUrl || "/placeholder.svg"}
+                              src={selectedConsultant?.profileImage || "/placeholder.svg"}
                               alt={selectedConsultant?.fullName || "User"}
                             />
                             <AvatarFallback>
@@ -1416,7 +1417,7 @@ export default function ConsultantsPage() {
                     <div className="flex flex-col gap-8">
                       <Card className="w-full">
                         <CardHeader>
-                          <CardTitle>Next of Kin</CardTitle>
+                          <CardTitle className="text-primary">Next of Kin</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1433,7 +1434,7 @@ export default function ConsultantsPage() {
                     <div className="flex flex-col gap-8">
                       <Card className="w-full">
                         <CardHeader>
-                          <CardTitle>Bank Details</CardTitle>
+                          <CardTitle className="text-primary">Bank Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

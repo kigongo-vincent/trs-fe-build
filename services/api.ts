@@ -1,5 +1,11 @@
 import { getAuthData } from "./auth";
-import type { PackagesApiResponse } from "@/app/dashboard/super-admin/packages/page";
+
+// Define the PackagesApiResponse interface locally
+export interface PackagesApiResponse {
+  status: number;
+  message: string;
+  data: any[];
+}
 
 export const BASE_URL = "https://trs-api.tekjuice.xyz/api";
 export const IMAGE_BASE_URL = "https://trs-api.tekjuice.xyz/";
@@ -240,6 +246,26 @@ async function handleResponse<T>(response: Response): Promise<T> {
         )
         .join("; ");
       throw new Error(errorMessages);
+    }
+
+    // Handle server memory errors specifically
+    if (data.message && data.message.includes("sort memory")) {
+      throw new Error(
+        "Server is temporarily overloaded. Please try again later or contact support if the issue persists."
+      );
+    }
+
+    // Handle other server overload scenarios
+    if (
+      data.message &&
+      (data.message.includes("overload") ||
+        data.message.includes("too many requests") ||
+        data.message.includes("rate limit") ||
+        data.message.includes("server busy"))
+    ) {
+      throw new Error(
+        "Server is temporarily overloaded. Please try again later or contact support if the issue persists."
+      );
     }
 
     const error = data.message || response.statusText;

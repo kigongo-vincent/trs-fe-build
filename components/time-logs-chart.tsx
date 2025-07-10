@@ -1,6 +1,7 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   {
@@ -63,7 +64,7 @@ export function TimeLogsChart() {
         <YAxis label={{ value: "Minutes", angle: -90, position: "insideLeft" }} />
         <Tooltip />
         <Legend />
-        <Bar dataKey="Website Redesign" fill="#F6931B" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="Website Redesign" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
         <Bar dataKey="Bug Fixes" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
         <Bar dataKey="Product Launch" fill="#10b981" radius={[4, 4, 0, 0]} />
         <Bar dataKey="Marketing Campaign" fill="#f59e0b" radius={[4, 4, 0, 0]} />

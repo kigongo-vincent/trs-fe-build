@@ -18,21 +18,48 @@ export default function AnalyticsPage() {
   // Get companyId from session
   const companyId = typeof window !== "undefined" ? getAuthData()?.user?.company?.id : undefined;
 
-  // State for analytics data
+  // State for analytics data and loading
   const [dailyHours, setDailyHours] = useState<any[]>([]);
   const [hoursPerDept, setHoursPerDept] = useState<any[]>([]);
   const [topConsultants, setTopConsultants] = useState<any[]>([]);
+  const [isLoadingDailyHours, setIsLoadingDailyHours] = useState(true);
+  const [isLoadingHoursPerDept, setIsLoadingHoursPerDept] = useState(true);
+  const [isLoadingTopConsultants, setIsLoadingTopConsultants] = useState(true);
 
   useEffect(() => {
     if (!companyId) return;
     async function fetchAnalytics() {
       try {
+        setIsLoadingDailyHours(true);
+        setIsLoadingHoursPerDept(true);
+        setIsLoadingTopConsultants(true);
         const dailyHoursRes = await getRequest<{ data?: any[] }>(`/company/analytics/daily-hours-current-month/${companyId}`);
-        setDailyHours(Array.isArray(dailyHoursRes?.data) ? dailyHoursRes.data : Array.isArray(dailyHoursRes) ? (dailyHoursRes as any) : []);
+        // Transform API data to match HoursLoggedChart expected shape
+        const dailyHoursData = Array.isArray(dailyHoursRes?.data)
+          ? dailyHoursRes.data.map((item: { date: string; totalHours: number }) => ({ date: item.date, hours: item.totalHours }))
+          : Array.isArray(dailyHoursRes)
+            ? (dailyHoursRes as any).map((item: { date: string; totalHours: number }) => ({ date: item.date, hours: item.totalHours }))
+            : [];
+        setDailyHours(dailyHoursData);
+        setIsLoadingDailyHours(false);
         const hoursPerDeptRes = await getRequest<{ data?: any[] }>(`/company/analytics/hours-per-department/${companyId}`);
-        setHoursPerDept(Array.isArray(hoursPerDeptRes?.data) ? hoursPerDeptRes.data : Array.isArray(hoursPerDeptRes) ? (hoursPerDeptRes as any) : []);
+        // Transform API data to match DepartmentPerformanceChart expected shape
+        const hoursPerDeptData = Array.isArray(hoursPerDeptRes?.data)
+          ? hoursPerDeptRes.data.map((item: { department: string; totalHours: number }) => ({ name: item.department, hours: item.totalHours, tasks: 0, completion: 0 }))
+          : Array.isArray(hoursPerDeptRes)
+            ? (hoursPerDeptRes as any).map((item: { department: string; totalHours: number }) => ({ name: item.department, hours: item.totalHours, tasks: 0, completion: 0 }))
+            : [];
+        setHoursPerDept(hoursPerDeptData);
+        setIsLoadingHoursPerDept(false);
         const topConsultantsRes = await getRequest<{ data?: any[] }>(`/company/analytics/top-consultants-by-hours-current-month/${companyId}`);
-        setTopConsultants(Array.isArray(topConsultantsRes?.data) ? topConsultantsRes.data : Array.isArray(topConsultantsRes) ? (topConsultantsRes as any) : []);
+        // Transform API data to match EmployeePerformanceChart expected shape
+        const topConsultantsData = Array.isArray(topConsultantsRes?.data)
+          ? topConsultantsRes.data.map((item: { fullName: string; totalHours: number }) => ({ name: item.fullName, hours: item.totalHours, tasks: 0 }))
+          : Array.isArray(topConsultantsRes)
+            ? (topConsultantsRes as any).map((item: { fullName: string; totalHours: number }) => ({ name: item.fullName, hours: item.totalHours, tasks: 0 }))
+            : [];
+        setTopConsultants(topConsultantsData);
+        setIsLoadingTopConsultants(false);
       } catch (err) {
         console.error("[Analytics] Error fetching analytics data:", err);
       }
@@ -43,11 +70,11 @@ export default function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Analytics</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
+          {/* <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Export Reports
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -57,10 +84,9 @@ export default function AnalyticsPage() {
             <TabsList>
               <TabsTrigger value="hours">Hours Logged</TabsTrigger>
               <TabsTrigger value="departments">Departments</TabsTrigger>
-              <TabsTrigger value="projects">Projects</TabsTrigger>
               <TabsTrigger value="employees">Employees</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <Select defaultValue="month">
                 <SelectTrigger className="h-8 w-[150px]">
                   <SelectValue placeholder="Time Period" />
@@ -72,7 +98,7 @@ export default function AnalyticsPage() {
                   <SelectItem value="year">This Year</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
           </div>
 
           <TabsContent value="hours" className="mt-4">
@@ -82,7 +108,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Total hours logged across all departments</CardDescription>
               </CardHeader>
               <CardContent>
-                <HoursLoggedChart data={dailyHours} />
+                <HoursLoggedChart data={dailyHours} xAxisLabel="Date" yAxisLabel="Hours" isLoading={isLoadingDailyHours} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -94,19 +120,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Productivity metrics by department</CardDescription>
               </CardHeader>
               <CardContent>
-                <DepartmentPerformanceChart data={hoursPerDept} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="projects" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Completion</CardTitle>
-                <CardDescription>Project completion rates over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProjectCompletionChart data={[]} />
+                <DepartmentPerformanceChart data={hoursPerDept} xAxisLabel="Department" yAxisLabel="Hours" isLoading={isLoadingHoursPerDept} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -118,7 +132,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Top performing employees by hours logged</CardDescription>
               </CardHeader>
               <CardContent>
-                <EmployeePerformanceChart data={topConsultants} />
+                <EmployeePerformanceChart data={topConsultants} xAxisLabel="Employee" yAxisLabel="Hours" isLoading={isLoadingTopConsultants} />
               </CardContent>
             </Card>
           </TabsContent>

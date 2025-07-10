@@ -1,6 +1,8 @@
 "use client"
 
-import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
+import { Line, LineChart, Area, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const defaultData = [
   { date: "May 1", hours: 38 },
@@ -36,16 +38,32 @@ const defaultData = [
   { date: "May 31", hours: 38 },
 ]
 
-export function HoursLoggedChart({ data = defaultData }: { data?: { date: string; hours: number }[] }) {
+type HoursLoggedChartProps = {
+  data?: { date: string; hours: number }[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  isLoading?: boolean;
+};
+
+export function HoursLoggedChart({ data = defaultData, xAxisLabel = 'Date', yAxisLabel = 'Hours', isLoading = false }: HoursLoggedChartProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-[350px] w-full" />
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
+        <XAxis dataKey="date" label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }} />
+        <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
         <Tooltip formatter={(value) => [`${value} hours`, "Hours Logged"]} />
         <Legend />
-        <Line type="monotone" dataKey="hours" stroke="#4f46e5" activeDot={{ r: 8 }} />
+        <Area type="monotone" dataKey="hours" stroke={GRAPH_PRIMARY_COLOR} fill={GRAPH_PRIMARY_COLOR} fillOpacity={0.2} />
+        <Line type="monotone" dataKey="hours" stroke={GRAPH_PRIMARY_COLOR} activeDot={{ r: 8 }} />
       </LineChart>
     </ResponsiveContainer>
   )

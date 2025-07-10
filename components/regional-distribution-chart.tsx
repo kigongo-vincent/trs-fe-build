@@ -1,6 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   { name: "North America", value: 45, companies: 12 },
@@ -10,7 +11,7 @@ const data = [
   { name: "Africa", value: 4, companies: 1 },
 ]
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
+const COLORS = [GRAPH_PRIMARY_COLOR, "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
 export function RegionalDistributionChart() {
   return (

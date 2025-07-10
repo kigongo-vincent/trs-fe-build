@@ -199,7 +199,7 @@ export default function CompletedTasksPage() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Completed Tasks</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Completed Tasks</h1>
         </div>
         <Alert>
           <AlertDescription className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export default function CompletedTasksPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Completed Tasks</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Completed Tasks</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" /> Export

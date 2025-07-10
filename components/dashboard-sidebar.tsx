@@ -60,7 +60,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     })
   }
 
-  const isActive = (path: string) => {
+  const isActive = (path: string, exact = false) => {
+    if (exact) {
+      return pathname === path;
+    }
     return pathname === path || pathname.startsWith(path + "/");
   }
 
@@ -102,7 +105,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/super-admin"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/super-admin") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/super-admin", true) && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Home className="h-4 w-4" />
@@ -131,7 +134,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/packages"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/packages") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/packages") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Package className="h-4 w-4" />
@@ -141,7 +144,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/companies"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/companies") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/companies") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Building2 className="h-4 w-4" />
@@ -151,7 +154,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/licenses"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/licenses") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/licenses") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <FileText className="h-4 w-4" />
@@ -161,7 +164,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/invoices"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/invoices") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/invoices") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Receipt className="h-4 w-4" />
@@ -191,7 +194,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/analytics"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/analytics") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/analytics") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -201,7 +204,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/super-admin/revenue"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/super-admin/revenue") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/super-admin/revenue") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <PieChart className="h-4 w-4" />
@@ -222,11 +225,21 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/company-admin"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/company-admin") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/company-admin", true) && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Home className="h-4 w-4" />
                     <span>Overview</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/company-admin/packages"
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                      isActive("/dashboard/company-admin/packages") && "bg-primary/10 text-primary font-semibold",
+                    )}
+                  >
+                    <Package className="h-4 w-4" />
+                    <span>Packages</span>
                   </Link>
                 </div>
               </div>
@@ -250,7 +263,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/company-admin/departments"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/departments") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/company-admin/departments") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Layers className="h-4 w-4" />
@@ -260,7 +273,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/company-admin/projects"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/projects") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/company-admin/projects") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <FileText className="h-4 w-4" />
@@ -270,7 +283,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/company-admin/consultants"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/consultants") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/company-admin/consultants") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Users className="h-4 w-4" />
@@ -280,7 +293,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/company-admin/board-members"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/board-members") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/company-admin/board-members") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Users className="h-4 w-4" />
@@ -290,71 +303,71 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/company-admin/tasks"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/tasks") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/company-admin/tasks") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Clock className="h-4 w-4" />
                       <span>Tasks</span>
                     </Link>
-                  </div>
-                )}
-              </div>
-
-              <div className="px-3 py-2">
-                <div
-                  className="flex items-center justify-between py-2 cursor-pointer"
-                  onClick={() => toggleGroup("reports")}
-                >
-                  <h3 className="text-sm font-medium">Reports</h3>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 text-muted-foreground transition-transform",
-                      expandedGroups.reports && "rotate-180",
-                    )}
-                  />
-                </div>
-                {expandedGroups.reports && (
-                  <div className="mt-1 space-y-1">
-                    <Link
-                      href="/dashboard/company-admin/invoices"
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/invoices") && "bg-primary text-primary-foreground",
+                    {/* Reports Section - Collapsible */}
+                    <div>
+                      <div
+                        className="flex items-center justify-between py-2 cursor-pointer"
+                        onClick={() => toggleGroup("reports")}
+                      >
+                        <h3 className="text-sm font-medium">Reports</h3>
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform",
+                            expandedGroups.reports && "rotate-180",
+                          )}
+                        />
+                      </div>
+                      {expandedGroups.reports && (
+                        <div className="ml-6 mt-1 space-y-1">
+                          <Link
+                            href="/dashboard/company-admin/invoices"
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                              isActive("/dashboard/company-admin/invoices") && "bg-primary/10 text-primary font-semibold",
+                            )}
+                          >
+                            <Receipt className="h-4 w-4" />
+                            <span>Invoices</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/company-admin/analytics"
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                              isActive("/dashboard/company-admin/analytics") && "bg-primary/10 text-primary font-semibold",
+                            )}
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                            <span>Analytics</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/company-admin/packages"
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                              isActive("/dashboard/company-admin/packages") && "bg-primary/10 text-primary font-semibold",
+                            )}
+                          >
+                            <Package className="h-4 w-4" />
+                            <span>Packages</span>
+                          </Link>
+                          <Link
+                            href="/dashboard/company-admin/reports"
+                            className={cn(
+                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                              isActive("/dashboard/company-admin/reports") && "bg-primary/10 text-primary font-semibold",
+                            )}
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>Reports</span>
+                          </Link>
+                        </div>
                       )}
-                    >
-                      <Receipt className="h-4 w-4" />
-                      <span>Invoices</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/company-admin/analytics"
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/analytics") && "bg-primary text-primary-foreground",
-                      )}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Analytics</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/company-admin/packages"
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/packages") && "bg-primary text-primary-foreground",
-                      )}
-                    >
-                      <Package className="h-4 w-4" />
-                      <span>Packages</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/company-admin/reports"
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/reports") && "bg-primary text-primary-foreground",
-                      )}
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span>Reports</span>
-                    </Link>
+                    </div>
                   </div>
                 )}
               </div>
@@ -370,7 +383,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/department-admin"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/department-admin") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/department-admin", true) && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Home className="h-4 w-4" />
@@ -380,7 +393,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/department-admin?tab=consultants"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/department-admin/consultants") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/department-admin/consultants") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Users className="h-4 w-4" />
@@ -390,7 +403,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/profile"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/profile") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/profile") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <User className="h-4 w-4" />
@@ -400,7 +413,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/settings"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/settings") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/settings") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Cog className="h-4 w-4" />
@@ -420,7 +433,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/employee"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/employee") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/employee", true) && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Home className="h-4 w-4" />
@@ -435,7 +448,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     href="/dashboard/employee/projects"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/employee/projects") && "bg-primary text-primary-foreground",
+                      isActive("/dashboard/employee/projects") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <FileText className="h-4 w-4" />
@@ -462,7 +475,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/employee/time-logs"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/employee/time-logs") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/employee/time-logs") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <FileText className="h-4 w-4" />
@@ -472,7 +485,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/employee/completed"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/employee/completed") && "bg-primary text-primary-foreground",
+                        isActive("/dashboard/employee/completed") && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <FileText className="h-4 w-4" />
@@ -482,7 +495,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       href="/dashboard/employee/invoices"
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        (isActive("/dashboard/employee/invoices") || pathname.includes("/dashboard/employee/invoices/")) && "bg-primary text-primary-foreground",
+                        (isActive("/dashboard/employee/invoices") || pathname.includes("/dashboard/employee/invoices/")) && "bg-primary/10 text-primary font-semibold",
                       )}
                     >
                       <Receipt className="h-4 w-4" />
@@ -501,7 +514,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 href="/dashboard/settings"
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  isActive("/dashboard/settings") && "bg-primary text-primary-foreground",
+                  isActive("/dashboard/settings") && "bg-primary/10 text-primary font-semibold",
                 )}
               >
                 <Cog className="h-4 w-4" />

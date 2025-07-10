@@ -1,13 +1,39 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { type WeekDistribution, getDayName, formatHoursCount } from "@/services/employee"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 interface EmployeeHoursChartProps {
-  data: WeekDistribution[]
+  data: Array<{
+    day: string
+    hours: string
+  }>
 }
 
-const primaryColor = "#F6931B"
+const getDayName = (day: string | number) => {
+  if (typeof day === "number") {
+    // Use the helper from services/employee.ts for numbers
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[day] || String(day);
+  }
+  if (typeof day === "string") {
+    const days: Record<string, string> = {
+      sunday: "Sun",
+      monday: "Mon",
+      tuesday: "Tue",
+      wednesday: "Wed",
+      thursday: "Thu",
+      friday: "Fri",
+      saturday: "Sat",
+    };
+    return days[day.toLowerCase()] || day;
+  }
+  return String(day);
+}
+
+const formatHoursCount = (hours: string) => {
+  return parseFloat(hours).toFixed(1)
+}
 
 export function EmployeeHoursChart({ data }: EmployeeHoursChartProps) {
   // Transform the data for the chart
@@ -36,7 +62,7 @@ export function EmployeeHoursChart({ data }: EmployeeHoursChartProps) {
           label={{ value: "Hours", angle: -90, position: "insideLeft", fontSize: 14 }}
         />
         <Tooltip formatter={(value: number) => [`${value}h`, "Hours"]} labelFormatter={(label) => `${label}`} />
-        <Bar dataKey="hours" fill={primaryColor} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

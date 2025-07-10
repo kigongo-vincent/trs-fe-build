@@ -191,7 +191,7 @@ export default function EditDepartmentPage() {
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <h1 className="text-2xl font-bold tracking-tight">Edit Department</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-primary">Edit Department</h1>
                 </div>
                 <Card>
                     <CardContent className="pt-6">
@@ -213,7 +213,7 @@ export default function EditDepartmentPage() {
                 >
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <h1 className="text-2xl font-bold tracking-tight">Edit Department</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-primary">Edit Department</h1>
             </div>
 
             <Card className="max-w-2xl">

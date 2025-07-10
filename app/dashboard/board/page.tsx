@@ -8,7 +8,7 @@ export default function BoardDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Board Overview</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Board Overview</h1>
         <div className="text-sm text-muted-foreground">Read-only view</div>
       </div>
 

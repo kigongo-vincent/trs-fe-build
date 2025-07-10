@@ -82,7 +82,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
             <span className="sr-only">Back</span>
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{company.name || '_'}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">{company.name || '_'}</h1>
         <Badge className="ml-2 bg-green-500">{company.status || '_'}</Badge>
       </div>
 

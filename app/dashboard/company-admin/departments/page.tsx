@@ -117,7 +117,7 @@ export default function DepartmentsPage() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Departments</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Departments</h1>
         </div>
         <Card>
           <CardContent className="pt-6">
@@ -131,7 +131,7 @@ export default function DepartmentsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Departments</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Departments</h1>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/company-admin/departments/create">
@@ -148,7 +148,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{totalDepartments}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{totalDepartments}</div>}
             <p className="text-xs text-muted-foreground">Active departments</p>
           </CardContent>
         </Card>
@@ -158,7 +158,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{totalEmployees}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{totalEmployees}</div>}
             <p className="text-xs text-muted-foreground">Across all departments</p>
           </CardContent>
         </Card>
@@ -168,7 +168,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{avgTeamSize}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{avgTeamSize}</div>}
             <p className="text-xs text-muted-foreground">Employees per department</p>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "@/components/ui/chart"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   { name: "Engineering", value: 18, color: "#8884d8" },
@@ -10,7 +11,7 @@ const data = [
   { name: "Finance", value: 3, color: "#0088fe" },
 ]
 
-const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe"]
+const COLORS = [GRAPH_PRIMARY_COLOR, "#82ca9d", "#ffc658", "#ff8042", "#0088fe"]
 
 export function CompanyEmployeesChart() {
   return (

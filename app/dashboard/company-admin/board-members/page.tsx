@@ -164,7 +164,7 @@ export default function BoardMembersPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-primary">
                     <Users className="h-6 w-6" /> Board Members
                 </h1>
                 <Button onClick={() => setIsCreateOpen(true)}>
@@ -172,9 +172,7 @@ export default function BoardMembersPage() {
                 </Button>
             </div>
             <Card>
-                <CardHeader>
-                    <CardTitle>Board Members List</CardTitle>
-                </CardHeader>
+               
                 <CardContent>
                     <Table>
                         <TableHeader>

@@ -201,7 +201,7 @@ export default function PackagesPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Packages</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Packages</h1>
         <div className="flex items-center gap-2">
           <Dialog open={modalOpen} onOpenChange={setModalOpen}>
             <DialogTrigger asChild>

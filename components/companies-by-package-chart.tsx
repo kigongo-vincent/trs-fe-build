@@ -1,44 +1,25 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
-  {
-    name: "Basic",
-    companies: 8,
-  },
-  {
-    name: "Standard",
-    companies: 10,
-  },
-  {
-    name: "Premium",
-    companies: 4,
-  },
-  {
-    name: "Enterprise",
-    companies: 2,
-  },
+  { name: "Basic", companies: 15 },
+  { name: "Standard", companies: 25 },
+  { name: "Premium", companies: 18 },
+  { name: "Enterprise", companies: 8 },
 ]
 
 export function CompaniesByPackageChart() {
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart
-        data={data}
-        margin={{
-          top: 20,
-          right: 30,
-          left: 20,
-          bottom: 5,
-        }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
+    <ResponsiveContainer width="100%" height={350}>
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="name" />
         <YAxis />
-        <Tooltip />
+        <Tooltip formatter={(value) => [`${value} companies`, "Count"]} />
         <Legend />
-        <Bar dataKey="companies" fill="#8884d8" name="Companies" />
+        <Bar dataKey="companies" fill={GRAPH_PRIMARY_COLOR} name="Companies" />
       </BarChart>
     </ResponsiveContainer>
   )

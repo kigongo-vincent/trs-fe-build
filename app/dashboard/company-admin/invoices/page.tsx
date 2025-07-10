@@ -86,6 +86,8 @@ export default function InvoicesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [searchValue, setSearchValue] = useState("")
   const [searchLoading, setSearchLoading] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [isRetrying, setIsRetrying] = useState(false)
 
   // Filter states
   const [status, setStatus] = useState("all")
@@ -97,29 +99,73 @@ export default function InvoicesPage() {
   // Add a ref to InvoiceTable for PDF download
   const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void } | null>(null)
 
-  useEffect(() => {
-    async function fetchSummary() {
-      setLoading(true)
-      setError(null)
-      try {
-        const authData = getAuthData()
-        const companyId = authData?.user?.company?.id
-        if (!companyId) throw new Error("Company ID not found")
-        const res: any = await getCompanyInvoicesSummary(companyId)
-        setSummary(res.data)
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch summary")
-      } finally {
-        setLoading(false)
+  const fetchSummaryWithRetry = async (retryAttempt = 0) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const authData = getAuthData()
+      const companyId = authData?.user?.company?.id
+      if (!companyId) throw new Error("Company ID not found")
+
+      // Add timeout to prevent long waits
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 8000)
+      )
+
+      const fetchPromise = getCompanyInvoicesSummary(companyId)
+      const res: any = await Promise.race([fetchPromise, timeoutPromise])
+
+      setSummary(res.data)
+      setRetryCount(0) // Reset retry count on success
+    } catch (err: any) {
+      const isServerOverload = err.message?.includes("Server is temporarily overloaded")
+      const isTimeout = err.message?.includes("Request timeout")
+
+      if ((isServerOverload || isTimeout) && retryAttempt < 2) {
+        // Reduced delay for faster retries (500ms, 1000ms)
+        const delay = Math.pow(2, retryAttempt) * 500
+        setTimeout(() => {
+          fetchSummaryWithRetry(retryAttempt + 1)
+        }, delay)
+        return
       }
+      setError(err.message || "Failed to fetch summary")
+      setRetryCount(retryAttempt)
+    } finally {
+      setLoading(false)
     }
-    fetchSummary()
+  }
+
+  const handleRetry = () => {
+    setIsRetrying(true)
+    fetchSummaryWithRetry(0)
+    setTimeout(() => setIsRetrying(false), 1000)
+  }
+
+  useEffect(() => {
+    fetchSummaryWithRetry()
   }, [])
 
   // Find the currency from the summary data (if present)
   const totalAmountItem = summary?.find((item) => item.label === "Total Amount")
   const currency = totalAmountItem?.currency || "USD"
   const showDisclaimer = !totalAmountItem?.currency || totalAmountItem.currency !== "USD"
+
+  // Sample data for MonthlyInvoiceChart (you can replace this with real API data)
+  const monthlyInvoiceData = [
+    { month: "January", totalAmount: 0, currency: currency },
+    { month: "February", totalAmount: 0, currency: currency },
+    { month: "March", totalAmount: 0, currency: currency },
+    { month: "April", totalAmount: 0, currency: currency },
+    { month: "May", totalAmount: 0, currency: currency },
+    { month: "June", totalAmount: 0, currency: currency },
+    { month: "July", totalAmount: 0, currency: currency },
+    { month: "August", totalAmount: 0, currency: currency },
+    { month: "September", totalAmount: 0, currency: currency },
+    { month: "October", totalAmount: 0, currency: currency },
+    { month: "November", totalAmount: 0, currency: currency },
+    { month: "December", totalAmount: 0, currency: currency },
+  ]
 
   const handleSearch = async () => {
     setSearchLoading(true)
@@ -162,7 +208,7 @@ export default function InvoicesPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Invoices</h1>
         <div className="flex items-center gap-2">
           <InvoiceActions onDownloadAll={handleTopDownloadPDF} />
         </div>
@@ -171,19 +217,49 @@ export default function InvoicesPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse h-[110px]">
+            <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium bg-gray-200 rounded w-24 h-4" />
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold bg-gray-200 rounded w-16 h-6" />
-                <p className="text-xs text-muted-foreground bg-gray-100 rounded w-20 h-3 mt-2" />
+                <div className="h-6 w-16 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
               </CardContent>
             </Card>
           ))
         ) : error ? (
-          <div className="col-span-4 text-red-500">{error}</div>
+          <div className="col-span-4">
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <div className="text-red-500 mb-4">
+                {error.includes("Server is temporarily overloaded") ? (
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold">Server is temporarily overloaded</p>
+                    <p className="text-sm text-muted-foreground">
+                      We're experiencing high traffic. Please try again in a moment.
+                    </p>
+                    {retryCount > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Retry attempt {retryCount} of 3
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  error
+                )}
+              </div>
+              {error.includes("Server is temporarily overloaded") && (
+                <Button
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                  variant="outline"
+                  className="mt-2"
+                >
+                  {isRetrying ? "Retrying..." : "Try Again"}
+                </Button>
+              )}
+            </div>
+          </div>
         ) : summary ? (
           summary.map((item, i) => (
             <Card key={item.label}>
@@ -192,7 +268,7 @@ export default function InvoicesPage() {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{item.label === "Total Amount" ? `${item.currency || "USD"} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
+                <div className="text-2xl font-bold text-primary">{item.label === "Total Amount" ? `${item.currency || "USD"} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
                 <p className="text-xs text-muted-foreground">
                   {item.label === "Total Invoices" && ""}
                   {item.label === "Paid Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Paid Invoices" ? "0% of total invoices" : null}
@@ -216,7 +292,14 @@ export default function InvoicesPage() {
           <CardDescription>Invoice amounts by month</CardDescription>
         </CardHeader>
         <CardContent>
-          <MonthlyInvoiceChart />
+          {loading ? (
+            <div className="space-y-4">
+              <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+              <div className="h-[300px] bg-gray-100 rounded animate-pulse" />
+            </div>
+          ) : (
+            <MonthlyInvoiceChart data={monthlyInvoiceData} />
+          )}
         </CardContent>
       </Card>
 
@@ -239,7 +322,7 @@ export default function InvoicesPage() {
               tabIndex={-1}
               aria-label="Clear search"
             >
-              <XIcon className="h-4 w-4" />
+              {/* <XIcon className="h-4 w-4" /> */}
             </button>
           )}
           <Button
@@ -308,7 +391,7 @@ export default function InvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Invoices</CardTitle>
+          <CardTitle className="text-primary">All Invoices</CardTitle>
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
@@ -329,37 +412,74 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   const [sortBy, setSortBy] = useState<string>("invoiceNumber")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [filteredInvoices, setFilteredInvoices] = useState<any[]>([])
+  const [retryCount, setRetryCount] = useState(0)
+  const [isRetrying, setIsRetrying] = useState(false)
   // Modal state
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  useEffect(() => {
-    async function fetchInvoices() {
-      setLoading(true)
-      setError(null)
-      try {
-        const authData = getAuthData()
-        const companyId = authData?.user?.company?.id
-        if (!companyId) throw new Error("Company ID not found")
-        let url = `/company/invoices/${companyId}`
-        let params: any = {}
-        if (searchTerm) {
-          params.search = searchTerm
-        } else if (filterParams) {
-          if (filterParams.status && filterParams.status !== "all") params.status = filterParams.status
-          if (filterParams.startDate) params.startDate = filterParams.startDate
-          if (filterParams.endDate) params.endDate = filterParams.endDate
-        }
-        const query = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : ""
-        const res: any = await getRequest(url + query)
-        setInvoices(res.data)
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch invoices")
-      } finally {
-        setLoading(false)
+  const fetchInvoicesWithRetry = async (retryAttempt = 0) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const authData = getAuthData()
+      const companyId = authData?.user?.company?.id
+      if (!companyId) throw new Error("Company ID not found")
+      let url = `/company/invoices/${companyId}`
+      let params: any = {}
+      // Only add params if searchTerm is set, or filters are changed from default
+      if (searchTerm) {
+        params.search = searchTerm
+      } else if (
+        filterParams && (
+          filterParams.status !== "all" ||
+          filterParams.startDate ||
+          filterParams.endDate
+        )
+      ) {
+        params.startDate = filterParams.startDate || ""
+        params.endDate = filterParams.endDate || ""
+        params.status = filterParams.status || "all"
       }
+      const query = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : ""
+
+      // Add timeout to prevent long waits
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 10000)
+      )
+
+      const fetchPromise = getRequest(url + query)
+      const res: any = await Promise.race([fetchPromise, timeoutPromise])
+
+      setInvoices(res.data)
+      setRetryCount(0) // Reset retry count on success
+    } catch (err: any) {
+      const isServerOverload = err.message?.includes("Server is temporarily overloaded")
+      const isTimeout = err.message?.includes("Request timeout")
+
+      if ((isServerOverload || isTimeout) && retryAttempt < 2) {
+        // Reduced delay for faster retries (500ms, 1000ms)
+        const delay = Math.pow(2, retryAttempt) * 500
+        setTimeout(() => {
+          fetchInvoicesWithRetry(retryAttempt + 1)
+        }, delay)
+        return
+      }
+      setError(err.message || "Failed to fetch invoices")
+      setRetryCount(retryAttempt)
+    } finally {
+      setLoading(false)
     }
-    fetchInvoices()
+  }
+
+  const handleRetry = () => {
+    setIsRetrying(true)
+    fetchInvoicesWithRetry(0)
+    setTimeout(() => setIsRetrying(false), 1000)
+  }
+
+  useEffect(() => {
+    fetchInvoicesWithRetry()
   }, [searchTerm, filterParams])
 
   useEffect(() => {
@@ -516,13 +636,13 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     y = renderTableWithPageBreaks(doc, headers, rows, y, { columnWidths, marginLeft: margin, marginRight: margin })
     // Summations
     y += 16
-    doc.setFont(undefined, 'bold')
+    doc.setFont('helvetica', 'bold')
     doc.text('Total Amount:', pageWidth - margin - 160, y)
     doc.text(`${currency} ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 60, y, { align: 'right' })
     y += 18
     doc.text('Total Hours:', pageWidth - margin - 160, y)
     doc.text(`${totalHours}`, pageWidth - margin - 60, y, { align: 'right' })
-    doc.setFont(undefined, 'normal')
+    doc.setFont('helvetica', 'normal')
     y += 32
     doc.setFontSize(10)
     doc.setTextColor(120)
@@ -533,10 +653,71 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   useImperativeHandle(ref, () => ({ handleAllInvoicesPDF }))
 
   if (loading) {
-    return <div className="h-[300px] flex items-center justify-center">Loading...</div>
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+          <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <TableHead key={i}>
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, rowIndex) => (
+              <TableRow key={rowIndex}>
+                {Array.from({ length: 6 }).map((_, cellIndex) => (
+                  <TableCell key={cellIndex}>
+                    <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    )
   }
   if (error) {
-    return <div className="h-[300px] flex items-center justify-center text-red-500">{error}</div>
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center p-6 text-center">
+          <div className="text-red-500 mb-4">
+            {error.includes("Server is temporarily overloaded") ? (
+              <div className="space-y-2">
+                <p className="text-lg font-semibold">Server is temporarily overloaded</p>
+                <p className="text-sm text-muted-foreground">
+                  We're experiencing high traffic. Please try again in a moment.
+                </p>
+                {retryCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Retry attempt {retryCount} of 3
+                  </p>
+                )}
+              </div>
+            ) : (
+              error
+            )}
+          </div>
+          {error.includes("Server is temporarily overloaded") && (
+            <Button
+              onClick={handleRetry}
+              disabled={isRetrying}
+              variant="outline"
+              className="mt-2"
+            >
+              {isRetrying ? "Retrying..." : "Try Again"}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
   }
   if (!filteredInvoices.length) {
     return <div className="h-[300px] flex items-center justify-center text-muted-foreground">No invoices found.</div>
@@ -942,4 +1123,4 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
       </DialogContent>
     </Dialog>
   )
-}
+} 

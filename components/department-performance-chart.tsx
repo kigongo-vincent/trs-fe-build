@@ -1,6 +1,8 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const defaultData = [
   { name: "Development", hours: 420, tasks: 42, completion: 85 },
@@ -12,23 +14,30 @@ const defaultData = [
   { name: "Customer Support", hours: 160, tasks: 16, completion: 88 },
 ]
 
-export function DepartmentPerformanceChart({ data = defaultData }: { data?: { name: string; hours: number; tasks: number; completion: number }[] }) {
+type DepartmentPerformanceChartProps = {
+  data?: { name: string; hours: number }[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+  isLoading?: boolean;
+};
+
+export function DepartmentPerformanceChart({ data = defaultData, xAxisLabel = 'Department', yAxisLabel = 'Hours Logged', isLoading = false }: DepartmentPerformanceChartProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-[350px] w-full" />
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" />
-        <YAxis yAxisId="left" orientation="left" stroke="#4f46e5" />
-        <YAxis yAxisId="right" orientation="right" stroke="#10b981" />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === "hours") return [`${value} hours`, "Hours Logged"]
-            if (name === "completion") return [`${value}%`, "Completion Rate"]
-            return [value, name]
-          }}
-        />
-        <Bar yAxisId="left" dataKey="hours" fill="#4f46e5" radius={[4, 4, 0, 0]} name="Hours Logged" />
-        <Bar yAxisId="right" dataKey="completion" fill="#10b981" radius={[4, 4, 0, 0]} name="Completion Rate (%)" />
+        <XAxis dataKey="name" label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }} />
+        <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+        <Tooltip formatter={(value, name) => [`${value} hours`, "Hours Logged"]} />
+        <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} name="Hours Logged" />
       </BarChart>
     </ResponsiveContainer>
   )

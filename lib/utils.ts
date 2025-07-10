@@ -13,3 +13,6 @@ export function formatCurrency(value: number, currency: string = "USD") {
     maximumFractionDigits: 2,
   }).format(value);
 }
+
+// Global graph color using primary color
+export const GRAPH_PRIMARY_COLOR = "#F6931B";
