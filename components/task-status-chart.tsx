@@ -1,6 +1,7 @@
 "use client"
 
-import { Pie, PieChart, ResponsiveContainer, Tooltip, Legend, Cell } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 interface TaskStatusChartProps {
   activeTasks: number
@@ -24,7 +25,7 @@ export function TaskStatusChart({ activeTasks, draftTasks }: TaskStatusChartProp
     { name: "Draft", value: draftTasks },
   ].filter((item) => item.value > 0) // Only show segments with data
 
-  const COLORS = ["#10b981", "#f59e0b"] // Green for Active, Yellow for Draft
+  const COLORS = [GRAPH_PRIMARY_COLOR, "#f59e0b"] // Primary for Active, Yellow for Draft
 
   return (
     <ResponsiveContainer width="100%" height={300}>

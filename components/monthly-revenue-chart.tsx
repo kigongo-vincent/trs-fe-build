@@ -1,39 +1,32 @@
 "use client"
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "@/components/ui/chart"
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   { month: "Jan", revenue: 4000 },
-  { month: "Feb", revenue: 4200 },
-  { month: "Mar", revenue: 4500 },
-  { month: "Apr", revenue: 4800 },
-  { month: "May", revenue: 5100 },
-  { month: "Jun", revenue: 5400 },
-  { month: "Jul", revenue: 5700 },
-  { month: "Aug", revenue: 6000 },
-  { month: "Sep", revenue: 6300 },
-  { month: "Oct", revenue: 6600 },
-  { month: "Nov", revenue: 6900 },
-  { month: "Dec", revenue: 7200 },
+  { month: "Feb", revenue: 4500 },
+  { month: "Mar", revenue: 6000 },
+  { month: "Apr", revenue: 8000 },
+  { month: "May", revenue: 9500 },
+  { month: "Jun", revenue: 11000 },
+  { month: "Jul", revenue: 12500 },
+  { month: "Aug", revenue: 13000 },
+  { month: "Sep", revenue: 13500 },
+  { month: "Oct", revenue: 14000 },
+  { month: "Nov", revenue: 14200 },
+  { month: "Dec", revenue: 14500 },
 ]
 
 export function MonthlyRevenueChart() {
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart
-        data={data}
-        margin={{
-          top: 10,
-          right: 30,
-          left: 0,
-          bottom: 0,
-        }}
-      >
+    <ResponsiveContainer width="100%" height={350}>
+      <AreaChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis />
         <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
-        <Area type="monotone" dataKey="revenue" stroke="#8884d8" fill="#8884d8" />
+        <Area type="monotone" dataKey="revenue" stroke={GRAPH_PRIMARY_COLOR} fill={GRAPH_PRIMARY_COLOR} />
       </AreaChart>
     </ResponsiveContainer>
   )

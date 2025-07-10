@@ -1,78 +1,42 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { getProjectsTimeline, type ProjectTimelineItem } from "@/services/projects"
-import { getAuthData } from "@/services/auth"
-import { Skeleton } from "@/components/ui/skeleton"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
-interface ProjectTimelineChartProps {
-  refreshTrigger?: number
+interface Project {
+  id: string
+  name: string
+  progress: number
+  department: {
+    name: string
+  }
 }
 
-export function ProjectTimelineChart({ refreshTrigger }: ProjectTimelineChartProps) {
-  const [data, setData] = useState<ProjectTimelineItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface ProjectTimelineChartProps {
+  projects: Project[]
+}
 
-  const fetchTimelineData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
+  // Transform data for the chart
+  const chartData = projects
+    .map((project) => ({
+      displayName: project.name.length > 20 ? project.name.substring(0, 20) + "..." : project.name,
+      fullName: project.name,
+      progress: project.progress,
+      department: project.department.name,
+    }))
+    .sort((a, b) => b.progress - a.progress) // Sort by progress descending
 
-      const authData = getAuthData()
-      if (!authData || !authData.user || !authData.user.company || !authData.user.company.id) {
-        setError("Authentication data is missing")
-        setLoading(false)
-        return
-      }
-
-      const companyId = authData.user.company.id
-      const response = await getProjectsTimeline(companyId)
-
-      setData(response.data)
-      setLoading(false)
-    } catch (err) {
-      console.error("Error fetching project timeline:", err)
-      setError("Failed to load timeline data")
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchTimelineData()
-  }, [refreshTrigger])
-
-  if (loading) {
+  if (chartData.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center">
-        <Skeleton className="h-full w-full" />
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p>No project data available</p>
+          <p className="text-sm">Projects will appear here once created</p>
+        </div>
       </div>
     )
   }
-
-  if (error) {
-    return (
-      <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground text-sm">{error}</p>
-      </div>
-    )
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground text-sm">No project timeline data available</p>
-      </div>
-    )
-  }
-
-  // Truncate long project names for better display
-  const chartData = data.map((item) => ({
-    ...item,
-    displayName: item.name.length > 20 ? `${item.name.substring(0, 20)}...` : item.name,
-    fullName: item.name,
-  }))
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -92,7 +56,7 @@ export function ProjectTimelineChart({ refreshTrigger }: ProjectTimelineChartPro
             borderRadius: "6px",
           }}
         />
-        <Bar dataKey="progress" fill="#4f46e5" radius={[0, 4, 4, 0]} name="Progress" />
+        <Bar dataKey="progress" fill={GRAPH_PRIMARY_COLOR} radius={[0, 4, 4, 0]} name="Progress" />
       </BarChart>
     </ResponsiveContainer>
   )

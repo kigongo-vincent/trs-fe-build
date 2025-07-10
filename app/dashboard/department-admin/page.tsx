@@ -380,7 +380,7 @@ export default function DepartmentAdminDashboard() {
                                                             <div className="flex items-center gap-3">
                                                                 <Avatar>
                                                                     <AvatarImage
-                                                                        src={consultant?.avatarUrl || "/placeholder.svg"}
+                                                                        src={consultant?.profileImage || "/placeholder.svg"}
                                                                         alt={consultant?.fullName || "User"}
                                                                     />
                                                                     <AvatarFallback>
@@ -835,7 +835,7 @@ export default function DepartmentAdminDashboard() {
                                                         <CardContent className="pt-8 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
                                                             <Avatar className="h-28 w-28 mx-auto md:mx-0">
                                                                 <AvatarImage
-                                                                    src={selectedConsultant?.avatarUrl || "/placeholder.svg"}
+                                                                    src={selectedConsultant?.profileImage || "/placeholder.svg"}
                                                                     alt={selectedConsultant?.fullName || "User"}
                                                                 />
                                                                 <AvatarFallback>

@@ -7,8 +7,9 @@ import { Package } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { fetchPackages } from "@/services/api"
+import { fetchPackages, fetchLicenseKeys, LicenseKey } from "@/services/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getAuthUser } from "@/services/auth"
 
 // Type for a package (from API)
 type PackageType = {
@@ -36,26 +37,94 @@ export default function CompanyAdminPackagesPage() {
     const [selectedPlan, setSelectedPlan] = useState<PackageType | null>(null)
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false)
     const [pendingUpgrade, setPendingUpgrade] = useState<PackageType | null>(null)
+    const [currentPlanExpiry, setCurrentPlanExpiry] = useState<Date | null>(null)
+    const [latestLicenseKey, setLatestLicenseKey] = useState<LicenseKey | null>(null)
 
-    // Demo usage/expiry (could be dynamic in real app)
-    const currentUsage = 2
-    const [currentPlanExpiry] = useState(new Date(Date.now() + 1000 * 60 * 60 * 24 * 10)) // 10 days from now
+    // Helper to get current plan name from user/session/localStorage
+    function getCurrentPlanName(): string | null {
+        if (typeof window === "undefined") return null
+        try {
+            const user = getAuthUser()
+            if (user && user.company && user.company.package && user.company.package.name) {
+                return user.company.package.name
+            } else {
+                const sessionPackage = sessionStorage.getItem("package")
+                if (sessionPackage) {
+                    const pkg = JSON.parse(sessionPackage)
+                    if (pkg && typeof pkg === "object" && pkg.name) {
+                        return pkg.name
+                    }
+                }
+            }
+        } catch { }
+        const storedPlan = localStorage.getItem("companyPlanName")
+        if (storedPlan) return storedPlan
+        return null
+    }
+
+    // Helper to get current plan id from user/session/localStorage
+    function getCurrentPlanId(): string | null {
+        if (typeof window === "undefined") return null
+        try {
+            const user = getAuthUser()
+            if (user && user.company && user.company.package && user.company.package.id) {
+                return user.company.package.id
+            } else {
+                const sessionPackage = sessionStorage.getItem("package")
+                if (sessionPackage) {
+                    const pkg = JSON.parse(sessionPackage)
+                    if (pkg && typeof pkg === "object" && pkg.id) {
+                        return pkg.id
+                    }
+                }
+            }
+        } catch { }
+        // No id in localStorage fallback
+        return null
+    }
 
     useEffect(() => {
-        async function loadPackages() {
+        async function loadData() {
             setLoading(true)
             setError(null)
             try {
                 const res: PackagesApiResponse = await fetchPackages()
                 setPackages(res.data || [])
-                setSelectedPlan(res.data?.[0] || null) // Use first as current plan for demo
+                // Find current plan by id
+                let currentPlan: PackageType | null = null
+                const planId = getCurrentPlanId()
+                if (planId) {
+                    currentPlan = res.data.find(pkg => pkg.id === planId) || null
+                }
+                setSelectedPlan(currentPlan)
+
+                // Fetch license keys and filter for this company
+                const user = getAuthUser()
+                const companyId = user?.company?.id
+                if (companyId) {
+                    const licenseRes = await fetchLicenseKeys()
+                    const companyLicenses = (licenseRes.data || []).filter((lk: LicenseKey) => lk.company.id === companyId)
+                    // Sort by expiryDate (desc), fallback to createdAt
+                    companyLicenses.sort((a: LicenseKey, b: LicenseKey) => {
+                        const aDate = new Date(a.expiryDate || a.createdAt).getTime()
+                        const bDate = new Date(b.expiryDate || b.createdAt).getTime()
+                        return bDate - aDate
+                    })
+                    const latest = companyLicenses[0] || null
+                    setLatestLicenseKey(latest)
+                    setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
+                    // If the license has a package, use that as the current plan
+                    if (latest && latest.package) {
+                        setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
+                    }
+                }
             } catch (err: any) {
-                setError("Failed to fetch packages")
+                setError("Failed to fetch packages or license keys")
             } finally {
                 setLoading(false)
             }
         }
-        loadPackages()
+        loadData()
     }, [])
 
     const handleUpgradeClick = (pkg: PackageType) => {
@@ -76,7 +145,7 @@ export default function CompanyAdminPackagesPage() {
         setPendingUpgrade(null)
     }
 
-    const usagePercent = selectedPlan ? Math.round((currentUsage / selectedPlan.no_of_users) * 100) : 0
+    // Remove usage/consumption display
 
     // Card min height for consistency
     const CARD_MIN_HEIGHT = "min-h-[240px]" // reduced height for a more compact look
@@ -84,7 +153,7 @@ export default function CompanyAdminPackagesPage() {
     return (
         <div className="flex flex-col gap-8">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2 text-primary">
                     <Package className="h-6 w-6" /> Packages
                 </h1>
                 <p className="text-muted-foreground mb-4">View available packages and upgrade your plan.</p>
@@ -94,7 +163,7 @@ export default function CompanyAdminPackagesPage() {
             {loading ? (
                 <>
                     {/* Current Plan Skeleton */}
-                    <Card className={`border-2 border-primary/60 bg-primary/5 ${CARD_MIN_HEIGHT}`}>
+                    <Card className={`border-2 border-primary/60 bg-primary/5 `}>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div className="flex-1">
                                 <CardTitle className="flex items-center gap-2">
@@ -150,7 +219,7 @@ export default function CompanyAdminPackagesPage() {
                 <>
                     {/* Current Plan Section */}
                     {selectedPlan && (
-                        <Card className={`border-2 border-primary/60 bg-primary/5 ${CARD_MIN_HEIGHT} flex flex-col`}>
+                        <Card className={`border-2 border-primary/60 bg-primary/5  flex flex-col`}>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div className="flex-1">
                                     <CardTitle className="flex items-center gap-2">
@@ -159,13 +228,14 @@ export default function CompanyAdminPackagesPage() {
                                     </CardTitle>
                                     <CardDescription className="mt-2">{selectedPlan.description}</CardDescription>
                                     <div className="mt-4">
-                                        <div className="flex items-center justify-between text-xs mb-1">
-                                            <span>Usage</span>
-                                            <span>{currentUsage} / {selectedPlan.no_of_users} users</span>
-                                        </div>
-                                        <Progress value={usagePercent} className="h-2" />
+                                        {latestLicenseKey && (
+                                            <div className="flex items-center gap-2 text-xs mb-1">
+                                                <span className="font-semibold">License Key:</span>
+                                                <span className="font-mono break-all">{latestLicenseKey.key}</span>
+                                            </div>
+                                        )}
                                         <div className="text-xs text-muted-foreground mt-2">
-                                            Expires: {currentPlanExpiry.toLocaleDateString()} ({Math.ceil((currentPlanExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left)
+                                            Expires: {currentPlanExpiry ? currentPlanExpiry.toLocaleDateString() : "-"} {currentPlanExpiry ? `(${Math.ceil((currentPlanExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left)` : ""}
                                         </div>
                                     </div>
                                 </div>

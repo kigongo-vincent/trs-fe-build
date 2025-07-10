@@ -1,27 +1,23 @@
 "use client"
 
+import React from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
-import React from "react"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
-interface PackageType {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  durationType: string;
-  no_of_users: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+interface Package {
+  id: string
+  name: string
+  price: number
+  currency: string
 }
 
 interface PackageDistributionChartProps {
-  packages: PackageType[];
-  loading?: boolean;
+  packages: Package[]
+  loading: boolean
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A28BFE", "#FF6F91"]
+const COLORS = [GRAPH_PRIMARY_COLOR, "#00C49F", "#FFBB28", "#FF8042", "#A28BFE", "#FF6F91"]
 
 export function PackageDistributionChart({ packages, loading }: PackageDistributionChartProps) {
   // Group by package name and count number of packages per name

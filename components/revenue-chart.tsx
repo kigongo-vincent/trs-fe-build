@@ -1,6 +1,7 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "@/components/ui/chart"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   {
@@ -64,7 +65,7 @@ export function RevenueChart() {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="basic" fill="#8884d8" />
+        <Bar dataKey="basic" fill={GRAPH_PRIMARY_COLOR} />
         <Bar dataKey="standard" fill="#82ca9d" />
         <Bar dataKey="premium" fill="#ffc658" />
         <Bar dataKey="enterprise" fill="#ff8042" />

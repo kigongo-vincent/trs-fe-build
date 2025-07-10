@@ -1,6 +1,7 @@
 "use client"
 
-import { Pie, PieChart, ResponsiveContainer, Tooltip, Legend, Cell } from "recharts"
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 interface ProjectStatusChartProps {
   totalProjects: number
@@ -9,7 +10,7 @@ interface ProjectStatusChartProps {
   onHoldProjects: number
 }
 
-const COLORS = ["#4f46e5", "#10b981", "#f59e0b"]
+const COLORS = [GRAPH_PRIMARY_COLOR, "#10b981", "#f59e0b"]
 
 export function ProjectStatusChart({
   totalProjects,

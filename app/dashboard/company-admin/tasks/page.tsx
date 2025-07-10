@@ -13,7 +13,7 @@ import { TasksByDepartmentChart } from "@/components/tasks-by-department-chart"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { fetchTasksSummary, fetchAllTasks, type TasksSummaryData, type Task, deleteTask } from "@/services/tasks"
+import { fetchTasksSummary, fetchAllTasks, fetchTasksByDepartment, type TasksSummaryData, type Task, deleteTask } from "@/services/tasks"
 import { EditTaskForm } from "@/components/edit-task-form"
 import { getProjects } from "@/services/projects"
 import { getAuthData } from "@/services/auth"
@@ -24,6 +24,7 @@ export default function TasksPage() {
   const [summaryData, setSummaryData] = useState<TasksSummaryData | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
+  const [tasksByDepartment, setTasksByDepartment] = useState<Array<{ department: string; tasks: number }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isTasksLoading, setIsTasksLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -144,47 +145,72 @@ export default function TasksPage() {
     appliedFilters.projectFilter !== "all" ||
     appliedFilters.durationFilter !== "all"
 
-  useEffect(() => {
-    async function loadTasksSummary() {
-      try {
-        setIsLoading(true)
-        setError(null)
-        const response = await fetchTasksSummary()
-        setSummaryData(response.data)
-      } catch (err) {
-        console.error("Failed to fetch tasks summary:", err)
+  // Define the data loading functions
+  const loadTasksSummary = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const response = await fetchTasksSummary()
+      setSummaryData(response.data)
+    } catch (err) {
+      console.error("Failed to fetch tasks summary:", err)
+      if (err instanceof Error && err.message.includes("overloaded")) {
+        setError("Server is temporarily busy. Please try again in a few moments.")
+      } else {
         setError(err instanceof Error ? err.message : "Failed to load tasks summary")
-      } finally {
-        setIsLoading(false)
       }
+    } finally {
+      setIsLoading(false)
     }
+  }
 
-    async function loadAllTasks() {
-      try {
-        setIsTasksLoading(true)
-        const response = await fetchAllTasks()
-        setTasks(response.data)
-        setFilteredTasks(response.data)
-      } catch (err) {
-        console.error("Failed to fetch tasks:", err)
-      } finally {
-        setIsTasksLoading(false)
+  const loadAllTasks = async () => {
+    try {
+      setIsTasksLoading(true)
+      const response = await fetchAllTasks()
+      setTasks(response.data)
+      setFilteredTasks(response.data)
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err)
+      // Show user-friendly error message for server overload
+      if (err instanceof Error && err.message.includes("overloaded")) {
+        toast.error("Server is temporarily busy. Please try again in a few moments.")
+      } else {
+        toast.error("Failed to load tasks. Please try again.")
       }
+    } finally {
+      setIsTasksLoading(false)
     }
+  }
 
-    async function fetchProjects() {
-      try {
-        const authData = getAuthData()
-        if (!authData?.user?.company?.id) return
-        const response = await getProjects(authData.user.company.id)
-        setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })))
-      } catch (err) {
-        // handle error if needed
-      }
+  const loadTasksByDepartment = async () => {
+    try {
+      const response = await fetchTasksByDepartment()
+      setTasksByDepartment(response.data.map((item: any) => ({
+        department: item.departmentName,
+        tasks: item.totalTasks
+      })))
+    } catch (err) {
+      console.error("Failed to fetch tasks by department:", err)
+      // Don't show error toast for this as it's not critical
     }
+  }
 
+  const fetchProjects = async () => {
+    try {
+      const authData = getAuthData()
+      if (!authData?.user?.company?.id) return
+      const response = await getProjects(authData.user.company.id)
+      setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })))
+    } catch (err) {
+      // handle error if needed
+    }
+  }
+
+  useEffect(() => {
     loadTasksSummary()
     loadAllTasks()
+    loadTasksByDepartment()
     fetchProjects()
   }, [])
 
@@ -316,16 +342,32 @@ export default function TasksPage() {
   if (error) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Consultant Tasks</h1>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Consultant Tasks</h1>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center text-red-600">
               <p>Error loading tasks summary: {error}</p>
-              <Button variant="outline" onClick={() => window.location.reload()} className="mt-2">
-                Retry
-              </Button>
+              <div className="flex gap-2 justify-center mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setError(null)
+                    setIsLoading(true)
+                    loadTasksSummary()
+                    loadAllTasks()
+                    loadTasksByDepartment()
+                    fetchProjects()
+                  }}
+                >
+                  Retry
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                >
+                  Reload Page
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -336,7 +378,7 @@ export default function TasksPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Consultant Tasks</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Consultant Tasks</h1>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -353,7 +395,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryData?.totalTasks || 0}</div>
+                <div className="text-2xl font-bold text-primary">{summaryData?.totalTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData?.totalTasks === 1 ? "task" : "tasks"} in total
                 </p>
@@ -374,7 +416,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryData?.activeTasks || 0}</div>
+                <div className="text-2xl font-bold text-primary">{summaryData?.activeTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData && summaryData.totalTasks > 0
                     ? `${Math.round(((summaryData.activeTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
@@ -397,7 +439,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryData?.draftTasks || 0}</div>
+                <div className="text-2xl font-bold text-primary">{summaryData?.draftTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData && summaryData.totalTasks > 0
                     ? `${Math.round(((summaryData.draftTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
@@ -420,7 +462,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryData?.totalHours || 0}</div>
+                <div className="text-2xl font-bold text-primary">{summaryData?.totalHours || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData?.totalHours === 1 ? "hour" : "hours"} logged
                 </p>
@@ -433,7 +475,7 @@ export default function TasksPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Task Status</CardTitle>
+            <CardTitle className="text-primary">Task Status</CardTitle>
             <CardDescription>Distribution of tasks by status</CardDescription>
           </CardHeader>
           <CardContent>
@@ -451,11 +493,11 @@ export default function TasksPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Tasks by Department</CardTitle>
+            <CardTitle className="text-primary">Tasks by Department</CardTitle>
             <CardDescription>Distribution of tasks across departments</CardDescription>
           </CardHeader>
           <CardContent>
-            <TasksByDepartmentChart />
+            <TasksByDepartmentChart data={tasksByDepartment} />
           </CardContent>
         </Card>
       </div>
@@ -564,7 +606,7 @@ export default function TasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Tasks</CardTitle>
+          <CardTitle className="text-primary">All Tasks</CardTitle>
           <CardDescription>
             {isTasksLoading ? "Loading tasks..." : `${filteredTasks.length} of ${tasks.filter((task) => task.status.toLowerCase() !== "draft").length} tasks`}
           </CardDescription>

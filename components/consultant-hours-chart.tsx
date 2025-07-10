@@ -1,6 +1,7 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
 const data = [
   {
@@ -33,8 +34,6 @@ const data = [
   },
 ]
 
-const primaryColor = "#F6931B"
-
 export function ConsultantHoursChart() {
   return (
     <ResponsiveContainer width="100%" height={350}>
@@ -44,7 +43,7 @@ export function ConsultantHoursChart() {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="hours" fill={primaryColor} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

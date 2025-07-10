@@ -1,38 +1,30 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
-import { Card } from "@/components/ui/card"
-import { MonthlySalaryData } from "@/services/employee"
-import { ConsultantMonthlySummaryItem } from "@/services/consultants"
-import { useMemo } from "react"
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 
-type MonthlySalaryChartProps =
-  | { data: MonthlySalaryData[] }
-  | { data: ConsultantMonthlySummaryItem[] }
+interface MonthlySalaryChartProps {
+  data: Array<{
+    month: string
+    amount: number
+    currency: string
+  }>
+}
 
 export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
-  // Determine if the data uses 'month' or 'label' for the x-axis
-  const xKey = data.length > 0 && 'month' in data[0] ? 'month' : 'label'
-  // Use actual currency code as string (default to USD)
-  const firstCurrency = data.length > 0 ? (data[0] as any).currency : undefined;
-  const yAxisCurrency = (firstCurrency ? firstCurrency.toUpperCase() : 'USD');
+  // Fill in missing months with zero values
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
 
-  // Ensure all 12 months are shown (for ConsultantMonthlySummaryItem[])
-  const filledData = useMemo(() => {
-    if (xKey === 'label') {
-      // Get all months from the data (should be 12, but fill if missing)
-      const months = [
-        'August 2024', 'September 2024', 'October 2024', 'November 2024', 'December 2024',
-        'January 2025', 'February 2025', 'March 2025', 'April 2025', 'May 2025', 'June 2025', 'July 2025'
-      ];
-      const currency = firstCurrency ? firstCurrency.toUpperCase() : 'USD';
-      const map = new Map((data as ConsultantMonthlySummaryItem[]).map(item => [item.label, item]));
-      const allMonths = months.map(label => map.get(label) || { label, amount: 0, currency });
-      // Only show the last 8 months
-      return allMonths.slice(-8);
-    }
-    return data;
-  }, [data, xKey, firstCurrency]);
+  const filledData = months.map((month) => {
+    const existingData = data.find((item) => item.month === month)
+    return existingData || { month, amount: 0, currency: "USD" }
+  })
+
+  const xKey = "month"
+  const yAxisCurrency = "USD"
 
   return (
     <ResponsiveContainer width="100%" height={350}>

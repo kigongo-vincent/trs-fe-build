@@ -114,7 +114,7 @@ export default function CompanyAdminDashboard() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Company Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Company Admin Dashboard</h1>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8">
@@ -129,7 +129,7 @@ export default function CompanyAdminDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Company Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Company Admin Dashboard</h1>
         <div className="flex items-center gap-2">
           {/* <Button asChild>
             <Link href="/dashboard/company-admin/projects/new">
@@ -226,8 +226,6 @@ export default function CompanyAdminDashboard() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -250,135 +248,6 @@ export default function CompanyAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-        <TabsContent value="tasks" className="space-y-4">
-          {isTasksLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : tasksError ? (
-            <Card>
-              <CardContent className="py-8 flex flex-col items-center">
-                <p className="mb-4 text-muted-foreground">Failed to load tasks overview</p>
-                <Button onClick={() => window.location.reload()}>Try Again</Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Status</CardTitle>
-                <CardDescription>Overview of all tasks by status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-blue-500"></div>
-                      <span className="text-sm font-medium">In Progress</span>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      {statusCounts.inProgress} ({total ? Math.round((statusCounts.inProgress / total) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-yellow-500"></div>
-                      <span className="text-sm font-medium">Pending</span>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      {statusCounts.pending} ({total ? Math.round((statusCounts.pending / total) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-green-500"></div>
-                      <span className="text-sm font-medium">Completed</span>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      {statusCounts.completed} ({total ? Math.round((statusCounts.completed / total) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-red-500"></div>
-                      <span className="text-sm font-medium">Overdue</span>
-                    </div>
-                    <span className="text-sm font-medium text-primary">
-                      {statusCounts.overdue} ({total ? Math.round((statusCounts.overdue / total) * 100) : 0}%)
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href="/dashboard/company-admin/tasks">
-                      View All Tasks
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-        <TabsContent value="invoices" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Invoices</CardTitle>
-              <CardDescription>Recently generated invoices</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">April 2025</p>
-                      <p className="text-xs text-muted-foreground">Total: $12,450</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Download
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">March 2025</p>
-                      <p className="text-xs text-muted-foreground">Total: $11,280</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Download
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">February 2025</p>
-                      <p className="text-xs text-muted-foreground">Total: $10,850</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    Download
-                  </Button>
-                </div>
-              </div>
-              <div className="mt-6">
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/company-admin/invoices">
-                    View All Invoices
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

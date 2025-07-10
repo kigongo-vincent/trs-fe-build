@@ -380,73 +380,17 @@ export default function SettingsPage() {
         bio: profileForm.bio.trim(),
       };
 
-      // Only add departmentId if it has a value
+      // Only add departmentId if it has a value and is visible in the UI
       if (profileForm.departmentId && profileForm.departmentId.trim()) {
         requestData.departmentId = profileForm.departmentId;
       }
 
-      // Only add phoneNumber if it has a value
+      // Only add phoneNumber if it has a value and is visible in the UI
       if (profileForm.phoneNumber && profileForm.phoneNumber.trim()) {
         requestData.phoneNumber = profileForm.phoneNumber.trim();
       }
 
-      // Only add dateOfBirth if it has a value
-      if (profileForm.dateOfBirth && profileForm.dateOfBirth.trim()) {
-        requestData.dateOfBirth = new Date(profileForm.dateOfBirth).toISOString();
-      }
-
-      // Only add nextOfKin if any field has a value
-      if (
-        profileForm.nextOfKin.name?.trim() ||
-        profileForm.nextOfKin.relationship?.trim() ||
-        profileForm.nextOfKin.phoneNumber?.trim() ||
-        profileForm.nextOfKin.email?.trim()
-      ) {
-        requestData.nextOfKin = {};
-        if (profileForm.nextOfKin.name?.trim()) requestData.nextOfKin.name = profileForm.nextOfKin.name.trim();
-        if (profileForm.nextOfKin.relationship?.trim()) requestData.nextOfKin.relationship = profileForm.nextOfKin.relationship.trim();
-        if (profileForm.nextOfKin.phoneNumber?.trim()) requestData.nextOfKin.phoneNumber = profileForm.nextOfKin.phoneNumber.trim();
-        if (profileForm.nextOfKin.email?.trim()) requestData.nextOfKin.email = profileForm.nextOfKin.email.trim();
-      }
-
-      // Only add address if any field has a value
-      if (
-        profileForm.address.street.trim() ||
-        profileForm.address.city.trim() ||
-        profileForm.address.state.trim() ||
-        profileForm.address.country.trim() ||
-        profileForm.address.postalCode.trim()
-      ) {
-        requestData.address = {};
-        if (profileForm.address.street.trim()) requestData.address.street = profileForm.address.street.trim();
-        if (profileForm.address.city.trim()) requestData.address.city = profileForm.address.city.trim();
-        if (profileForm.address.state.trim()) requestData.address.state = profileForm.address.state.trim();
-        if (profileForm.address.country.trim()) requestData.address.country = profileForm.address.country.trim();
-        if (profileForm.address.postalCode.trim()) requestData.address.postalCode = profileForm.address.postalCode.trim();
-      }
-
-      // Only add bankDetails if any field has a value
-      if (
-        profileForm.bankDetails.accountName.trim() ||
-        profileForm.bankDetails.accountNumber.trim() ||
-        profileForm.bankDetails.bankName.trim() ||
-        profileForm.bankDetails.swiftCode.trim() ||
-        profileForm.bankDetails.routingNumber.trim()
-      ) {
-        requestData.bankDetails = {};
-        if (profileForm.bankDetails.accountName.trim()) requestData.bankDetails.accountName = profileForm.bankDetails.accountName.trim();
-        if (profileForm.bankDetails.accountNumber.trim()) requestData.bankDetails.accountNumber = profileForm.bankDetails.accountNumber.trim();
-        if (profileForm.bankDetails.bankName.trim()) requestData.bankDetails.bankName = profileForm.bankDetails.bankName.trim();
-        if (profileForm.bankDetails.swiftCode.trim()) requestData.bankDetails.swiftCode = profileForm.bankDetails.swiftCode.trim();
-        if (profileForm.bankDetails.routingNumber.trim()) requestData.bankDetails.routingNumber = profileForm.bankDetails.routingNumber.trim();
-      }
-
-      // Only add officeDays if it has a value
-      if (profileForm.officeDays && profileForm.officeDays.trim()) {
-        requestData.officeDays = profileForm.officeDays;
-      }
-
-      // If a new avatar is selected, add it as base64 string (profileImage)
+      // Only add profileImage if a new avatar is selected
       if (selectedAvatarFile && avatarPreview) {
         // avatarPreview is like: data:image/png;base64,iVBORw0KGgo...
         // We need to insert ;name=filename before ;base64
@@ -478,15 +422,15 @@ export default function SettingsPage() {
           jobTitle: profileForm.jobTitle.trim(),
           bio: profileForm.bio.trim(),
           department: profileForm.departmentId ? (departments.find(dept => dept.id === profileForm.departmentId) || currentUser.department) : null,
-          employeeId: profileForm.employeeId,
-          phoneNumber: profileForm.phoneNumber,
-          grossPay: profileForm.grossPay,
-          dateOfBirth: profileForm.dateOfBirth,
-          nextOfKin: profileForm.nextOfKin,
-          address: profileForm.address,
-          bankDetails: profileForm.bankDetails,
-          officeDays: profileForm.officeDays,
-          // avatarUrl will be updated by backend if profileImage is processed
+          employeeId: currentUser.employeeId, // Keep existing employeeId
+          phoneNumber: profileForm.phoneNumber, // Keep existing phoneNumber
+          grossPay: currentUser.grossPay, // Keep existing grossPay
+          dateOfBirth: currentUser.dateOfBirth, // Keep existing dateOfBirth
+          nextOfKin: currentUser.nextOfKin, // Keep existing nextOfKin
+          address: currentUser.address, // Keep existing address
+          bankDetails: currentUser.bankDetails, // Keep existing bankDetails
+          officeDays: currentUser.officeDays, // Keep existing officeDays
+          profileImage: (selectedAvatarFile && avatarPreview) ? avatarPreview : (response?.profileImage || currentUser.profileImage),
         };
 
         // Update local storage
@@ -692,7 +636,7 @@ export default function SettingsPage() {
                       <Label>Avatar</Label>
                       <div className="flex items-center">
                         <Avatar>
-                          <AvatarImage src={avatarPreview || getImage(user?.avatarUrl) || ""} alt={user?.fullName || "User Avatar"} />
+                          <AvatarImage src={avatarPreview || user?.profileImage || ""} alt={user?.fullName || "User Avatar"} />
                           <AvatarFallback>
                             {user?.fullName
                               ? user.fullName
@@ -808,7 +752,7 @@ export default function SettingsPage() {
                       <Label>Avatar</Label>
                       <div className="flex items-center">
                         <Avatar>
-                          <AvatarImage src={avatarPreview || getImage(user?.avatarUrl) || ""} alt={user?.fullName || "User Avatar"} />
+                          <AvatarImage src={avatarPreview || user?.profileImage || ""} alt={user?.fullName || "User Avatar"} />
                           <AvatarFallback>
                             {user?.fullName
                               ? user.fullName

@@ -76,7 +76,7 @@ export default function PackageDetailsPage() {
                                 </div>
                                 <div className="flex-1 w-full">
                                     <div className="flex flex-col md:flex-row md:items-center md:gap-4">
-                                        <h1 className="text-3xl font-bold leading-tight tracking-tight mb-1 md:mb-0">{pkg.name}</h1>
+                                        <h1 className="text-3xl font-bold leading-tight tracking-tight mb-1 md:mb-0 text-primary">{pkg.name}</h1>
                                         {/* <span className="text-xs text-muted-foreground break-all">{pkg.id}</span> */}
                                     </div>
                                     {/* <div className="mt-2 text-sm text-muted-foreground line-clamp-2">{pkg.description}</div> */}

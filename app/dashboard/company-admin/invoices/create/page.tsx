@@ -68,7 +68,7 @@ export default function CreateInvoicePage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">Create Invoice</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Create Invoice</h1>
         </div>
       </div>
 

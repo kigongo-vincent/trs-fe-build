@@ -33,7 +33,6 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
@@ -130,9 +129,8 @@ export default function ProjectsPage() {
   }
 
   const handleProjectCreated = () => {
-    // Refresh both the projects list and summary, and trigger chart refresh
+    // Refresh both the projects list and summary
     Promise.all([fetchProjectsSummary(), fetchProjects()])
-    setRefreshTrigger((prev) => prev + 1)
   }
 
   const handleDeleteClick = (project: Project) => {
@@ -141,9 +139,8 @@ export default function ProjectsPage() {
   }
 
   const handleDeleteSuccess = () => {
-    // Refresh both the projects list and summary, and trigger chart refresh
+    // Refresh both the projects list and summary
     Promise.all([fetchProjectsSummary(), fetchProjects()])
-    setRefreshTrigger((prev) => prev + 1)
   }
 
   const handleEditClick = (project: Project) => {
@@ -152,9 +149,8 @@ export default function ProjectsPage() {
   }
 
   const handleEditSuccess = () => {
-    // Refresh both the projects list and summary, and trigger chart refresh
+    // Refresh both the projects list and summary
     Promise.all([fetchProjectsSummary(), fetchProjects()])
-    setRefreshTrigger((prev) => prev + 1)
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -187,7 +183,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Projects</h1>
         <div className="flex items-center gap-2">
           <Button onClick={handleNewProject}>
             <Plus className="mr-2 h-4 w-4" /> New Project
@@ -214,7 +210,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{projectSummary?.totalProjects || 0}</div>
+                <div className="text-2xl text-primary font-bold">{projectSummary?.totalProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">All company projects</p>
               </>
             )}
@@ -230,7 +226,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{projectSummary?.activeProjects || 0}</div>
+                <div className="text-2xl text-primary font-bold">{projectSummary?.activeProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.activeProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -250,7 +246,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{projectSummary?.completedProjects || 0}</div>
+                <div className="text-2xl text-primary font-bold">{projectSummary?.completedProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.completedProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -270,7 +266,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{projectSummary?.onHoldProjects || 0}</div>
+                <div className="text-2xl text-primary font-bold">{projectSummary?.onHoldProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.onHoldProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -285,7 +281,7 @@ export default function ProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Project Status</CardTitle>
+            <CardTitle className="text-primary">Project Status</CardTitle>
             <CardDescription>Distribution of projects by status</CardDescription>
           </CardHeader>
           <CardContent>
@@ -305,11 +301,17 @@ export default function ProjectsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Project Timeline</CardTitle>
+            <CardTitle className="text-primary">Project Timeline</CardTitle>
             <CardDescription>Projects by completion percentage</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProjectTimelineChart refreshTrigger={refreshTrigger} />
+            {loading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <ProjectTimelineChart projects={projects} />
+            )}
           </CardContent>
         </Card>
       </div>

@@ -90,7 +90,7 @@ export default function TaskViewPage({ params }: { params: { id: string } }) {
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">Loading Task Details...</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-primary">Loading Task Details...</h1>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function TaskViewPage({ params }: { params: { id: string } }) {
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">Task Not Found</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-primary">Task Not Found</h1>
           </div>
         </div>
         <Card>
@@ -133,7 +133,7 @@ export default function TaskViewPage({ params }: { params: { id: string } }) {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">Task Details</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Task Details</h1>
         </div>
         <Button variant="outline">
           <Download className="mr-2 h-4 w-4" /> Export

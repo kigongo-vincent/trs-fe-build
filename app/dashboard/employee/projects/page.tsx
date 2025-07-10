@@ -187,7 +187,7 @@ const ProjectsPage = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6">My Projects</h1>
+            <h1 className="text-2xl font-bold mb-6 text-primary">My Projects</h1>
             <div className="grid gap-4">
                 {projects.map((project) => (
                     <Card

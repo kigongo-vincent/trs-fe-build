@@ -81,7 +81,7 @@ export function UserNav({ role, planName }: UserNavProps) {
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
             <AvatarImage
-              src={isClient && user?.avatarUrl ? getImage(user.avatarUrl) : "/placeholder.svg?height=32&width=32"}
+              src={isClient && user?.profileImage ? user.profileImage : "/placeholder.svg?height=32&width=32"}
               alt={isClient && user?.fullName ? user.fullName : "User avatar"}
             />
             <AvatarFallback>{isClient ? getUserInitials() : "U"}</AvatarFallback>
@@ -100,7 +100,7 @@ export function UserNav({ role, planName }: UserNavProps) {
             <p className="text-xs font-medium text-primary mt-1">{displayRole}</p>
             {isClient && user?.role?.name === "Company Admin" && (
               <Badge variant="outline" className="mt-1 w-fit flex items-center gap-1 text-xs">
-                <Package className="h-3 w-3 mr-1 text-yellow-500" /> {planName || "Trial"}
+                <Package className="h-3 w-3 mr-1 text-yellow-500" /> {planName  || "Trial"}
               </Badge>
             )}
           </div>

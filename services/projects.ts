@@ -49,7 +49,7 @@ export interface Project {
     status: string;
     jobTitle: string | null;
     bio: string | null;
-    avatarUrl: string | null;
+    profileImage: string | null;
     resetToken: string | null;
     resetTokenExpires: string | null;
     createdAt: string;

@@ -191,9 +191,9 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
+            <DialogContent className="p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
                 <DialogTitle><VisuallyHidden>Edit Project</VisuallyHidden></DialogTitle>
-                <div className="sticky top-0 left-0 w-full bg-background border-b shadow z-20 px-8 py-6 flex items-center justify-between">
+                <div className=" z-20 px-8 py-6 flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                         <DialogTitle className="text-2xl font-semibold">Edit Project</DialogTitle>
                         <DialogDescription>Update the project details below.</DialogDescription>
@@ -201,7 +201,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
                     <DialogClose asChild>
                         <button
                             type="button"
-                            className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
                             aria-label="Close"
                         >
                             <X className="h-6 w-6" />
@@ -275,7 +275,7 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
                                             <SelectContent>
                                                 {users.map((user) => (
                                                     <SelectItem key={user.id} value={user.id}>
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col ">
                                                             <span>{user.fullName}</span>
                                                             <span className="text-xs text-muted-foreground">{user.email}</span>
                                                         </div>

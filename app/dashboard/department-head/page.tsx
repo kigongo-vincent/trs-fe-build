@@ -10,7 +10,7 @@ export default function DepartmentHeadDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Department Head Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Department Head Dashboard</h1>
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/department-head/tasks/new">

@@ -331,7 +331,7 @@ export default function TimeLogsPage() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Time Logs</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Time Logs</h1>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8">
