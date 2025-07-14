@@ -501,6 +501,7 @@ export async function createBoardMember(data: {
   fullName: string;
   email: string;
   companyId: string;
+  role?: string;
 }): Promise<any> {
   return postRequest(`/company/board-members`, data);
 }
@@ -510,10 +511,20 @@ export async function updateBoardMember(data: {
   fullName: string;
   email: string;
   status?: string;
+  role?: string;
 }): Promise<any> {
   return putRequest(`/company/board-members`, data);
 }
 
 export async function deleteBoardMember(memberId: string): Promise<any> {
   return deleteRequest(`/company/board-members/${memberId}`);
+}
+
+// Update company details (name, logo, etc.)
+export async function updateCompany(payload: {
+  id: string;
+  name: string;
+  logo?: string;
+}): Promise<any> {
+  return putRequest(`/company/update`, payload);
 }

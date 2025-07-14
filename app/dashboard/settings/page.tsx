@@ -14,7 +14,7 @@ import { updatePassword, PasswordUpdateRequest, updateProfile, ProfileUpdateRequ
 import { getDepartments } from "@/services/departments"
 import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
-import { BASE_URL, getImage } from "@/services/api"
+import { BASE_URL, getImage, updateCompany } from "@/services/api"
 import { Switch } from "@/components/ui/switch"
 
 interface PasswordFormData {
@@ -165,6 +165,10 @@ export default function SettingsPage() {
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [enableFloatingPoint, setEnableFloatingPoint] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
+  const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -265,6 +269,14 @@ export default function SettingsPage() {
     loadUserDataAndDepartments();
   }, [router]);
 
+  // Load company info for Company Admin
+  useEffect(() => {
+    if (userRole === "Company Admin" && user?.company) {
+      setCompanyName(user.company.name || "");
+      setCompanyLogo(user.company.logo || null);
+    }
+  }, [userRole, user]);
+
   const validatePasswordForm = (): boolean => {
     const errors: PasswordFormErrors = {};
 
@@ -353,6 +365,18 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  // Handle logo file select
+  const handleCompanyLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCompanyLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCompanyLogo(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleProfileUpdate = async () => {
     if (!validateProfileForm()) {
       // Collect all error messages from profileErrors
@@ -432,7 +456,7 @@ export default function SettingsPage() {
           address: currentUser.address, // Keep existing address
           bankDetails: currentUser.bankDetails, // Keep existing bankDetails
           officeDays: currentUser.officeDays, // Keep existing officeDays
-          profileImage: (selectedAvatarFile && avatarPreview) ? avatarPreview : (response?.profileImage || currentUser.profileImage),
+          profileImage: (selectedAvatarFile && avatarPreview) ? avatarPreview : currentUser.profileImage,
         };
 
         // Update local storage
@@ -529,6 +553,44 @@ export default function SettingsPage() {
       }
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  // Handle company update
+  const handleCompanyUpdate = async () => {
+    if (!companyName.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
+    setIsUpdatingCompany(true);
+    try {
+      let logoData: string | undefined = undefined;
+      if (companyLogoFile && companyLogo) {
+        // companyLogo is data:image/png;base64,xxxxxx
+        const base64Data = companyLogo.split(',')[1];
+        if (base64Data) logoData = base64Data;
+      } else if (companyLogo && companyLogo.startsWith('data:')) {
+        // If companyLogo is a data URL, extract base64
+        const base64Data = companyLogo.split(',')[1];
+        if (base64Data) logoData = base64Data;
+      } else if (companyLogo && !companyLogo.startsWith('http')) {
+        // If it's already a base64 string (not a URL)
+        logoData = companyLogo;
+      }
+      const payload = {
+        id: user.company.id,
+        name: companyName.trim(),
+        logo: logoData,
+        roundOff: enableFloatingPoint,
+      };
+      await updateCompany(payload);
+      toast.success("Company updated successfully");
+      setUser((prev: any) => prev ? { ...prev, company: { ...prev.company, name: companyName.trim(), logo: logoData } } : prev);
+      setCompanyLogoFile(null);
+    } catch (error: any) {
+      toast.error("Failed to update company", { description: error?.message || "An error occurred." });
+    } finally {
+      setIsUpdatingCompany(false);
     }
   };
 
@@ -816,17 +878,69 @@ export default function SettingsPage() {
         </TabsContent>
         {userRole === "Company Admin" && (
           <TabsContent value="company">
-            <div className="flex max-w-[60vw] border rounded p-4 items-center justify-between">
-              <div>
-                <label htmlFor="enableFloatingPoint" className="text-base font-medium select-none">Enable floating point on invoices</label>
-                <span className="opacity-40 text-sm block">This affects the amount of money that reflects on the invoice of your consultants e.g 1,000,000.90 ~ 1M</span>
+            <div className="flex flex-col gap-6 max-w-[60vw] border  rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label htmlFor="enableFloatingPoint" className="text-base font-medium select-none">Enable floating point on invoices</label>
+                  <span className="opacity-40 text-sm block">This affects the amount of money that reflects on the invoice of your consultants e.g 1,000,000.90 ~ 1M</span>
+                </div>
+                <Switch
+                  id="enableFloatingPoint"
+                  checked={enableFloatingPoint}
+                  onCheckedChange={setEnableFloatingPoint}
+                  className="ml-4"
+                />
               </div>
-              <Switch
-                id="enableFloatingPoint"
-                checked={enableFloatingPoint}
-                onCheckedChange={setEnableFloatingPoint}
-                className="ml-4"
-              />
+              <Separator />
+              <div className="flex block flex-col md:flex-row gap-6 items-center">
+                <div className="flex-1">
+                  <Label htmlFor="companyName">Company Name</Label>
+                  <Input
+                    id="companyName"
+                    value={companyName}
+                    onChange={e => setCompanyName(e.target.value)}
+                    placeholder="Enter company name"
+                    disabled={isUpdatingCompany}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-start mt-4">
+                <Label>Company Logo</Label>
+                <div className="flex items-center gap-4 mt-1">
+                  <Avatar>
+                    <AvatarImage src={companyLogo || undefined} alt={companyName || "Company Logo"} />
+                    <AvatarFallback>{companyName ? companyName[0] : "C"}</AvatarFallback>
+                  </Avatar>
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById("companyLogoInput")?.click()}
+                    disabled={isUpdatingCompany}
+                  >
+                    {companyLogoFile ? "Change Selected" : "Change Logo"}
+                  </Button>
+                  <input
+                    id="companyLogoInput"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCompanyLogoSelect}
+                    className="hidden"
+                  />
+                  {companyLogo && companyLogoFile && (
+                    <Button
+                      variant="ghost"
+                      className="text-xs text-red-500"
+                      onClick={() => { setCompanyLogo(null); setCompanyLogoFile(null); }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Button onClick={handleCompanyUpdate} disabled={isUpdatingCompany}>
+                  {isUpdatingCompany ? "Updating..." : "Update Company"}
+                </Button>
+              </div>
             </div>
           </TabsContent>
         )}

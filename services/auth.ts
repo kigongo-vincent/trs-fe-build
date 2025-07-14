@@ -177,3 +177,19 @@ export function isTokenExpired(): boolean {
     return true;
   }
 }
+
+// Forgot Password API
+export async function requestPasswordReset(email: string): Promise<any> {
+  return postRequest<any>("/auth/request-password-reset", { email });
+}
+
+export async function verifyResetToken(token: string): Promise<any> {
+  return postRequest<any>("/auth/verify-reset-token", { token });
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<any> {
+  return postRequest<any>("/auth/reset-password", { token, newPassword });
+}

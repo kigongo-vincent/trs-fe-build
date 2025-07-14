@@ -178,6 +178,26 @@ export default function AddConsultantPage() {
       toast.error("Country is required")
       return
     }
+    if (!formData.addressState.trim()) {
+      toast.error("State is required")
+      return
+    }
+    if (!formData.addressPostalCode.trim()) {
+      toast.error("Postal code is required")
+      return
+    }
+    if (!formData.departmentId) {
+      toast.error("Department is required")
+      return
+    }
+    if (!formData.nextOfKinName.trim() || !formData.nextOfKinPhone.trim() || !formData.nextOfKinRelationship.trim()) {
+      toast.error("Next of Kin details are required")
+      return
+    }
+    if (!formData.bankAccountName.trim() || !formData.bankAccountNumber.trim() || !formData.bankName.trim() || !formData.bankBranch.trim()) {
+      toast.error("Bank details are required")
+      return
+    }
 
     setSubmitting(true)
 
@@ -322,7 +342,7 @@ export default function AddConsultantPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="department">Department <span className="text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="department">Department <span className="text-red-500">*</span></Label>
                 <Select value={formData.departmentId} onValueChange={handleDepartmentChange}>
                   <SelectTrigger id="department">
                     <SelectValue placeholder="Select a department" />
@@ -376,9 +396,9 @@ export default function AddConsultantPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Input id="addressStreet" name="addressStreet" placeholder="Street" value={formData.addressStreet} onChange={handleInputChange} required />
                 <Input id="addressCity" name="addressCity" placeholder="City" value={formData.addressCity} onChange={handleInputChange} required />
-                <Input id="addressState" name="addressState" placeholder="State" value={formData.addressState} onChange={handleInputChange} />
+                <Input id="addressState" name="addressState" placeholder="State" value={formData.addressState} onChange={handleInputChange} required />
                 <Input id="addressCountry" name="addressCountry" placeholder="Country" value={formData.addressCountry} onChange={handleInputChange} required />
-                <Input id="addressPostalCode" name="addressPostalCode" placeholder="Postal Code" value={formData.addressPostalCode} onChange={handleInputChange} />
+                <Input id="addressPostalCode" name="addressPostalCode" placeholder="Postal Code" value={formData.addressPostalCode} onChange={handleInputChange} required />
               </div>
             </div>
 

@@ -170,7 +170,7 @@ export default function Home() {
                 </Alert>
               )}
               <div className="flex items-center justify-end">
-                <Link href="#" className="text-primary text-sm font-medium hover:underline">Forgot password?</Link>
+                <Link href="/forgot-password" className="text-primary text-sm font-medium hover:underline">Forgot password?</Link>
               </div>
               <Button className="w-full text-base font-semibold py-2.5" type="submit" disabled={isLoading}>
                 {isLoading ? (
