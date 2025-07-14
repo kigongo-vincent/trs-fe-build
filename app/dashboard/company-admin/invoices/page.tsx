@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import jsPDF from "jspdf"
 import React from "react"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 // Helper function for date formatting (top-level, shared)
 function formatDate(dateString: string) {
@@ -848,6 +849,8 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
       year: 'numeric', month: 'short', day: 'numeric'
     })
   }
+  // Company logo logic
+  const companyLogo = invoice.user?.company?.logo || 'https://www.tekjuice.co.uk/assets/images/logos.svg'
   const getCurrencyOrigin = () => {
     if (invoice.user?.currency) return { code: invoice.user.currency, origin: `Consultant` }
     if (currency) return { code: currency, origin: `Company` }
@@ -874,34 +877,55 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
   const [reviewed, setReviewed] = useState(false)
   const [satisfied, setSatisfied] = useState(false)
   const [approved, setApproved] = useState(false)
+  // Comments state: array of {author, date, content}
+  const [comments, setComments] = useState<Array<{ author: string, date: string, content: string }>>([
+    // Example initial comment (could be empty)
+    // { author: invoice.user?.fullName || 'Consultant', date: formatDate(invoice.createdAt), content: 'Initial invoice created.' }
+  ])
   const [comment, setComment] = useState("")
-  const [commentDate, setCommentDate] = useState<string>("")
-  const [addingComment, setAddingComment] = useState(false)
-  const [savedChecks, setSavedChecks] = useState({ reviewed: false, satisfied: false, approved: false })
-  const [savingChecks, setSavingChecks] = useState(false)
-  const checksChanged = reviewed !== savedChecks.reviewed || satisfied !== savedChecks.satisfied || approved !== savedChecks.approved
-  const handleSaveChecks = async () => {
-    setSavingChecks(true)
+  const [saving, setSaving] = useState(false)
+  // Comments loading state
+  const [commentsLoading, setCommentsLoading] = useState(true)
+  // Show more/less state
+  const [showAllComments, setShowAllComments] = useState(false)
+  // Simulate loading comments on mount
+  React.useEffect(() => {
+    setCommentsLoading(true)
+    const timeout = setTimeout(() => setCommentsLoading(false), 400)
+    return () => clearTimeout(timeout)
+  }, [])
+  const checksChanged = reviewed !== false || satisfied !== false || approved !== false // always allow save for demo
+  // Save both checks and comment
+  const handleSave = async () => {
+    setSaving(true)
+    // Add comment if not empty
+    let newComments = comments
+    if (comment.trim()) {
+      newComments = [
+        ...comments,
+        {
+          author: 'You',
+          date: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          content: comment.trim(),
+        },
+      ]
+      setComments(newComments)
+      setComment("")
+    }
+    // Simulate save delay
     await new Promise(res => setTimeout(res, 700))
-    setSavedChecks({ reviewed, satisfied, approved })
-    setSavingChecks(false)
+    setSaving(false)
   }
-  const handleAddComment = async () => {
-    if (!comment.trim()) return
-    setAddingComment(true)
-    await new Promise(res => setTimeout(res, 500))
-    setCommentDate(new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }))
-    setAddingComment(false)
-  }
-
-  // --- PDF Generation (basic, organized, with inline HTML/CSS and table borders) ---
+  // PDF Generation (basic, organized, with inline HTML/CSS and table borders)
   const handleDownloadPDF = () => {
     const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
     const reviewedText = reviewed ? 'Yes' : 'No'
     const satisfiedText = satisfied ? 'Yes' : 'No'
     const approvedText = approved ? 'Yes' : 'No'
-    const commentBlock = comment
-      ? `<tr><td colspan='2' style='padding:8px; border:1px solid #bbb;'><b>Comment:</b> ${comment}</td></tr>`
+    // Use the first comment for PDF (or empty)
+    const firstComment = comments[0]?.content || ''
+    const commentBlock = firstComment
+      ? `<tr><td colspan='2' style='padding:8px; border:1px solid #bbb;'><b>Comment:</b> ${firstComment}</td></tr>`
       : ''
     const html = `
       <div style='font-family: Arial, sans-serif; color: #222; font-size: 12pt; max-width: 700px;'>
@@ -973,13 +997,23 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
         <br />
         <DialogTitle className="sr-only">Invoice Details {invoice.invoiceNumber ? `- ${invoice.invoiceNumber}` : ''}</DialogTitle>
         <Card className="shadow-none border-none bg-transparent">
+          
           <CardHeader className="pb-4">
+          {/* Company Logo at the top */}
+          <div className="flex  items-center pt-6 pb-2">
+            <img
+              src={companyLogo}
+              alt="Company Logo"
+              style={{ maxHeight: 64, maxWidth: 120, objectFit: 'contain', background: 'none' }}
+              className="mb-2"
+            />
+          </div>
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">INVOICE</CardTitle>
             <CardDescription className="text-base text-gray-600 dark:text-gray-300">{invoice.invoiceNumber}</CardDescription>
             {invoice.user?.company && (
               <div className="bg-primary text-white px-4 py-6 rounded mt-2">
                 <span className="text-lg font-bold">{invoice.user.company.name}</span>
-                <span className="block text-blue-100 text-xs">{invoice.user.company.sector}</span>
+                <span className="block text-xs">{invoice.user.company.sector}</span>
               </div>
             )}
             <div className={`inline-block px-3 py-1 rounded-full w-[max-content] text-xs font-medium border mt-2 ${getStatusColor(invoice.status)}`}>{invoice.status?.toUpperCase()}</div>
@@ -1030,7 +1064,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
                     <tr>
                       <td className="px-4 py-3"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to {typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
                       <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{invoice.totalHours || '-'}</td>
-                      <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{formatCurrency(invoice.user?.grossPay || 0, currencyInfo.code)}</td>
+                      <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{formatCurrency(invoice.user?.hourlyRate || 0, currencyInfo.code)}</td>
                       <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
                     </tr>
                   </tbody>
@@ -1070,47 +1104,77 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
           </CardFooter>
         </Card>
         {/* Comment Section with Checks */}
-        <CardFooter className="flex-col items-start gap-2 px-6 pb-2 pt-2 border-t border-gray-200 dark:border-neutral-800">
+        <CardFooter className="flex-col items-start gap-2 px-0 pb-0 pt-0 border-t border-gray-200 dark:border-neutral-800">
           <div className="w-full">
-            <div className="flex items-center my-4 gap-4 mb-2">
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)} /> Reviewed
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(checked === true)} /> Satisfied
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={approved} onCheckedChange={checked => setApproved(checked === true)} /> Approved
-              </label>
-              {/* Save button for checks */}
-              <Button
-                size="sm"
-                variant="default"
-                className="ml-2"
-                onClick={handleSaveChecks}
-                disabled={!checksChanged || savingChecks}
-              >
-                {savingChecks ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="invoice-comment" className="text-xs">Comment</Label>
-              <Textarea
-                id="invoice-comment"
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                placeholder="Add a comment..."
-                rows={2}
-                className="resize-none"
-                disabled={addingComment}
-              />
-              <div className="flex items-center gap-2 mt-1">
-                <Button size="sm" variant="outline" onClick={handleAddComment} disabled={addingComment || !comment.trim()}>
-                  {addingComment ? 'Adding...' : 'Add Comment'}
-                </Button>
-                {commentDate && <span className="text-xs text-muted-foreground">Last commented: {commentDate}</span>}
-              </div>
-            </div>
+            <Card className="bg-white border-none shadow-none w-full">
+              <CardContent className="py-4 px-6">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)} /> Reviewed
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(checked === true)} /> Satisfied
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={approved} onCheckedChange={checked => setApproved(checked === true)} /> Approved
+                  </label>
+                </div>
+                <div className="mb-4">
+                  <Label htmlFor="invoice-comment" className="text-xs mb-1">Add Comment</Label>
+                  <Textarea
+                    id="invoice-comment"
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    rows={2}
+                    className="resize-none mt-1"
+                    disabled={saving}
+                  />
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold">Comments</span>
+                  <Button size="sm" variant="default" onClick={handleSave} disabled={saving || (!comment.trim() && !checksChanged)}>
+                    {saving ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-3 max-h-48 overflow-y-auto">
+                  {commentsLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="h-4 w-4 rounded-full bg-gray-200 animate-pulse inline-block" />
+                      Loading comments...
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">No comments yet.</div>
+                  ) : (
+                    <>
+                      {(showAllComments ? comments : [comments[comments.length - 1]]).map((c, idx) => (
+                        <div key={idx} className="flex items-start gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>{c.author[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{c.author}</span>
+                              <span className="text-xs text-muted-foreground">{c.date}</span>
+                            </div>
+                            <div className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line">{c.content}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {comments.length > 1 && (
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline self-start mt-1"
+                          onClick={() => setShowAllComments(v => !v)}
+                        >
+                          {showAllComments ? 'Show less' : `Show more (${comments.length - 1} more)`}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </CardFooter>
         {/* End Comment Section */}

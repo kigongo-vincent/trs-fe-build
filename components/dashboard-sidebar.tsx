@@ -69,7 +69,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
 
   // Show Super Admin section to all users
   const shouldShowSuperAdmin = true;
-  const shouldShowCompanyAdmin = userRole === "Company Admin"
+  const shouldShowCompanyAdmin = userRole === "Company Admin" || userRole === "Board Member"
   const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
   const shouldShowDepartmentAdmin = userRole === "Department Admin"
 
@@ -231,16 +231,6 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     <Home className="h-4 w-4" />
                     <span>Overview</span>
                   </Link>
-                  <Link
-                    href="/dashboard/company-admin/packages"
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/company-admin/packages") && "bg-primary/10 text-primary font-semibold",
-                    )}
-                  >
-                    <Package className="h-4 w-4" />
-                    <span>Packages</span>
-                  </Link>
                 </div>
               </div>
 
@@ -289,16 +279,18 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       <Users className="h-4 w-4" />
                       <span>Consultants</span>
                     </Link>
-                    <Link
-                      href="/dashboard/company-admin/board-members"
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                        isActive("/dashboard/company-admin/board-members") && "bg-primary/10 text-primary font-semibold",
-                      )}
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Board Members</span>
-                    </Link>
+                    {userRole !== "Board Member" && (
+                      <Link
+                        href="/dashboard/company-admin/board-members"
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                          isActive("/dashboard/company-admin/board-members") && "bg-primary/10 text-primary font-semibold",
+                        )}
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>Board Members</span>
+                      </Link>
+                    )}
                     <Link
                       href="/dashboard/company-admin/tasks"
                       className={cn(
@@ -345,26 +337,18 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                             <BarChart3 className="h-4 w-4" />
                             <span>Analytics</span>
                           </Link>
-                          <Link
-                            href="/dashboard/company-admin/packages"
-                            className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                              isActive("/dashboard/company-admin/packages") && "bg-primary/10 text-primary font-semibold",
-                            )}
-                          >
-                            <Package className="h-4 w-4" />
-                            <span>Packages</span>
-                          </Link>
-                          <Link
-                            href="/dashboard/company-admin/reports"
-                            className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                              isActive("/dashboard/company-admin/reports") && "bg-primary/10 text-primary font-semibold",
-                            )}
-                          >
-                            <FileText className="h-4 w-4" />
-                            <span>Reports</span>
-                          </Link>
+                          {userRole === "Company Admin" && (
+                            <Link
+                              href="/dashboard/company-admin/packages"
+                              className={cn(
+                                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                                isActive("/dashboard/company-admin/packages") && "bg-primary/10 text-primary font-semibold",
+                              )}
+                            >
+                              <Package className="h-4 w-4" />
+                              <span>Packages</span>
+                            </Link>
+                          )}
                         </div>
                       )}
                     </div>

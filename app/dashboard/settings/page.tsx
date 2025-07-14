@@ -15,6 +15,7 @@ import { getDepartments } from "@/services/departments"
 import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
 import { BASE_URL, getImage } from "@/services/api"
+import { Switch } from "@/components/ui/switch"
 
 interface PasswordFormData {
   currentPassword: string;
@@ -163,6 +164,7 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [enableFloatingPoint, setEnableFloatingPoint] = useState(false);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -573,6 +575,9 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
+          {userRole === "Company Admin" && (
+            <TabsTrigger value="company">Company</TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="profile">
           <Card>
@@ -809,6 +814,22 @@ export default function SettingsPage() {
             </CardFooter>
           </Card>
         </TabsContent>
+        {userRole === "Company Admin" && (
+          <TabsContent value="company">
+            <div className="flex max-w-[60vw] border rounded p-4 items-center justify-between">
+              <div>
+                <label htmlFor="enableFloatingPoint" className="text-base font-medium select-none">Enable floating point on invoices</label>
+                <span className="opacity-40 text-sm block">This affects the amount of money that reflects on the invoice of your consultants e.g 1,000,000.90 ~ 1M</span>
+              </div>
+              <Switch
+                id="enableFloatingPoint"
+                checked={enableFloatingPoint}
+                onCheckedChange={setEnableFloatingPoint}
+                className="ml-4"
+              />
+            </div>
+          </TabsContent>
+        )}
         <TabsContent value="password">
           <Card>
             <CardHeader>

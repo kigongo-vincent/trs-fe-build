@@ -28,7 +28,7 @@ import {
 } from "@/services/consultants"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
-import { getAuthData } from "@/services/auth"
+import { getAuthData, getUserRole } from "@/services/auth"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { EditConsultantForm } from "@/components/edit-consultant-form"
 import { Label } from "@/components/ui/label"
@@ -37,6 +37,7 @@ import { X } from "lucide-react"
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 export default function ConsultantsPage() {
+  // All useState hooks
   const [consultants, setConsultants] = useState<Consultant[]>([])
   const [departmentSummary, setDepartmentSummary] = useState<DepartmentSummary[]>([])
   const [filteredConsultants, setFilteredConsultants] = useState<Consultant[]>([])
@@ -45,108 +46,28 @@ export default function ConsultantsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-
-  // Modal state
   const [isConsultantModalOpen, setIsConsultantModalOpen] = useState(false)
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null)
   const [dashboardData, setDashboardData] = useState<ConsultantDashboardData | null>(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
-
-  // Date range and tasks state
   const [startDate, setStartDate] = useState<string>("2024-01-05")
   const [endDate, setEndDate] = useState<string>("2024-02-05")
   const [filteredTasks, setFilteredTasks] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
   const [tasksError, setTasksError] = useState<string | null>(null)
-
-  // Edit state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editConsultant, setEditConsultant] = useState<Consultant | null>(null)
-
-  // Sidebar section state for consultant modal
   const [modalSection, setModalSection] = useState<'overview' | 'recent' | 'logs' | 'personal' | 'nextOfKin' | 'bank'>('personal')
-
-  // Get company ID from auth data
-  const authData = getAuthData()
-  const companyId = authData?.user?.company?.id
-
-  // State for status confirmation dialog
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [statusTargetConsultant, setStatusTargetConsultant] = useState<Consultant | null>(null)
   const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | 'on-leave' | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!companyId) {
-          console.error("Company ID not found in auth data")
-          return
-        }
-
-        // Fetch both consultants and department summary in parallel
-        const [consultantsResponse, summaryResponse] = await Promise.all([
-          getAllConsultants(companyId),
-          getConsultantsSummary(companyId),
-        ])
-
-        if (consultantsResponse.status === 200) {
-          setConsultants(consultantsResponse.data)
-          setFilteredConsultants(consultantsResponse.data)
-        }
-
-        if (summaryResponse.status === 200) {
-          setDepartmentSummary(summaryResponse.data)
-        }
-      } catch (error) {
-        console.error("Failed to fetch data:", error)
-      } finally {
-        setLoading(false)
-        setChartLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [companyId])
-
-  useEffect(() => {
-    // Filter consultants based on search query, department, and status
-    let filtered = consultants
-
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (consultant) =>
-          consultant.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          consultant.email.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    }
-
-    if (departmentFilter !== "all") {
-      filtered = filtered.filter(
-        (consultant) => consultant.department.name.toLowerCase() === departmentFilter.toLowerCase(),
-      )
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((consultant) => {
-        const status = consultant.status === "" ? "on-leave" : consultant.status.toLowerCase();
-        return status === statusFilter.toLowerCase();
-      })
-    }
-
-    setFilteredConsultants(filtered)
-  }, [searchQuery, departmentFilter, statusFilter, consultants])
-
-  // Filter tasks based on date range
-  useEffect(() => {
-    if (!startDate || !endDate) {
-      setFilteredTasks([])
-      return
-    }
-
-    fetchTasksByDateRange(new Date(startDate), new Date(endDate))
-  }, [startDate, endDate])
+  // Get company ID from auth data
+  const authData = getAuthData();
+  const companyId = authData?.user?.company?.id;
 
   // Function to fetch tasks by date range from API
   const fetchTasksByDateRange = async (startDate: Date, endDate: Date) => {
@@ -369,6 +290,57 @@ export default function ConsultantsPage() {
     setEndDate(today)
   }
 
+  // All useEffect hooks
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (!companyId) {
+          console.error("Company ID not found in auth data")
+          return
+        }
+        // Fetch both consultants and department summary in parallel
+        const [consultantsResponse, summaryResponse] = await Promise.all([
+          getAllConsultants(companyId),
+          getConsultantsSummary(companyId),
+        ])
+        if (consultantsResponse.status === 200) {
+          setConsultants(consultantsResponse.data)
+          setFilteredConsultants(consultantsResponse.data)
+        }
+        if (summaryResponse.status === 200) {
+          setDepartmentSummary(summaryResponse.data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error)
+      } finally {
+        setLoading(false)
+        setChartLoading(false)
+      }
+    }
+    fetchData()
+  }, [companyId])
+
+  useEffect(() => {
+    if (!startDate || !endDate) {
+      setFilteredTasks([])
+      return
+    }
+    fetchTasksByDateRange(new Date(startDate), new Date(endDate))
+  }, [startDate, endDate])
+
+  useEffect(() => {
+    setUserRole(getUserRole());
+  }, []);
+
+  // Only now, after all hooks, do the early return
+  if (userRole === null) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
   // Calculate total hours for the selected date range
   const calculateTotalHours = () => {
     return filteredTasks.reduce((total, timeLog) => {
@@ -511,11 +483,13 @@ export default function ConsultantsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">Consultants</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/dashboard/company-admin/consultants/add">
-              <Plus className="mr-2 h-4 w-4" /> Add Consultant
-            </Link>
-          </Button>
+          {userRole !== "Board Member" && (
+            <Button asChild>
+              <Link href="/dashboard/company-admin/consultants/add">
+                <Plus className="mr-2 h-4 w-4" /> Add Consultant
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -753,39 +727,24 @@ export default function ConsultantsPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleViewConsultant(consultant)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditConsultant(consultant)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleStatusDialog(consultant, consultant.status === 'active' ? 'deactivate' : 'activate')}
-                              title={consultant.status === 'active' ? 'Deactivate Consultant' : 'Activate Consultant'}
-                            >
-                              {consultant.status === 'active' ? (
-                                <UserCheck className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <UserX className="h-4 w-4 text-gray-400" />
-                              )}
-                            </Button>
-                            {consultant.status === "" ? (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleStatusDialog(consultant, 'activate')}
-                                title="Activate Consultant"
-                              >
-                                <UserCheck className="h-4 w-4 text-green-500" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleStatusDialog(consultant, 'on-leave')}
-                                title="Set On Leave"
-                              >
-                                <Clock className="h-4 w-4 text-yellow-500" />
-                              </Button>
+                            {userRole !== "Board Member" && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleEditConsultant(consultant)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleStatusDialog(consultant, consultant.status === 'active' ? 'deactivate' : 'activate')}
+                                  title={consultant.status === 'active' ? 'Deactivate Consultant' : 'Activate Consultant'}
+                                >
+                                  {consultant.status === 'active' ? (
+                                    <UserCheck className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <UserX className="h-4 w-4 text-gray-400" />
+                                  )}
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>

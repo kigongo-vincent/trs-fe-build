@@ -10,7 +10,7 @@ import { Edit, Plus, Search, SearchIcon, Trash, Users } from "lucide-react"
 import { DepartmentDistributionChart } from "@/components/department-distribution-chart"
 import { DeleteDepartmentDialog } from "@/components/delete-department-dialog"
 import { getDepartments } from "@/services/departments"
-import { getAuthData } from "@/services/auth"
+import { getAuthData, getUserRole } from "@/services/auth"
 import Link from "next/link"
 import type { Department, User } from "@/services/departments"
 
@@ -113,6 +113,20 @@ export default function DepartmentsPage() {
     fetchDepartments()
   }
 
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUserRole(getUserRole());
+  }, []);
+
+  if (userRole === null) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="flex flex-col gap-4">
@@ -133,11 +147,13 @@ export default function DepartmentsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">Departments</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/dashboard/company-admin/departments/create">
-              <Plus className="mr-2 h-4 w-4" /> Add Department
-            </Link>
-          </Button>
+          {userRole !== "Board Member" && (
+            <Button asChild>
+              <Link href="/dashboard/company-admin/departments/create">
+                <Plus className="mr-2 h-4 w-4" /> Add Department
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -238,7 +254,7 @@ export default function DepartmentsPage() {
                   <TableHead>Employees</TableHead>
                   <TableHead>Projects</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {userRole !== "Board Member" && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -260,22 +276,24 @@ export default function DepartmentsPage() {
                           {department.status.charAt(0).toUpperCase() + department.status.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild>
-                            <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head?.fullName || "")}&description=${encodeURIComponent(department.description || '')}`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(department)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {userRole !== "Board Member" && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" asChild>
+                              <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head?.fullName || "")}&description=${encodeURIComponent(department.description || '')}`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteClick(department)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

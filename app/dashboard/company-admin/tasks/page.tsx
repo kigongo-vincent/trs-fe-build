@@ -16,11 +16,12 @@ import { Separator } from "@/components/ui/separator"
 import { fetchTasksSummary, fetchAllTasks, fetchTasksByDepartment, type TasksSummaryData, type Task, deleteTask } from "@/services/tasks"
 import { EditTaskForm } from "@/components/edit-task-form"
 import { getProjects } from "@/services/projects"
-import { getAuthData } from "@/services/auth"
+import { getAuthData, getUserRole } from "@/services/auth"
 import { toast } from "sonner"
 import DOMPurify from 'dompurify'
 
 export default function TasksPage() {
+  // All useState hooks
   const [summaryData, setSummaryData] = useState<TasksSummaryData | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
@@ -41,22 +42,6 @@ export default function TasksPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  // Get unique departments and projects for filters
-  const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)))
-  const projects = Array.from(new Set(tasks.map((task) => task.project.name)))
-
-  // Helpers for filter persistence and indicator
-  const FILTERS_KEY = "trs-tasks-filters"
-  const defaultFilters = {
-    searchTerm: "",
-    statusFilter: "all",
-    departmentFilter: "all",
-    projectFilter: "all",
-    durationFilter: "all",
-  }
-
-  // Controlled filter values (for the UI)
   const [filterForm, setFilterForm] = useState({
     searchTerm: "",
     statusFilter: "all",
@@ -64,7 +49,6 @@ export default function TasksPage() {
     projectFilter: "all",
     durationFilter: "all",
   })
-  // Applied filter values (used for filtering)
   const [appliedFilters, setAppliedFilters] = useState({
     searchTerm: "",
     statusFilter: "all",
@@ -72,152 +56,125 @@ export default function TasksPage() {
     projectFilter: "all",
     durationFilter: "all",
   })
-
-  // Loader state for Apply Filters
   const [isApplying, setIsApplying] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Helper: check if any filter is set (not default)
-  const isAnyFilterSet = Object.entries(filterForm).some(
-    ([key, value]) => value !== defaultFilters[key as keyof typeof defaultFilters]
-  )
-
-  // Update controlled filter values from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(FILTERS_KEY)
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        if (parsed && typeof parsed === "object") {
-          setFilterForm({
-            searchTerm: parsed.searchTerm ?? "",
-            statusFilter: parsed.statusFilter ?? "all",
-            departmentFilter: parsed.departmentFilter ?? "all",
-            projectFilter: parsed.projectFilter ?? "all",
-            durationFilter: parsed.durationFilter ?? "all",
-          })
-        }
-      } catch { }
-    }
-  }, [])
-
-  // Save filters to localStorage (controlled values)
-  const handleSaveFilters = () => {
-    localStorage.setItem(
-      FILTERS_KEY,
-      JSON.stringify(filterForm)
-    )
-    toast.success("Filters saved!")
-  }
-
-  // Clear filters (controlled values and applied values)
-  const handleClearFilters = () => {
-    setFilterForm({
-      searchTerm: "",
-      statusFilter: "all",
-      departmentFilter: "all",
-      projectFilter: "all",
-      durationFilter: "all",
-    })
-    setAppliedFilters({
-      searchTerm: "",
-      statusFilter: "all",
-      departmentFilter: "all",
-      projectFilter: "all",
-      durationFilter: "all",
-    })
-    toast("Filters cleared")
-  }
-
-  // Apply filters (copy controlled values to applied values, with simulated delay)
-  const handleApplyFilters = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    setIsApplying(true)
-    await new Promise(res => setTimeout(res, 1500))
-    setAppliedFilters({ ...filterForm })
-    setIsApplying(false)
-  }
-
-  // Indicator if any filter is active (not default)
+  // Constants and derived variables
+  const FILTERS_KEY = "trs-tasks-filters";
+  const defaultFilters = {
+    searchTerm: "",
+    statusFilter: "all",
+    departmentFilter: "all",
+    projectFilter: "all",
+    durationFilter: "all",
+  };
+  const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)));
+  const projects = Array.from(new Set(tasks.map((task) => task.project.name)));
   const isFilterActive =
     appliedFilters.searchTerm !== "" ||
     appliedFilters.statusFilter !== "all" ||
     appliedFilters.departmentFilter !== "all" ||
     appliedFilters.projectFilter !== "all" ||
-    appliedFilters.durationFilter !== "all"
+    appliedFilters.durationFilter !== "all";
 
-  // Define the data loading functions
+  // --- Move handlers and helpers to top level ---
+  const handleSaveFilters = () => {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filterForm));
+    toast.success("Filters saved!");
+  };
+
+  const handleClearFilters = () => {
+    setFilterForm(defaultFilters);
+    setAppliedFilters(defaultFilters);
+    toast("Filters cleared");
+  };
+
+  const handleApplyFilters = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsApplying(true);
+    await new Promise(res => setTimeout(res, 1500));
+    setAppliedFilters({ ...filterForm });
+    setIsApplying(false);
+  };
+
+  const isAnyFilterSet = Object.entries(filterForm).some(
+    ([key, value]) => value !== defaultFilters[key as keyof typeof defaultFilters]
+  );
+
   const loadTasksSummary = async () => {
     try {
-      setIsLoading(true)
-      setError(null)
-      const response = await fetchTasksSummary()
-      setSummaryData(response.data)
+      setIsLoading(true);
+      setError(null);
+      const response = await fetchTasksSummary();
+      setSummaryData(response.data);
     } catch (err) {
-      console.error("Failed to fetch tasks summary:", err)
+      console.error("Failed to fetch tasks summary:", err);
       if (err instanceof Error && err.message.includes("overloaded")) {
-        setError("Server is temporarily busy. Please try again in a few moments.")
+        setError("Server is temporarily busy. Please try again in a few moments.");
       } else {
-        setError(err instanceof Error ? err.message : "Failed to load tasks summary")
+        setError(err instanceof Error ? err.message : "Failed to load tasks summary");
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const loadAllTasks = async () => {
     try {
-      setIsTasksLoading(true)
-      const response = await fetchAllTasks()
-      setTasks(response.data)
-      setFilteredTasks(response.data)
+      setIsTasksLoading(true);
+      const response = await fetchAllTasks();
+      setTasks(response.data);
+      setFilteredTasks(response.data);
     } catch (err) {
-      console.error("Failed to fetch tasks:", err)
-      // Show user-friendly error message for server overload
+      console.error("Failed to fetch tasks:", err);
       if (err instanceof Error && err.message.includes("overloaded")) {
-        toast.error("Server is temporarily busy. Please try again in a few moments.")
+        toast.error("Server is temporarily busy. Please try again in a few moments.");
       } else {
-        toast.error("Failed to load tasks. Please try again.")
+        toast.error("Failed to load tasks. Please try again.");
       }
     } finally {
-      setIsTasksLoading(false)
+      setIsTasksLoading(false);
     }
-  }
+  };
 
   const loadTasksByDepartment = async () => {
     try {
-      const response = await fetchTasksByDepartment()
+      const response = await fetchTasksByDepartment();
       setTasksByDepartment(response.data.map((item: any) => ({
         department: item.departmentName,
         tasks: item.totalTasks
-      })))
+      })));
     } catch (err) {
-      console.error("Failed to fetch tasks by department:", err)
-      // Don't show error toast for this as it's not critical
+      console.error("Failed to fetch tasks by department:", err);
     }
-  }
+  };
 
   const fetchProjects = async () => {
     try {
-      const authData = getAuthData()
-      if (!authData?.user?.company?.id) return
-      const response = await getProjects(authData.user.company.id)
-      setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })))
+      const authData = getAuthData();
+      if (!authData?.user?.company?.id) return;
+      const response = await getProjects(authData.user.company.id);
+      setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })));
     } catch (err) {
       // handle error if needed
     }
-  }
+  };
+
+  // --- useEffect for initial data loading ---
+  useEffect(() => {
+    loadTasksSummary();
+    loadAllTasks();
+    loadTasksByDepartment();
+    fetchProjects();
+  }, []);
 
   useEffect(() => {
-    loadTasksSummary()
-    loadAllTasks()
-    loadTasksByDepartment()
-    fetchProjects()
-  }, [])
+    setUserRole(getUserRole());
+  }, []);
 
-  // Filter tasks based on applied filters
   useEffect(() => {
-    let filtered = tasks
-    const { searchTerm, departmentFilter, projectFilter, durationFilter } = appliedFilters
+    let filtered = tasks;
+    const { searchTerm, departmentFilter, projectFilter, durationFilter } = appliedFilters;
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
@@ -225,40 +182,49 @@ export default function TasksPage() {
           task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           task.project.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+      );
     }
     // Department filter
     if (departmentFilter !== "all") {
-      filtered = filtered.filter((task) => task.project.department.name === departmentFilter)
+      filtered = filtered.filter((task) => task.project.department.name === departmentFilter);
     }
     // Project filter
     if (projectFilter !== "all") {
-      filtered = filtered.filter((task) => task.project.name === projectFilter)
+      filtered = filtered.filter((task) => task.project.name === projectFilter);
     }
     // Duration filter
     if (durationFilter !== "all") {
       filtered = filtered.filter((task) => {
-        const minutes = Number.parseFloat(task.duration)
+        const minutes = Number.parseFloat(task.duration);
         switch (durationFilter) {
           case "lt1":
-            return minutes < 60
+            return minutes < 60;
           case "1to2":
-            return minutes >= 60 && minutes <= 120
+            return minutes >= 60 && minutes <= 120;
           case "2to5":
-            return minutes >= 120 && minutes <= 300
+            return minutes >= 120 && minutes <= 300;
           case "5to8":
-            return minutes >= 300 && minutes <= 480
+            return minutes >= 300 && minutes <= 480;
           case "gt8":
-            return minutes > 480
+            return minutes > 480;
           default:
-            return true
+            return true;
         }
-      })
+      });
     }
     // Only show tasks that are not drafts
-    filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft")
-    setFilteredTasks(filtered)
-  }, [tasks, appliedFilters])
+    filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft");
+    setFilteredTasks(filtered);
+  }, [tasks, appliedFilters]);
+
+  // Only now, after all hooks, do the early return
+  if (userRole === null) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
 
   const formatDuration = (duration: string) => {
     const minutes = Number.parseFloat(duration)
@@ -660,21 +626,25 @@ export default function TasksPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleViewTask(task)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setEditTask(task); setIsEditModalOpen(true); }}>
-                          ✎
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setDeleteTaskId(task.id)
-                            setDeleteDialogOpen(true)
-                          }}
-                          className="text-destructive hover:bg-destructive/10"
-                          aria-label="Delete Task"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
+                        {userRole !== "Board Member" && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditTask(task); setIsEditModalOpen(true); }}>
+                              ✎
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setDeleteTaskId(task.id)
+                                setDeleteDialogOpen(true)
+                              }}
+                              className="text-destructive hover:bg-destructive/10"
+                              aria-label="Delete Task"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
