@@ -14,12 +14,20 @@ import { getAuthData } from "@/services/auth"
 import { useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import {
+    Select,
+    SelectTrigger,
+    SelectContent,
+    SelectItem,
+    SelectValue
+} from "@/components/ui/select"
 
 interface BoardMember {
     id: string
     email: string
     status: string
     fullName: string
+    role?: string // add role field
     // add other fields as needed
 }
 
@@ -33,7 +41,7 @@ export default function BoardMembersPage() {
     const [deleteMember, setDeleteMember] = useState<BoardMember | null>(null)
     const [isDeactivating, setIsDeactivating] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    const [form, setForm] = useState({ name: "", email: "" })
+    const [form, setForm] = useState({ name: "", email: "", role: "" })
     const [isDeactivateOpen, setIsDeactivateOpen] = useState(false)
     const [deactivateMember, setDeactivateMember] = useState<BoardMember | null>(null)
 
@@ -67,6 +75,7 @@ export default function BoardMembersPage() {
                         email: m.email,
                         status: m.status,
                         fullName: m.fullName || m.name || m.firstName || m.email,
+                        role: m.role || ""
                     }
                 }).filter(isBoardMember) : []
                 setMembers(members)
@@ -80,7 +89,7 @@ export default function BoardMembersPage() {
         if (!companyId) return
         setLoading(true)
         try {
-            await createBoardMember({ fullName: form.name, email: form.email, companyId })
+            await createBoardMember({ fullName: form.name, email: form.email, companyId, role: form.role })
             // Refetch members
             const res = await getBoardMembers(companyId)
             const members = Array.isArray(res.data) ? res.data.map((m: any) => {
@@ -89,6 +98,7 @@ export default function BoardMembersPage() {
                     email: m.email,
                     status: m.status,
                     fullName: m.fullName || m.name || m.firstName || m.email,
+                    role: m.role || ""
                 }
             }).filter(isBoardMember) : []
             setMembers(members)
@@ -98,7 +108,7 @@ export default function BoardMembersPage() {
                 style: { background: '#fee2e2', color: '#b91c1c' },
             })
         } finally {
-            setForm({ name: "", email: "" })
+            setForm({ name: "", email: "", role: "" })
             setIsCreateOpen(false)
             setLoading(false)
         }
@@ -109,7 +119,7 @@ export default function BoardMembersPage() {
         if (!editMember) return
         setLoading(true)
         try {
-            await updateBoardMember({ memberId: editMember.id, fullName: form.name, email: form.email })
+            await updateBoardMember({ memberId: editMember.id, fullName: form.name, email: form.email, role: form.role })
             // Refetch members
             if (companyId) {
                 const res = await getBoardMembers(companyId)
@@ -119,6 +129,7 @@ export default function BoardMembersPage() {
                         email: m.email,
                         status: m.status,
                         fullName: m.fullName || m.name || m.firstName || m.email,
+                        role: m.role || ""
                     }
                 }).filter(isBoardMember) : []
                 setMembers(members)
@@ -130,7 +141,7 @@ export default function BoardMembersPage() {
             })
         } finally {
             setEditMember(null)
-            setForm({ name: "", email: "" })
+            setForm({ name: "", email: "", role: "" })
             setIsEditOpen(false)
             setLoading(false)
         }
@@ -172,7 +183,7 @@ export default function BoardMembersPage() {
                 </Button>
             </div>
             <Card>
-               
+
                 <CardContent>
                     <Table>
                         <TableHeader>
@@ -180,6 +191,7 @@ export default function BoardMembersPage() {
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Role</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -189,6 +201,7 @@ export default function BoardMembersPage() {
                                     <TableRow key={i}>
                                         <TableCell><div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
                                         <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                                         <TableCell className="text-right flex gap-2 justify-end"><Skeleton className="h-8 w-8 rounded" /><Skeleton className="h-8 w-8 rounded" /></TableCell>
                                     </TableRow>
@@ -229,12 +242,13 @@ export default function BoardMembersPage() {
                                                             : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>{typeof member.role === 'string' && member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : "_"}</TableCell>
                                         <TableCell className={`text-right flex gap-2 justify-end${isDeactivated(member.status) ? ' pointer-events-none bg-transparent hover:bg-transparent' : ''}`}>
                                             {!isDeactivated(member.status) ? (
                                                 <>
                                                     <Button size="icon" variant="ghost" onClick={() => {
                                                         setEditMember(member)
-                                                        setForm({ name: member.fullName || "", email: member.email })
+                                                        setForm({ name: member.fullName || "", email: member.email, role: member.role || "" })
                                                         setIsEditOpen(true)
                                                     }} aria-label="Edit">
                                                         <Pencil className="h-4 w-4" />
@@ -268,6 +282,15 @@ export default function BoardMembersPage() {
                     <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreate(); }}>
                         <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                         <Input placeholder="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+                        <Select value={form.role} onValueChange={value => setForm(f => ({ ...f, role: value }))} required>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="reviewer">Reviewer</SelectItem>
+                                <SelectItem value="approver">Approver</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}</Button>
@@ -286,6 +309,15 @@ export default function BoardMembersPage() {
                     <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleEdit(); }}>
                         <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
                         <Input placeholder="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
+                        <Select value={form.role} onValueChange={value => setForm(f => ({ ...f, role: value }))} required>
+                            <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="reviewer">Reviewer</SelectItem>
+                                <SelectItem value="approver">Approver</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
