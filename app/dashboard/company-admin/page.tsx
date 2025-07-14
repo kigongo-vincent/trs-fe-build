@@ -111,10 +111,12 @@ export default function CompanyAdminDashboard() {
   const total = allTasks.length
 
   if (error) {
+    const userRole = getUserRole();
+    const dashboardTitle = userRole === "Board Member" ? "Board Member Dashboard" : "Company Admin Dashboard";
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">Company Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">{dashboardTitle}</h1>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8">
@@ -126,10 +128,12 @@ export default function CompanyAdminDashboard() {
     )
   }
 
+  const userRole = getUserRole();
+  const dashboardTitle = userRole === "Board Member" ? "Board Member Dashboard" : "Company Admin Dashboard";
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Company Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">{dashboardTitle}</h1>
         <div className="flex items-center gap-2">
           {/* <Button asChild>
             <Link href="/dashboard/company-admin/projects/new">

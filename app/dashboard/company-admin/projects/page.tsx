@@ -17,12 +17,13 @@ import { DeleteProjectDialog } from "@/components/delete-project-dialog"
 import { EditProjectDialog } from "@/components/edit-project-dialog"
 import Link from "next/link"
 import { type Project, type ProjectSummary, getProjects, getProjectsSummary } from "@/services/projects"
-import { getAuthData } from "@/services/auth"
+import { getAuthData, getUserRole } from "@/services/auth"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function ProjectsPage() {
+  // All useState hooks
   const [projects, setProjects] = useState<Project[]>([])
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
   const [projectSummary, setProjectSummary] = useState<ProjectSummary | null>(null)
@@ -33,66 +34,60 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-
-  // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
-
-  // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Get unique departments from projects
-  const departments = [...new Set(projects.map((project) => project.department.name))]
+  const departments = [...new Set(projects.map((project) => project.department.name))];
 
+  // Fetch projects summary
   const fetchProjectsSummary = async () => {
     try {
-      setSummaryLoading(true)
-
-      const authData = getAuthData()
+      setSummaryLoading(true);
+      const authData = getAuthData();
       if (!authData || !authData.user || !authData.user.company || !authData.user.company.id) {
-        setError("Authentication data is missing. Please log in again.")
-        setSummaryLoading(false)
-        return
+        setError("Authentication data is missing. Please log in again.");
+        setSummaryLoading(false);
+        return;
       }
-
-      const companyId = authData.user.company.id
-      const response = await getProjectsSummary(companyId)
-
-      setProjectSummary(response.data)
-      setSummaryLoading(false)
+      const companyId = authData.user.company.id;
+      const response = await getProjectsSummary(companyId);
+      setProjectSummary(response.data);
+      setSummaryLoading(false);
     } catch (err) {
-      console.error("Error fetching projects summary:", err)
-      setError("Failed to load projects summary. Please try again later.")
-      setSummaryLoading(false)
+      console.error("Error fetching projects summary:", err);
+      setError("Failed to load projects summary. Please try again later.");
+      setSummaryLoading(false);
     }
-  }
+  };
 
+  // Fetch projects
   const fetchProjects = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
-      const authData = getAuthData()
+      setLoading(true);
+      setError(null);
+      const authData = getAuthData();
       if (!authData || !authData.user || !authData.user.company || !authData.user.company.id) {
-        setError("Authentication data is missing. Please log in again.")
-        setLoading(false)
-        return
+        setError("Authentication data is missing. Please log in again.");
+        setLoading(false);
+        return;
       }
-
-      const companyId = authData.user.company.id
-      const response = await getProjects(companyId)
-
-      setProjects(response.data)
-      setFilteredProjects(response.data)
-      setLoading(false)
+      const companyId = authData.user.company.id;
+      const response = await getProjects(companyId);
+      setProjects(response.data);
+      setFilteredProjects(response.data);
+      setLoading(false);
     } catch (err) {
-      console.error("Error fetching projects:", err)
-      setError("Failed to load projects. Please try again later.")
-      setLoading(false)
+      console.error("Error fetching projects:", err);
+      setError("Failed to load projects. Please try again later.");
+      setLoading(false);
     }
-  }
+  };
 
+  // All useEffect hooks
   useEffect(() => {
     // Fetch both summary and projects data in parallel
     Promise.all([fetchProjectsSummary(), fetchProjects()])
@@ -101,8 +96,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     // Apply filters
     let result = [...projects]
-
-    // Search filter
     if (searchQuery) {
       result = result.filter(
         (project) =>
@@ -110,19 +103,27 @@ export default function ProjectsPage() {
           project.lead.fullName.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
-
-    // Status filter
     if (statusFilter !== "all") {
       result = result.filter((project) => project.status === statusFilter)
     }
-
-    // Department filter
     if (departmentFilter !== "all") {
       result = result.filter((project) => project.department.name === departmentFilter)
     }
-
     setFilteredProjects(result)
   }, [searchQuery, statusFilter, departmentFilter, projects])
+
+  useEffect(() => {
+    setUserRole(getUserRole());
+  }, []);
+
+  // Only now, after all hooks, do the early return
+  if (userRole === null) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
 
   const handleNewProject = () => {
     setShowNewProjectDialog(true)
@@ -185,9 +186,11 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">Projects</h1>
         <div className="flex items-center gap-2">
-          <Button onClick={handleNewProject}>
-            <Plus className="mr-2 h-4 w-4" /> New Project
-          </Button>
+          {userRole !== "Board Member" && (
+            <Button onClick={handleNewProject}>
+              <Plus className="mr-2 h-4 w-4" /> New Project
+            </Button>
+          )}
         </div>
       </div>
 
@@ -385,7 +388,7 @@ export default function ProjectsPage() {
                   <TableHead>Deadline</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {userRole !== "Board Member" && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -411,24 +414,26 @@ export default function ProjectsPage() {
                         {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClick(project)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(project)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {userRole !== "Board Member" && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(project)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteClick(project)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

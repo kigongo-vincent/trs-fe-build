@@ -71,6 +71,8 @@ export default function Home() {
         router.push("/dashboard/super-admin/companies")
       } else if (roleName === "Company Admin") {
         router.push("/dashboard/company-admin")
+      } else if (roleName === "Board Member") {
+        router.push("/dashboard/company-admin")
       } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
         router.push("/dashboard/employee")
       } else {
