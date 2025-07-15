@@ -86,8 +86,8 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
         <Badge className="ml-2 bg-green-500">{company.status || '_'}</Badge>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-2">
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card className="md:col-span-3">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>Company Information</CardTitle>
@@ -150,45 +150,67 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Subscription</CardTitle>
             <CardDescription>Current plan and usage</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Current Package</h3>
-                  <Badge>{company.package || '_'}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Joined on {company.createdAt ? new Date(company.createdAt).toLocaleDateString() : '_'}</p>
+            {/* Begin: Detailed Package Card or Placeholder */}
+            {company.package ? (
+              <Card className="border-2 border-primary/60 bg-primary/5 flex flex-col mb-4">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">Current Plan</Badge>
+                      {company.package.name}
+                    </CardTitle>
+                    <CardDescription className="mt-2">{company.package.description}</CardDescription>
+                    <div className="mt-4 flex gap-6 text-xs">
+                      <span>Status: <Badge className="ml-1 capitalize">{company.package.status}</Badge></span>
+                      <span>Users: <span className="font-medium">{company.package.no_of_users}</span></span>
+                      <span>Created: {company.package.createdAt ? new Date(company.package.createdAt).toLocaleDateString() : '-'}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-2xl font-bold">{company.package.price === 0 ? 'Free' : `$${company.package.price}/${company.package.durationType === 'yearly' ? 'yr' : 'mo'}`}</span>
+                    <Badge variant="outline" className="capitalize">{company.package.durationType}</Badge>
+                  </div>
+                </CardHeader>
+              </Card>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 018 0v2m-4-4v4m0 0v4m0-4h4m-4 0H7" /></svg>
+                <span className="text-lg font-semibold">No package assigned to this company.</span>
               </div>
+            )}
+            {/* End: Detailed Package Card or Placeholder */}
+            <div className="space-y-4">
               <Separator />
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Employees</span>
-                  <span className="font-medium">{consultants.length} / 50</span>
+                  <span className="font-medium">{consultants.length} / {company.package?.no_of_users ?? '_'}
+                  </span>
                 </div>
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(consultants.length / 50) * 100}%` }}
-                  ></div>
-                </div>
+                {(() => {
+                  const total = company.package?.no_of_users || 0;
+                  const used = consultants.length;
+                  const percent = total ? Math.min((used / total) * 100, 100) : 0;
+                  let barColor = "bg-green-500";
+                  if (percent >= 100) barColor = "bg-red-500";
+                  else if (percent >= 50) barColor = "bg-orange-400";
+                  return (
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                        style={{ width: `${percent}%` }}
+                      ></div>
+                    </div>
+                  );
+                })()}
               </div>
-
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Projects</span>
-                  <span className="font-medium">0 / 20</span>
-                </div>
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: `0%` }}></div>
-                </div>
-              </div>
-              <Button className="w-full">Manage Subscription</Button>
+              {/* Removed Projects section and Manage Subscription button */}
             </div>
           </CardContent>
         </Card>
