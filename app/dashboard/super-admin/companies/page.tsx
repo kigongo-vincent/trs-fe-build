@@ -128,6 +128,16 @@ export default function CompaniesPage() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Companies by Package</CardTitle>
+          <CardDescription>Distribution of companies across different packages</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CompaniesByPackageChart data={companies} />
+        </CardContent>
+      </Card>
+
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <TabsList>
@@ -221,16 +231,6 @@ export default function CompaniesPage() {
           </div>
         </TabsContent>
       </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Companies by Package</CardTitle>
-          <CardDescription>Distribution of companies across different packages</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CompaniesByPackageChart />
-        </CardContent>
-      </Card>
     </div>
   )
 }
