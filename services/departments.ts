@@ -39,7 +39,7 @@ interface DepartmentsResponse {
 interface CreateDepartmentPayload {
   companyId: string;
   name: string;
-  headId: string;
+  headId?: string;
   description: string;
 }
 
@@ -52,7 +52,7 @@ interface CreateDepartmentResponse {
 interface UpdateDepartmentPayload {
   companyId: string;
   name: string;
-  head: string;
+  head?: string;
   description: string;
 }
 

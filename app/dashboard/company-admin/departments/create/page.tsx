@@ -11,11 +11,10 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { createDepartment } from "@/services/departments"
 import { getAllConsultants, type Consultant } from "@/services/consultants"
 import { getAuthData } from "@/services/auth"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export default function CreateDepartmentPage() {
     const router = useRouter()
-    const { toast } = useToast()
     const [loading, setLoading] = useState(false)
     const [consultants, setConsultants] = useState<Consultant[]>([])
     const [consultantsLoading, setConsultantsLoading] = useState(true)
@@ -32,11 +31,7 @@ export default function CreateDepartmentPage() {
                 setConsultantsLoading(true)
                 const authData = getAuthData()
                 if (!authData?.user?.company?.id) {
-                    toast({
-                        title: "Error",
-                        description: "Company information not found. Please log in again.",
-                        variant: "destructive"
-                    })
+                    toast.error("Company information not found. Please log in again.")
                     return
                 }
 
@@ -46,26 +41,18 @@ export default function CreateDepartmentPage() {
                 if (response.status === 200) {
                     setConsultants(response.data)
                 } else {
-                    toast({
-                        title: "Error",
-                        description: "Failed to fetch consultants",
-                        variant: "destructive"
-                    })
+                    toast.error("Failed to fetch consultants")
                 }
             } catch (error) {
                 console.error("Error fetching consultants:", error)
-                toast({
-                    title: "Error",
-                    description: "An error occurred while fetching consultants",
-                    variant: "destructive"
-                })
+                toast.error("An error occurred while fetching consultants")
             } finally {
                 setConsultantsLoading(false)
             }
         }
 
         fetchConsultants()
-    }, [toast])
+    }, [])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -85,12 +72,8 @@ export default function CreateDepartmentPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!formData.name.trim() || !formData.head.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Please fill in all required fields.",
-                variant: "destructive"
-            })
+        if (!formData.name.trim()) {
+            toast.error("Please enter the department name.")
             return
         }
 
@@ -100,43 +83,30 @@ export default function CreateDepartmentPage() {
             // Get company ID from auth data
             const authData = getAuthData()
             if (!authData?.user?.company?.id) {
-                toast({
-                    title: "Error",
-                    description: "Company information not found. Please log in again.",
-                    variant: "destructive"
-                })
+                toast.error("Company information not found. Please log in again.")
                 return
             }
 
-            const payload = {
+            const payload: any = {
                 companyId: authData.user.company.id,
                 name: formData.name.trim(),
-                headId: formData.head.trim(),
                 description: formData.description.trim()
+            }
+            if (formData.head.trim()) {
+                payload.headId = formData.head.trim()
             }
 
             const response = await createDepartment(payload)
 
             if (response.status === 201 || response.status === 200) {
-                toast({
-                    title: "Success",
-                    description: "Department created successfully!",
-                })
+                toast.success("Department created successfully!")
                 router.push("/dashboard/company-admin/departments")
             } else {
-                toast({
-                    title: "Error",
-                    description: response.message || "Failed to create department",
-                    variant: "destructive"
-                })
+                toast.error(response.message || "Failed to create department")
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error creating department:", error)
-            toast({
-                title: "Error",
-                description: "An error occurred while creating the department",
-                variant: "destructive"
-            })
+            toast.error(error?.message || (error?.response?.data?.message) || "An error occurred while creating the department")
         } finally {
             setLoading(false)
         }
@@ -180,7 +150,7 @@ export default function CreateDepartmentPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="head">Department Head *</Label>
+                            <Label htmlFor="head">Department Head</Label>
                             <Select
                                 value={formData.head}
                                 onValueChange={handleHeadChange}
@@ -192,7 +162,7 @@ export default function CreateDepartmentPage() {
                                             ? "Loading consultants..."
                                             : consultants.length === 0
                                                 ? "No consultants available"
-                                                : "Select department head"
+                                                : "Select department head (optional)"
                                     } />
                                 </SelectTrigger>
                                 <SelectContent>

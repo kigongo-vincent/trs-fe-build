@@ -431,16 +431,16 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       // Only add params if searchTerm is set, or filters are changed from default
       if (searchTerm) {
         params.search = searchTerm
-      } else if (
-        filterParams && (
-          filterParams.status !== "all" ||
-          filterParams.startDate ||
-          filterParams.endDate
-        )
-      ) {
-        params.startDate = filterParams.startDate || ""
-        params.endDate = filterParams.endDate || ""
-        params.status = filterParams.status || "all"
+      } else if (filterParams) {
+        if (filterParams.status && filterParams.status !== "all") {
+          params.status = filterParams.status
+        }
+        if (filterParams.startDate) {
+          params.startDate = filterParams.startDate
+        }
+        if (filterParams.endDate) {
+          params.endDate = filterParams.endDate
+        }
       }
       const query = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : ""
 

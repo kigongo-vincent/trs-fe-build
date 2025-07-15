@@ -98,13 +98,32 @@ export async function fetchTasksByDepartment(): Promise<TasksByDepartmentRespons
   );
 }
 
-export async function fetchAllTasks(): Promise<AllTasksResponse> {
+export async function fetchAllTasks(params?: {
+  search?: string;
+  departmentId?: string;
+  projectId?: string;
+  duration_min?: number;
+  duration_max?: number;
+}): Promise<AllTasksResponse> {
   const authData = getAuthData();
   if (!authData?.user?.company?.id) {
     throw new Error("Company ID not found");
   }
-
-  return getRequest(`/company/tasks/all/${authData.user.company.id}`);
+  const companyId = authData.user.company.id;
+  let query = "";
+  if (params) {
+    const q = new URLSearchParams();
+    if (params.search) q.append("search", params.search);
+    if (params.departmentId) q.append("departmentId", params.departmentId);
+    if (params.projectId) q.append("projectId", params.projectId);
+    if (params.duration_min !== undefined)
+      q.append("duration_min", String(params.duration_min));
+    if (params.duration_max !== undefined)
+      q.append("duration_max", String(params.duration_max));
+    const qs = q.toString();
+    if (qs) query = `?${qs}`;
+  }
+  return getRequest(`/company/tasks/all/${companyId}${query}`);
 }
 
 export async function updateTask(
