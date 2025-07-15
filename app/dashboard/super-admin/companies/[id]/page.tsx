@@ -93,10 +93,6 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
               <CardTitle>Company Information</CardTitle>
               <CardDescription>Details about {company.name}</CardDescription>
             </div>
-            <Button size="sm" variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-8">
@@ -122,28 +118,6 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span>{company.address || '_'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 space-y-4">
-                <h3 className="font-medium">Primary Contact</h3>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>{consultants?.[0]?.fullName?.charAt(0) || '_'}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{consultants?.[0]?.fullName || '_'}</p>
-                    <p className="text-sm text-muted-foreground">{consultants?.[0]?.jobTitle || '_'}</p>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{consultants?.[0]?.email || '_'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{consultants?.[0]?.phoneNumber || '_'}</span>
                   </div>
                 </div>
               </div>
@@ -260,8 +234,8 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
       <Tabs defaultValue="employees" className="space-y-4">
         <TabsList>
           <TabsTrigger value="employees">Employees</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
+          {/* <TabsTrigger value="activity">Activity</TabsTrigger> */}
+          {/* <TabsTrigger value="billing">Billing</TabsTrigger> */}
           {/* <TabsTrigger value="settings">Settings</TabsTrigger> */}
         </TabsList>
         <TabsContent value="employees" className="space-y-4">
@@ -286,7 +260,6 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
                         <th className="h-12 px-4 text-left align-middle font-medium">Role</th>
                         <th className="h-12 px-4 text-left align-middle font-medium">Status</th>
                         <th className="h-12 px-4 text-left align-middle font-medium">Joined</th>
-                        <th className="h-12 px-4 text-right align-middle font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -310,16 +283,11 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
                               <Badge className={user.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}>{user.status}</Badge>
                             </td>
                             <td className="p-4 align-middle">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '_'}</td>
-                            <td className="p-4 align-middle text-right">
-                              <Button variant="ghost" size="sm">
-                                View
-                              </Button>
-                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="p-4 text-center text-muted-foreground">No employees found.</td>
+                          <td colSpan={5} className="p-4 text-center text-muted-foreground">No employees found.</td>
                         </tr>
                       )}
                     </tbody>
@@ -336,17 +304,8 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Distribution</CardTitle>
-              <CardDescription>Distribution of employees by department</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CompanyEmployeesChart />
-            </CardContent>
-          </Card>
         </TabsContent>
-        <TabsContent value="activity" className="space-y-4">
+        {/* <TabsContent value="activity" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Activity Overview</CardTitle>
@@ -356,8 +315,8 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
               <CompanyActivityChart />
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="billing" className="space-y-4">
+        </TabsContent> */}
+        {/* <TabsContent value="billing" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -401,7 +360,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>

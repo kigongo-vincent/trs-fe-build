@@ -18,6 +18,7 @@ import * as z from "zod"
 import { toast } from "sonner"
 import { fetchCompanies, fetchPackages, createLicenseKey } from "@/services/api"
 import { Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const createLicenseSchema = z.object({
   companyId: z.string().min(1, "Company is required"),
@@ -318,7 +319,16 @@ export default function LicensesPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr><td colSpan={6} className="text-center py-6">Loading...</td></tr>
+                    // Skeleton loader for table rows
+                    [...Array(5)].map((_, i) => (
+                      <tr key={i}>
+                        {[...Array(6)].map((_, j) => (
+                          <td key={j} className="p-4">
+                            <Skeleton className="h-6 w-full" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
                   ) : error ? (
                     <tr><td colSpan={6} className="text-center py-6 text-red-500">{error}</td></tr>
                   ) : filteredLicenses.length === 0 ? (
@@ -358,15 +368,7 @@ export default function LicensesPage() {
         </TabsContent>
       </Tabs>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>License Status</CardTitle>
-          <CardDescription>Overview of all license keys</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LicenseStatusChart />
-        </CardContent>
-      </Card>
+      {/* Removed LicenseStatusChart overview section below the table */}
     </div>
   )
 }
