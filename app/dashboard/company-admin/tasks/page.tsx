@@ -29,11 +29,13 @@ export default function TasksPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isTasksLoading, setIsTasksLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [projectFilter, setProjectFilter] = useState("all")
-  const [durationFilter, setDurationFilter] = useState("all")
+  // --- State for search and filters ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState({
+    department: "all",
+    project: "all",
+    duration: "all",
+  });
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -42,21 +44,6 @@ export default function TasksPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [filterForm, setFilterForm] = useState({
-    searchTerm: "",
-    statusFilter: "all",
-    departmentFilter: "all",
-    projectFilter: "all",
-    durationFilter: "all",
-  })
-  const [appliedFilters, setAppliedFilters] = useState({
-    searchTerm: "",
-    statusFilter: "all",
-    departmentFilter: "all",
-    projectFilter: "all",
-    durationFilter: "all",
-  })
-  const [isApplying, setIsApplying] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
 
   // Constants and derived variables
@@ -71,34 +58,67 @@ export default function TasksPage() {
   const departments = Array.from(new Set(tasks.map((task) => task.project.department.name)));
   const projects = Array.from(new Set(tasks.map((task) => task.project.name)));
   const isFilterActive =
-    appliedFilters.searchTerm !== "" ||
-    appliedFilters.statusFilter !== "all" ||
-    appliedFilters.departmentFilter !== "all" ||
-    appliedFilters.projectFilter !== "all" ||
-    appliedFilters.durationFilter !== "all";
+    filters.department !== "all" ||
+    filters.project !== "all" ||
+    filters.duration !== "all";
 
   // --- Move handlers and helpers to top level ---
   const handleSaveFilters = () => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify(filterForm));
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(defaultFilters));
     toast.success("Filters saved!");
   };
 
   const handleClearFilters = () => {
-    setFilterForm(defaultFilters);
-    setAppliedFilters(defaultFilters);
+    setFilters({ department: "all", project: "all", duration: "all" });
     toast("Filters cleared");
+  };
+
+  // --- Handlers for search and filters ---
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsTasksLoading(true);
+    try {
+      const response = await fetchAllTasks({ search: searchTerm });
+      setTasks(response.data);
+      setFilteredTasks(response.data);
+      setFilters({ department: "all", project: "all", duration: "all" }); // Reset filters
+    } catch (err) {
+      toast.error("Failed to search tasks. Please try again.");
+    } finally {
+      setIsTasksLoading(false);
+    }
   };
 
   const handleApplyFilters = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setIsApplying(true);
-    await new Promise(res => setTimeout(res, 1500));
-    setAppliedFilters({ ...filterForm });
-    setIsApplying(false);
+    setIsTasksLoading(true);
+    let duration_min, duration_max;
+    switch (filters.duration) {
+      case "lt1": duration_max = 60; break;
+      case "1to2": duration_min = 60; duration_max = 120; break;
+      case "2to5": duration_min = 120; duration_max = 300; break;
+      case "5to8": duration_min = 300; duration_max = 480; break;
+      case "gt8": duration_min = 480; break;
+    }
+    try {
+      const response = await fetchAllTasks({
+        departmentId: filters.department !== "all" ? filters.department : undefined,
+        projectId: filters.project !== "all" ? filters.project : undefined,
+        duration_min,
+        duration_max,
+      });
+      setTasks(response.data);
+      setFilteredTasks(response.data);
+      setSearchTerm(""); // Reset search
+    } catch (err) {
+      toast.error("Failed to filter tasks. Please try again.");
+    } finally {
+      setIsTasksLoading(false);
+    }
   };
 
-  const isAnyFilterSet = Object.entries(filterForm).some(
-    ([key, value]) => value !== defaultFilters[key as keyof typeof defaultFilters]
+  const isAnyFilterSet = Object.entries(filters).some(
+    ([key, value]) => value !== "all"
   );
 
   const loadTasksSummary = async () => {
@@ -172,31 +192,23 @@ export default function TasksPage() {
     setUserRole(getUserRole());
   }, []);
 
+  // Remove useEffect dependency on searchTerm for filtering
   useEffect(() => {
     let filtered = tasks;
-    const { searchTerm, departmentFilter, projectFilter, durationFilter } = appliedFilters;
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (task) =>
-          task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          task.project.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-    }
+    const { department, project, duration } = filters;
     // Department filter
-    if (departmentFilter !== "all") {
-      filtered = filtered.filter((task) => task.project.department.name === departmentFilter);
+    if (department !== "all") {
+      filtered = filtered.filter((task) => task.project.department.name === department);
     }
     // Project filter
-    if (projectFilter !== "all") {
-      filtered = filtered.filter((task) => task.project.name === projectFilter);
+    if (project !== "all") {
+      filtered = filtered.filter((task) => task.project.name === project);
     }
     // Duration filter
-    if (durationFilter !== "all") {
+    if (duration !== "all") {
       filtered = filtered.filter((task) => {
         const minutes = Number.parseFloat(task.duration);
-        switch (durationFilter) {
+        switch (duration) {
           case "lt1":
             return minutes < 60;
           case "1to2":
@@ -215,7 +227,7 @@ export default function TasksPage() {
     // Only show tasks that are not drafts
     filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft");
     setFilteredTasks(filtered);
-  }, [tasks, appliedFilters]);
+  }, [tasks, filters]);
 
   // Only now, after all hooks, do the early return
   if (userRole === null) {
@@ -469,43 +481,29 @@ export default function TasksPage() {
       </div>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* Search Form */}
         <form
           className="flex w-full max-w-sm items-center space-x-2"
-          onSubmit={handleApplyFilters}
+          onSubmit={handleSearch}
         >
           <Input
             type="text"
             placeholder="Search tasks..."
             className="h-9"
-            value={filterForm.searchTerm}
-            onChange={(e) => setFilterForm(f => ({ ...f, searchTerm: e.target.value }))}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
           />
           <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3" type="submit">
             <Search className="h-4 w-4" />
             <span className="sr-only md:not-sr-only md:ml-2">Search</span>
           </Button>
-          {/* Filter indicator - improved */}
-          {isFilterActive && (
-            <span
-              title="Filters active"
-              className="ml-2 flex items-center"
-              aria-label="Filters active"
-            >
-              <span className="inline-block w-3 h-3 rounded-full bg-primary shadow ring-2 ring-primary/20 animate-pulse" />
-              {/*
-              // Uncomment below for a badge alternative:
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
-                Filters
-              </span>
-              */}
-            </span>
-          )}
         </form>
+        {/* Filters Form */}
         <form
           className="flex flex-row items-center gap-2"
           onSubmit={handleApplyFilters}
         >
-          <Select value={filterForm.departmentFilter} onValueChange={val => setFilterForm(f => ({ ...f, departmentFilter: val }))}>
+          <Select value={filters.department} onValueChange={val => setFilters(f => ({ ...f, department: val }))}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
@@ -518,7 +516,7 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterForm.projectFilter} onValueChange={val => setFilterForm(f => ({ ...f, projectFilter: val }))}>
+          <Select value={filters.project} onValueChange={val => setFilters(f => ({ ...f, project: val }))}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Project" />
             </SelectTrigger>
@@ -531,7 +529,7 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterForm.durationFilter} onValueChange={val => setFilterForm(f => ({ ...f, durationFilter: val }))}>
+          <Select value={filters.duration} onValueChange={val => setFilters(f => ({ ...f, duration: val }))}>
             <SelectTrigger className="h-9 w-[180px]">
               <SelectValue placeholder="Duration" />
             </SelectTrigger>
@@ -544,29 +542,12 @@ export default function TasksPage() {
               <SelectItem value="gt8">More than 8 hours</SelectItem>
             </SelectContent>
           </Select>
-          {/* Apply/Clear filter buttons with loader and disabled state */}
-          <div className="flex gap-x-2 ml-4">
-            <Button
-              variant="default"
-              size="sm"
-              className="h-9 px-3"
-              type="submit"
-              disabled={!isAnyFilterSet || isApplying}
-              title="Apply filters"
-            >
-              {isApplying ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                  Applying...
-                </span>
-              ) : (
-                'Apply Filters'
-              )}
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 px-3" type="button" onClick={handleClearFilters} title="Clear all filters">
-              Clear Filters
-            </Button>
-          </div>
+          <Button variant="default" size="sm" className="h-9 px-3" type="submit">
+            Apply Filters
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 px-3" type="button" onClick={() => setFilters({ department: "all", project: "all", duration: "all" })}>
+            Clear Filters
+          </Button>
         </form>
       </div>
 
