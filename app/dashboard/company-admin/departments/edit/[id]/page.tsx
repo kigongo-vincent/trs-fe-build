@@ -90,6 +90,17 @@ export default function EditDepartmentPage() {
         }
     }, [departmentName, departmentHead, departmentDescription, consultants])
 
+    // If departmentName exists but departmentHead is missing, prefill name and description, leave head empty
+    useEffect(() => {
+        if (departmentName && consultants.length > 0 && !departmentHead) {
+            setFormData({
+                name: departmentName,
+                head: "",
+                description: departmentDescription || ""
+            });
+        }
+    }, [departmentName, departmentDescription, departmentHead, consultants]);
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
         setFormData(prev => ({
@@ -149,7 +160,7 @@ export default function EditDepartmentPage() {
     }
 
     // Show loading if department data is not available
-    if (!departmentName || !departmentHead) {
+    if (!departmentName) {
         return (
             <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
