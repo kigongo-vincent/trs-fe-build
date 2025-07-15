@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { fetchPackages, fetchLicenseKeys, LicenseKey } from "@/services/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAuthUser } from "@/services/auth"
+import { Input } from "@/components/ui/input"
 
 // Type for a package (from API)
 type PackageType = {
@@ -39,49 +40,9 @@ export default function CompanyAdminPackagesPage() {
     const [pendingUpgrade, setPendingUpgrade] = useState<PackageType | null>(null)
     const [currentPlanExpiry, setCurrentPlanExpiry] = useState<Date | null>(null)
     const [latestLicenseKey, setLatestLicenseKey] = useState<LicenseKey | null>(null)
-
-    // Helper to get current plan name from user/session/localStorage
-    function getCurrentPlanName(): string | null {
-        if (typeof window === "undefined") return null
-        try {
-            const user = getAuthUser()
-            if (user && user.company && user.company.package && user.company.package.name) {
-                return user.company.package.name
-            } else {
-                const sessionPackage = sessionStorage.getItem("package")
-                if (sessionPackage) {
-                    const pkg = JSON.parse(sessionPackage)
-                    if (pkg && typeof pkg === "object" && pkg.name) {
-                        return pkg.name
-                    }
-                }
-            }
-        } catch { }
-        const storedPlan = localStorage.getItem("companyPlanName")
-        if (storedPlan) return storedPlan
-        return null
-    }
-
-    // Helper to get current plan id from user/session/localStorage
-    function getCurrentPlanId(): string | null {
-        if (typeof window === "undefined") return null
-        try {
-            const user = getAuthUser()
-            if (user && user.company && user.company.package && user.company.package.id) {
-                return user.company.package.id
-            } else {
-                const sessionPackage = sessionStorage.getItem("package")
-                if (sessionPackage) {
-                    const pkg = JSON.parse(sessionPackage)
-                    if (pkg && typeof pkg === "object" && pkg.id) {
-                        return pkg.id
-                    }
-                }
-            }
-        } catch { }
-        // No id in localStorage fallback
-        return null
-    }
+    const [customDialogOpen, setCustomDialogOpen] = useState(false)
+    const [customUserCount, setCustomUserCount] = useState(1)
+    const [customError, setCustomError] = useState<string | null>(null)
 
     useEffect(() => {
         async function loadData() {
@@ -127,6 +88,64 @@ export default function CompanyAdminPackagesPage() {
         loadData()
     }, [])
 
+    // Helper to get current plan name from user/session/localStorage
+    function getCurrentPlanName(): string | null {
+        if (typeof window === "undefined") return null
+        try {
+            const user = getAuthUser()
+            if (user && user.company && user.company.package && user.company.package.name) {
+                return user.company.package.name
+            } else {
+                const sessionPackage = sessionStorage.getItem("package")
+                if (sessionPackage) {
+                    const pkg = JSON.parse(sessionPackage)
+                    if (pkg && typeof pkg === "object" && pkg.name) {
+                        return pkg.name
+                    }
+                }
+            }
+        } catch { }
+        const storedPlan = localStorage.getItem("companyPlanName")
+        if (storedPlan) return storedPlan
+        return null
+    }
+
+    // Helper to get current plan id from user/session/localStorage
+    function getCurrentPlanId(): string | null {
+        if (typeof window === "undefined") return null
+        try {
+            const user = getAuthUser()
+            if (user && user.company && user.company.package && user.company.package.id) {
+                return user.company.package.id
+            } else {
+                const sessionPackage = sessionStorage.getItem("package")
+                if (sessionPackage) {
+                    const pkg = JSON.parse(sessionPackage)
+                    if (pkg && typeof pkg === "object" && pkg.id) {
+                        return pkg.id
+                    }
+                }
+            }
+        } catch { }
+        // No id in localStorage fallback
+        return null
+    }
+
+    // Helper to create a custom package object
+    function getCustomPackage(userCount: number): PackageType {
+        return {
+            id: "custom",
+            name: `Custom (${userCount} users)`,
+            description: `Custom plan for ${userCount} users`,
+            price: userCount,
+            durationType: "monthly",
+            no_of_users: userCount,
+            status: "active",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        }
+    }
+
     const handleUpgradeClick = (pkg: PackageType) => {
         setPendingUpgrade(pkg)
         setUpgradeDialogOpen(true)
@@ -143,6 +162,23 @@ export default function CompanyAdminPackagesPage() {
         }
         setUpgradeDialogOpen(false)
         setPendingUpgrade(null)
+    }
+
+    const handleCustomSelect = () => {
+        setCustomDialogOpen(true)
+        setCustomUserCount(1)
+        setCustomError(null)
+    }
+
+    const confirmCustom = () => {
+        if (customUserCount < 1) {
+            setCustomError("Number of users must be at least 1")
+            return
+        }
+        const pkg = getCustomPackage(customUserCount)
+        setPendingUpgrade(pkg)
+        setCustomDialogOpen(false)
+        setUpgradeDialogOpen(true)
     }
 
     // Remove usage/consumption display
@@ -254,6 +290,25 @@ export default function CompanyAdminPackagesPage() {
                     <div>
                         <h2 className="text-lg font-semibold mb-4">Available Packages</h2>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {/* Custom Package Card */}
+                            <Card className="flex items-center gap-4 p-4 border-dashed border-2 border-primary/40 bg-primary/5 shadow-sm">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary">
+                                    <Package className="h-6 w-6" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg font-semibold truncate">Custom Package</span>
+                                        <Badge className="ml-2">Custom</Badge>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground truncate">Specify your own number of users. $1 per user/month.</div>
+                                </div>
+                                <div className="flex flex-col gap-2 ml-4">
+                                    <Button variant="default" onClick={handleCustomSelect}>
+                                        Select
+                                    </Button>
+                                </div>
+                            </Card>
+                            {/* Existing Packages */}
                             {packages.map(pkg => (
                                 <Card key={pkg.id} className="flex items-center gap-4 p-4 border-gray-300 shadow-sm">
                                     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary">
@@ -297,6 +352,38 @@ export default function CompanyAdminPackagesPage() {
                             <div className="flex justify-end gap-2 mt-4">
                                 <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>Cancel</Button>
                                 <Button variant="default" onClick={confirmUpgrade}>Upgrade</Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Custom Package Modal */}
+                    <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Custom Package</DialogTitle>
+                                <DialogDescription>
+                                    Specify the number of users for your custom package. Price is $1 per user per month.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4 mt-2">
+                                <label className="text-sm font-medium">Number of Users</label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    value={customUserCount}
+                                    onChange={e => {
+                                        const val = parseInt(e.target.value)
+                                        setCustomUserCount(isNaN(val) ? 1 : val)
+                                        setCustomError(null)
+                                    }}
+                                    className="w-full"
+                                />
+                                <div className="text-sm">Total Price: <span className="font-semibold">${customUserCount.toLocaleString()} USD / month</span></div>
+                                {customError && <div className="text-red-500 text-xs">{customError}</div>}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button variant="outline" onClick={() => setCustomDialogOpen(false)}>Cancel</Button>
+                                <Button variant="default" onClick={confirmCustom}>Confirm</Button>
                             </div>
                         </DialogContent>
                     </Dialog>

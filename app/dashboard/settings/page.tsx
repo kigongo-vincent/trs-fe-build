@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
 import { BASE_URL, getImage, updateCompany } from "@/services/api"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface PasswordFormData {
   currentPassword: string;
@@ -625,8 +626,101 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-900"></div>
+      <div className="max-w-4xl p-4">
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList>
+            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="company">Company</TabsTrigger>
+          </TabsList>
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <Skeleton className="h-6 w-40 mb-2" />
+                </CardTitle>
+                <CardDescription>
+                  <Skeleton className="h-4 w-60" />
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  ))}
+                  <div className="col-span-1">
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <Skeleton className="h-10 w-32" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Skeleton className="h-10 w-32 mr-2" />
+                <Skeleton className="h-10 w-24" />
+              </CardFooter>
+            </Card>
+          </TabsContent>
+          <TabsContent value="company">
+            <div className="flex flex-col gap-6 max-w-[60vw] border rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-4 w-56 mb-2" />
+                  <Skeleton className="h-3 w-80" />
+                </div>
+                <Skeleton className="h-6 w-12" />
+              </div>
+              <Separator />
+              <div className="flex block flex-col md:flex-row gap-6 items-center">
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+              <div className="flex flex-col items-start mt-4">
+                <Skeleton className="h-4 w-32 mb-2" />
+                <div className="flex items-center gap-4 mt-1">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <Skeleton className="h-10 w-32" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="password">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <Skeleton className="h-6 w-40 mb-2" />
+                </CardTitle>
+                <CardDescription>
+                  <Skeleton className="h-4 w-60" />
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="h-4 w-32 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Skeleton className="h-10 w-32 mr-2" />
+                <Skeleton className="h-10 w-24" />
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
