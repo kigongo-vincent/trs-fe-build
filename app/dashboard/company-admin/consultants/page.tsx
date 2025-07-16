@@ -25,6 +25,7 @@ import {
   getTrendIndicator,
   type ConsultantDashboardData,
   updateConsultantStatus,
+  getConsultantLogsByRange,
 } from "@/services/consultants"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
@@ -51,8 +52,22 @@ export default function ConsultantsPage() {
   const [dashboardData, setDashboardData] = useState<ConsultantDashboardData | null>(null)
   const [dashboardLoading, setDashboardLoading] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
-  const [startDate, setStartDate] = useState<string>("2024-01-05")
-  const [endDate, setEndDate] = useState<string>("2024-02-05")
+  // Define getDefaultDates and initialize start/end before useState hooks
+  const getDefaultDates = () => {
+    const today = new Date();
+    const end = today.toISOString().split('T')[0];
+    const startDateObj = new Date(today);
+    startDateObj.setDate(today.getDate() - 30);
+    const start = startDateObj.toISOString().split('T')[0];
+    return { start, end };
+  };
+  const { start, end } = getDefaultDates();
+  // Confirmed date range (used for fetching)
+  const [confirmedStartDate, setConfirmedStartDate] = useState<string>(start);
+  const [confirmedEndDate, setConfirmedEndDate] = useState<string>(end);
+  // Pending date range (used for input fields)
+  const [pendingStartDate, setPendingStartDate] = useState<string>(start);
+  const [pendingEndDate, setPendingEndDate] = useState<string>(end);
   const [filteredTasks, setFilteredTasks] = useState<any[]>([])
   const [tasksLoading, setTasksLoading] = useState(false)
   const [tasksError, setTasksError] = useState<string | null>(null)
@@ -64,6 +79,10 @@ export default function ConsultantsPage() {
   const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | 'on-leave' | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
+  // State for recent activity logs
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [recentLogsLoading, setRecentLogsLoading] = useState(false);
+  const [recentLogsError, setRecentLogsError] = useState<string | null>(null);
 
   // Get company ID from auth data
   const authData = getAuthData();
@@ -81,213 +100,25 @@ export default function ConsultantsPage() {
       const startDateStr = startDate.toISOString().split('T')[0]
       const endDateStr = endDate.toISOString().split('T')[0]
 
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/consultants/${selectedConsultant.id}/time-logs?startDate=${startDateStr}&endDate=${endDateStr}`)
-      // const data = await response.json()
-
-      // For now, simulate API call with mock data
-      await new Promise(resolve => setTimeout(resolve, 500)) // Simulate network delay
-
-      // Mock API response - replace this with actual API call
-      const mockApiResponse = [
-        {
-          id: "1",
-          duration: "1920", // 32 hours in minutes
-          title: "Frontend Development - Dashboard",
-          description: "Developed the main dashboard interface with React components and implemented responsive design patterns",
-          status: "completed",
-          projectId: "proj-1",
-          createdAt: "2024-01-15T09:00:00Z",
-          updatedAt: "2024-01-20T17:30:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "TRS Platform"
-        },
-        {
-          id: "2",
-          duration: "1080", // 18 hours in minutes
-          title: "API Integration - User Management",
-          description: "Integrated user management APIs with frontend components and implemented authentication flows",
-          status: "active",
-          projectId: "proj-1",
-          createdAt: "2024-01-22T10:15:00Z",
-          updatedAt: "2024-01-25T16:45:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "TRS Platform"
-        },
-        {
-          id: "3",
-          duration: "720", // 12 hours in minutes
-          title: "Database Schema Design",
-          description: "Designed and implemented database schema for inventory management system with proper relationships",
-          status: "completed",
-          projectId: "proj-2",
-          createdAt: "2024-01-10T08:30:00Z",
-          updatedAt: "2024-01-12T14:20:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "Inventory System"
-        },
-        {
-          id: "4",
-          duration: "2700", // 45 hours in minutes
-          title: "Mobile App Development",
-          description: "Developing mobile application for customer self-service portal with React Native",
-          status: "active",
-          projectId: "proj-3",
-          createdAt: "2024-01-28T11:00:00Z",
-          updatedAt: "2024-02-05T18:15:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "Customer Portal"
-        },
-        {
-          id: "5",
-          duration: "1440", // 24 hours in minutes
-          title: "Security Audit Implementation",
-          description: "Implemented security audit features and compliance checks for the platform",
-          status: "completed",
-          projectId: "proj-1",
-          createdAt: "2024-01-05T07:45:00Z",
-          updatedAt: "2024-01-08T15:30:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "TRS Platform"
-        },
-        {
-          id: "6",
-          duration: "960", // 16 hours in minutes
-          title: "Performance Optimization",
-          description: "Optimizing application performance and reducing load times through code refactoring",
-          status: "active",
-          projectId: "proj-1",
-          createdAt: "2024-01-30T09:30:00Z",
-          updatedAt: "2024-02-02T16:00:00Z",
-          userId: selectedConsultant?.id || "user-1",
-          user: {
-            id: selectedConsultant?.id || "user-1",
-            fullName: selectedConsultant?.fullName || "John Doe",
-            firstName: "John",
-            lastName: "Doe",
-            email: selectedConsultant?.email || "john@example.com",
-            password: "",
-            employeeId: "EMP001",
-            status: "active",
-            jobTitle: "Frontend Developer",
-            bio: null,
-            profileImage: null,
-            resetToken: null,
-            resetTokenExpires: null,
-            createdAt: "2024-01-01T00:00:00Z",
-            updatedAt: "2024-01-01T00:00:00Z"
-          },
-          project: "TRS Platform"
-        }
-      ]
-
-      // Filter mock data based on date range (this would be done by the API in real implementation)
-      const filtered = mockApiResponse.filter(timeLog => {
-        const logDate = new Date(timeLog.createdAt)
-
-        return logDate >= startDate && logDate <= endDate
-      })
-
+      // Fetch logs from API
+      const res = await fetch(`/company/consultants/logs/${selectedConsultant.id}?startDate=${startDateStr}&endDate=${endDateStr}`)
+      if (!res.ok) throw new Error('Failed to fetch logs')
+      const result = await res.json()
+      if (result.status !== 200) throw new Error(result.message || 'Failed to fetch logs')
+      // Map durations to minutes (duration is string in hours, e.g. "9.00")
+      const filtered = (result.data || []).map((log: any) => ({
+        ...log,
+        // duration in minutes (parseFloat hours * 60)
+        duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
+      }))
       setFilteredTasks(filtered)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching time logs by date range:", error)
-      setTasksError("Failed to load time logs for the selected date range")
+      setTasksError(error?.message || "Failed to load time logs for the selected date range")
       setFilteredTasks([])
     } finally {
       setTasksLoading(false)
     }
-  }
-
-  // Function to set current date as both start and end dates
-  const setCurrentDate = () => {
-    const today = new Date().toISOString().split('T')[0]
-    setStartDate(today)
-    setEndDate(today)
   }
 
   // All useEffect hooks
@@ -320,17 +151,86 @@ export default function ConsultantsPage() {
     fetchData()
   }, [companyId])
 
+  // Fetch logs by range only when confirmed date range or selectedConsultant changes
   useEffect(() => {
-    if (!startDate || !endDate) {
-      setFilteredTasks([])
-      return
+    if (!selectedConsultant || modalSection !== 'logs') return;
+    setTasksLoading(true);
+    setTasksError(null);
+    getConsultantLogsByRange(selectedConsultant.id, confirmedStartDate, confirmedEndDate)
+      .then(result => {
+        // Map durations to minutes (duration is string in hours, e.g. "9.00")
+        const filtered = (result.data || []).map((log: any) => ({
+          ...log,
+          duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
+        }));
+        setFilteredTasks(filtered);
+      })
+      .catch(error => {
+        setTasksError(error?.message || 'Failed to load time logs for the selected date range');
+        setFilteredTasks([]);
+      })
+      .finally(() => setTasksLoading(false));
+  }, [selectedConsultant, confirmedStartDate, confirmedEndDate, modalSection]);
+
+  // When switching to logs tab, reset pending dates to confirmed
+  useEffect(() => {
+    if (modalSection === 'logs') {
+      setPendingStartDate(confirmedStartDate);
+      setPendingEndDate(confirmedEndDate);
     }
-    fetchTasksByDateRange(new Date(startDate), new Date(endDate))
-  }, [startDate, endDate])
+  }, [modalSection, confirmedStartDate, confirmedEndDate]);
+
+  // Set current date for both start and end (for Today quick action)
+  const setCurrentDate = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setPendingStartDate(today);
+    setPendingEndDate(today);
+    setConfirmedStartDate(today);
+    setConfirmedEndDate(today);
+  };
 
   useEffect(() => {
     setUserRole(getUserRole());
   }, []);
+
+  // Helper to get start of current week (Monday)
+  function getStartOfWeek(date: Date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  // Fetch recent activity logs for current week when modalSection === 'recent' and selectedConsultant changes
+  useEffect(() => {
+    if (!selectedConsultant || modalSection !== 'recent') return;
+    setRecentLogsLoading(true);
+    setRecentLogsError(null);
+    const today = new Date();
+    const startOfWeek = getStartOfWeek(today);
+    const start = startOfWeek.toISOString().split('T')[0];
+    const end = today.toISOString().split('T')[0];
+    getConsultantLogsByRange(selectedConsultant.id, start, end)
+      .then(result => {
+        // Map durations to minutes (duration is string in hours, e.g. "9.00")
+        const filtered = (result.data || []).map((log: any) => ({
+          ...log,
+          duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
+        })).filter((log: any) => {
+          // Only include logs whose createdAt is within this week
+          const logDate = new Date(log.createdAt);
+          return logDate >= startOfWeek && logDate <= today;
+        });
+        setRecentLogs(filtered);
+      })
+      .catch(error => {
+        setRecentLogsError(error?.message || 'Failed to load recent activity logs');
+        setRecentLogs([]);
+      })
+      .finally(() => setRecentLogsLoading(false));
+  }, [selectedConsultant, modalSection]);
 
   // Only now, after all hooks, do the early return
   if (userRole === null) {
@@ -924,55 +824,122 @@ export default function ConsultantsPage() {
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-primary">Recent Activity</CardTitle>
-                          <CardDescription>Latest time logs and tasks</CardDescription>
+                          <CardDescription>Latest time logs and tasks (This week)</CardDescription>
                         </CardHeader>
                         <CardContent>
-                          {dashboardData?.recentLogs && dashboardData.recentLogs.filter((log) => log.status !== "draft").length > 0 ? (
+                          {recentLogsLoading ? (
                             <Table>
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Task Title</TableHead>
+                                  <TableHead>Description</TableHead>
                                   <TableHead>Project</TableHead>
-                                  <TableHead>Date</TableHead>
+                                  <TableHead>Created Date</TableHead>
+                                  <TableHead>Updated Date</TableHead>
                                   <TableHead>Duration</TableHead>
                                   <TableHead>Status</TableHead>
+                                  <TableHead>Attachments</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {dashboardData.recentLogs
-                                  .filter((log) => log.status !== "draft")
-                                  .map((log) => (
-                                    <TableRow key={log.id}>
-                                      <TableCell className="font-medium">{log.title}</TableCell>
-                                      <TableCell>{log.project}</TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                                          {new Date(log.date).toLocaleDateString()}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Clock className="h-4 w-4 text-muted-foreground" />
-                                          {formatMinutesToHours(log.minutes)}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge
-                                          variant="outline"
-                                          className={
-                                            log.status === "active"
-                                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                              : log.status === "completed"
-                                                ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                                : "bg-gray-50 text-gray-700 border-gray-200"
-                                          }
-                                        >
-                                          {log.status}
-                                        </Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                {[...Array(5)].map((_, i) => (
+                                  <TableRow key={i}>
+                                    {[...Array(8)].map((_, j) => (
+                                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          ) : recentLogsError ? (
+                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                              <Clock className="h-10 w-10 mb-3 opacity-40" />
+                              <div className="text-lg font-semibold mb-1">{recentLogsError}</div>
+                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
+                            </div>
+                          ) : recentLogs.length > 0 ? (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Task Title</TableHead>
+                                  <TableHead>Description</TableHead>
+                                  <TableHead>Project</TableHead>
+                                  <TableHead>Created Date</TableHead>
+                                  <TableHead>Updated Date</TableHead>
+                                  <TableHead>Duration</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Attachments</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {recentLogs.map((log) => (
+                                  <TableRow key={log.id}>
+                                    <TableCell className="font-medium">{log.title}</TableCell>
+                                    <TableCell>
+                                      <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
+                                        <span dangerouslySetInnerHTML={{ __html: log.description || '' }} />
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">{log.project}</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                        {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : '-'}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                        {log.updatedAt ? new Date(log.updatedAt).toLocaleDateString() : '-'}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                        {formatDurationString(log.duration)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          log.status === "active"
+                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                            : log.status === "completed"
+                                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                                              : "bg-gray-50 text-gray-700 border-gray-200"
+                                        }
+                                      >
+                                        {log.status}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {log.attachments && Array.isArray(log.attachments) && log.attachments.length > 0 ? (
+                                        log.attachments.map((att: string, idx: number) => {
+                                          let fileName = `Attachment ${idx + 1}`;
+                                          const nameMatch = att.match(/name=([^;]+);/);
+                                          if (nameMatch) fileName = nameMatch[1];
+                                          return (
+                                            <a
+                                              key={idx}
+                                              href={att}
+                                              download={fileName}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="underline text-blue-600 block"
+                                            >
+                                              {fileName}
+                                            </a>
+                                          );
+                                        })
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
                               </TableBody>
                             </Table>
                           ) : (
@@ -1006,8 +973,8 @@ export default function ConsultantsPage() {
                                     <Input
                                       id="start-date"
                                       type="date"
-                                      value={startDate}
-                                      onChange={(e) => setStartDate(e.target.value)}
+                                      value={pendingStartDate}
+                                      onChange={(e) => setPendingStartDate(e.target.value)}
                                       className="w-40"
                                     />
                                   </div>
@@ -1015,13 +982,31 @@ export default function ConsultantsPage() {
                                     <label htmlFor="end-date" className="text-xs text-muted-foreground">
                                       End Date
                                     </label>
-                                    <Input
-                                      id="end-date"
-                                      type="date"
-                                      value={endDate}
-                                      onChange={(e) => setEndDate(e.target.value)}
-                                      className="w-40"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        id="end-date"
+                                        type="date"
+                                        value={pendingEndDate}
+                                        onChange={(e) => setPendingEndDate(e.target.value)}
+                                        className="w-40"
+                                      />
+                                      <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="ml-2"
+                                        onClick={() => {
+                                          setConfirmedStartDate(pendingStartDate);
+                                          setConfirmedEndDate(pendingEndDate);
+                                        }}
+                                        disabled={tasksLoading}
+                                      >
+                                        {tasksLoading ? (
+                                          <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>Loading...</span>
+                                        ) : (
+                                          "Confirm"
+                                        )}
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className="flex flex-col gap-1">
                                     <label className="text-xs text-muted-foreground">
@@ -1032,8 +1017,13 @@ export default function ConsultantsPage() {
                                       size="sm"
                                       onClick={setCurrentDate}
                                       className="w-40"
+                                      disabled={tasksLoading}
                                     >
-                                      Today
+                                      {tasksLoading ? (
+                                        <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></span>Loading...</span>
+                                      ) : (
+                                        "Today"
+                                      )}
                                     </Button>
                                   </div>
                                 </div>
@@ -1059,7 +1049,10 @@ export default function ConsultantsPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => startDate && endDate && fetchTasksByDateRange(new Date(startDate), new Date(endDate))}
+                                  onClick={() => {
+                                    setConfirmedStartDate(pendingStartDate);
+                                    setConfirmedEndDate(pendingEndDate);
+                                  }}
                                 >
                                   Try Again
                                 </Button>
@@ -1092,54 +1085,95 @@ export default function ConsultantsPage() {
                                 <TableHeader>
                                   <TableRow>
                                     <TableHead>Task Title</TableHead>
+                                    <TableHead>Description</TableHead>
                                     <TableHead>Project</TableHead>
                                     <TableHead>Created Date</TableHead>
+                                    <TableHead>Updated Date</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Attachments</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {filteredTasks.map((timeLog) => (
-                                    <TableRow key={timeLog.id}>
-                                      <TableCell className="font-medium">
-                                        <div>
-                                          <div className="font-medium">{timeLog.title}</div>
-                                          <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                                            {timeLog.description}
+                                  {tasksLoading ? (
+                                    // Show 5 skeleton rows, 8 columns each
+                                    [...Array(5)].map((_, i) => (
+                                      <TableRow key={i}>
+                                        {[...Array(8)].map((_, j) => (
+                                          <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))
+                                  ) : (
+                                    filteredTasks.map((timeLog) => (
+                                      <TableRow key={timeLog.id}>
+                                        <TableCell className="font-medium">{timeLog.title}</TableCell>
+                                        <TableCell>
+                                          <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
+                                            <span dangerouslySetInnerHTML={{ __html: timeLog.description || '' }} />
                                           </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge variant="outline">{timeLog.project}</Badge>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                                          {new Date(timeLog.createdAt).toLocaleDateString()}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Clock className="h-4 w-4 text-muted-foreground" />
-                                          {formatDurationString(timeLog.duration)}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Badge
-                                          variant="outline"
-                                          className={
-                                            timeLog.status === "active"
-                                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                              : timeLog.status === "completed"
-                                                ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                                : "bg-gray-50 text-gray-700 border-gray-200"
-                                          }
-                                        >
-                                          {timeLog.status}
-                                        </Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge variant="outline">{timeLog.project}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            {timeLog.createdAt ? new Date(timeLog.createdAt).toLocaleDateString() : '-'}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            {timeLog.updatedAt ? new Date(timeLog.updatedAt).toLocaleDateString() : '-'}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2">
+                                            <Clock className="h-4 w-4 text-muted-foreground" />
+                                            {formatDurationString(timeLog.duration)}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Badge
+                                            variant="outline"
+                                            className={
+                                              timeLog.status === "active"
+                                                ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                                : timeLog.status === "completed"
+                                                  ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
+                                                  : "bg-gray-50 text-gray-700 border-gray-200"
+                                            }
+                                          >
+                                            {timeLog.status}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          {timeLog.attachments && Array.isArray(timeLog.attachments) && timeLog.attachments.length > 0 ? (
+                                            timeLog.attachments.map((att: string, idx: number) => {
+                                              let fileName = `Attachment ${idx + 1}`;
+                                              const nameMatch = att.match(/name=([^;]+);/);
+                                              if (nameMatch) fileName = nameMatch[1];
+                                              return (
+                                                <a
+                                                  key={idx}
+                                                  href={att}
+                                                  download={fileName}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="underline text-blue-600 block"
+                                                >
+                                                  {fileName}
+                                                </a>
+                                              );
+                                            })
+                                          ) : (
+                                            <span className="text-muted-foreground">-</span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))
+                                  )}
                                 </TableBody>
                               </Table>
                             </>
