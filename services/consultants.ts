@@ -253,3 +253,13 @@ export async function fetchConsultantMonthlySummary(): Promise<
   );
   return result.data;
 }
+
+export const getConsultantLogsByRange = async (
+  consultantId: string,
+  startDate: string,
+  endDate: string
+): Promise<any> => {
+  return getRequest<any>(
+    `/company/consultants/logs/${consultantId}?startDate=${startDate}&endDate=${endDate}`
+  );
+};
