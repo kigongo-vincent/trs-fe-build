@@ -50,7 +50,10 @@ export default function CompanyAdminPackagesPage() {
             setError(null)
             try {
                 const res: PackagesApiResponse = await fetchPackages()
-                setPackages(res.data || [])
+                if (!res || !Array.isArray(res.data)) {
+                    throw new Error("Invalid packages response")
+                }
+                setPackages(res.data)
                 // Find current plan by id
                 let currentPlan: PackageType | null = null
                 const planId = getCurrentPlanId()
@@ -61,25 +64,35 @@ export default function CompanyAdminPackagesPage() {
 
                 // Fetch license keys and filter for this company
                 const user = getAuthUser()
-                const companyId = user?.company?.id
-                if (companyId) {
-                    const licenseRes = await fetchLicenseKeys()
-                    const companyLicenses = (licenseRes.data || []).filter((lk: LicenseKey) => lk.company.id === companyId)
-                    // Sort by expiryDate (desc), fallback to createdAt
-                    companyLicenses.sort((a: LicenseKey, b: LicenseKey) => {
-                        const aDate = new Date(a.expiryDate || a.createdAt).getTime()
-                        const bDate = new Date(b.expiryDate || b.createdAt).getTime()
-                        return bDate - aDate
-                    })
-                    const latest = companyLicenses[0] || null
-                    setLatestLicenseKey(latest)
-                    setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
-                    // If the license has a package, use that as the current plan
-                    if (latest && latest.package) {
-                        setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
-                    }
+                if (!user || !user.company || !user.company.id) {
+                    console.warn("No user/company info found in getAuthUser()");
+                    setLatestLicenseKey(null)
+                    setCurrentPlanExpiry(null)
+                    return
+                }
+                const companyId = user.company.id
+                const licenseRes = await fetchLicenseKeys()
+                if (!licenseRes || !Array.isArray(licenseRes.data)) {
+                    throw new Error("Invalid license keys response")
+                }
+                const companyLicenses = licenseRes.data.filter(
+                    (lk: LicenseKey) => lk && lk.company && lk.company.id === companyId
+                )
+                // Sort by expiryDate (desc), fallback to createdAt
+                companyLicenses.sort((a: LicenseKey, b: LicenseKey) => {
+                    const aDate = new Date(a.expiryDate || a.createdAt).getTime()
+                    const bDate = new Date(b.expiryDate || b.createdAt).getTime()
+                    return bDate - aDate
+                })
+                const latest = companyLicenses[0] || null
+                setLatestLicenseKey(latest)
+                setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
+                // If the license has a package, use that as the current plan
+                if (latest && latest.package) {
+                    setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
                 }
             } catch (err: any) {
+                console.error("Packages page error:", err)
                 setError("Failed to fetch packages or license keys")
             } finally {
                 setLoading(false)

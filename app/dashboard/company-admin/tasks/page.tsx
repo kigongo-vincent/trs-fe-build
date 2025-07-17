@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { fetchTasksSummary, fetchAllTasks, fetchTasksByDepartment, type TasksSummaryData, type Task, deleteTask } from "@/services/tasks"
 import { EditTaskForm } from "@/components/edit-task-form"
 import { getProjects } from "@/services/projects"
+import { getDepartments } from "@/services/departments";
 import { getAuthData, getUserRole } from "@/services/auth"
 import { toast } from "sonner"
 import DOMPurify from 'dompurify'
@@ -31,6 +32,7 @@ export default function TasksPage() {
   const [error, setError] = useState<string | null>(null)
   // --- State for search and filters ---
   const [searchTerm, setSearchTerm] = useState("");
+  // Remove duration_min and duration_max from filters state
   const [filters, setFilters] = useState({
     department: "all",
     project: "all",
@@ -40,7 +42,8 @@ export default function TasksPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
-  const [projectsList, setProjectsList] = useState<{ id: string; name: string; departmentId: string }[]>([])
+  const [projectsList, setProjectsList] = useState<{ id: string; name: string; departmentId: string }[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<{ id: string; name: string }[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -85,6 +88,16 @@ export default function TasksPage() {
     filters.project !== "all" ||
     filters.duration !== "all";
 
+  // Define duration options as objects
+  const durationOptions = [
+    { label: "All Durations", value: "all", min: undefined, max: undefined },
+    { label: "Less than 1 hour", value: "lt1", min: 0, max: 1 },
+    { label: "1–2 hours", value: "1to2", min: 1, max: 2 },
+    { label: "2–5 hours", value: "2to5", min: 2, max: 5 },
+    { label: "5–8 hours", value: "5to8", min: 5, max: 8 },
+    { label: "More than 8 hours", value: "gt8", min: 8, max: 20 },
+  ];
+
   // --- Move handlers and helpers to top level ---
   const handleSaveFilters = () => {
     localStorage.setItem(FILTERS_KEY, JSON.stringify(defaultFilters));
@@ -116,12 +129,10 @@ export default function TasksPage() {
     if (e) e.preventDefault();
     setIsTasksLoading(true);
     let duration_min, duration_max;
-    switch (filters.duration) {
-      case "lt1": duration_max = 60; break;
-      case "1to2": duration_min = 60; duration_max = 120; break;
-      case "2to5": duration_min = 120; duration_max = 300; break;
-      case "5to8": duration_min = 300; duration_max = 480; break;
-      case "gt8": duration_min = 480; break;
+    const selectedDuration = durationOptions.find(opt => opt.value === filters.duration);
+    if (selectedDuration && selectedDuration.value !== "all") {
+      duration_min = selectedDuration.min !== undefined ? selectedDuration.min * 60 : undefined;
+      duration_max = selectedDuration.max !== undefined ? selectedDuration.max * 60 : undefined;
     }
     try {
       const response = await fetchAllTasks({
@@ -192,12 +203,17 @@ export default function TasksPage() {
     }
   };
 
-  const fetchProjects = async () => {
+  const fetchProjectsAndDepartments = async () => {
     try {
       const authData = getAuthData();
       if (!authData?.user?.company?.id) return;
-      const response = await getProjects(authData.user.company.id);
-      setProjectsList(response.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })));
+      const companyId = authData.user.company.id;
+      const [projectsRes, departmentsRes] = await Promise.all([
+        getProjects(companyId),
+        getDepartments(companyId),
+      ]);
+      setProjectsList(projectsRes.data.map((p: any) => ({ id: p.id, name: p.name, departmentId: p.department?.id || "" })));
+      setDepartmentsList(departmentsRes.data.map((d: any) => ({ id: d.id, name: d.name })));
     } catch (err) {
       // handle error if needed
     }
@@ -208,49 +224,29 @@ export default function TasksPage() {
     loadTasksSummary();
     loadAllTasks();
     loadTasksByDepartment();
-    fetchProjects();
+    fetchProjectsAndDepartments(); // replaces fetchProjects
   }, []);
 
   useEffect(() => {
     setUserRole(getUserRole());
   }, []);
 
-  // Remove useEffect dependency on searchTerm for filtering
+  // In the useEffect for client-side filtering, remove the duration filter logic
   useEffect(() => {
     let filtered = tasks;
-    const { department, project, duration } = filters;
+    const { department, project } = filters;
     // Department filter
     if (department !== "all") {
-      filtered = filtered.filter((task) => task.project.department.name === department);
+      filtered = filtered.filter((task) => task.project.department.id === department);
     }
     // Project filter
     if (project !== "all") {
-      filtered = filtered.filter((task) => task.project.name === project);
-    }
-    // Duration filter
-    if (duration !== "all") {
-      filtered = filtered.filter((task) => {
-        const minutes = Number.parseFloat(task.duration);
-        switch (duration) {
-          case "lt1":
-            return minutes < 60;
-          case "1to2":
-            return minutes >= 60 && minutes <= 120;
-          case "2to5":
-            return minutes >= 120 && minutes <= 300;
-          case "5to8":
-            return minutes >= 300 && minutes <= 480;
-          case "gt8":
-            return minutes > 480;
-          default:
-            return true;
-        }
-      });
+      filtered = filtered.filter((task) => task.project.id === project);
     }
     // Only show tasks that are not drafts
     filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft");
     setFilteredTasks(filtered);
-  }, [tasks, filters]);
+  }, [tasks, filters.department, filters.project]);
 
   // Fetch file sizes for attachments when selectedTask changes
   useEffect(() => {
@@ -373,7 +369,7 @@ export default function TasksPage() {
                     loadTasksSummary()
                     loadAllTasks()
                     loadTasksByDepartment()
-                    fetchProjects()
+                    fetchProjectsAndDepartments()
                   }}
                 >
                   Retry
@@ -539,7 +535,7 @@ export default function TasksPage() {
         </form>
         {/* Filters Form */}
         <form
-          className="flex flex-row items-center gap-2"
+          className="flex flex-row items-center gap-2 flex-wrap"
           onSubmit={handleApplyFilters}
         >
           <Select value={filters.department} onValueChange={val => setFilters(f => ({ ...f, department: val }))}>
@@ -548,9 +544,9 @@ export default function TasksPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept}>
-                  {dept}
+              {departmentsList.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -561,9 +557,9 @@ export default function TasksPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              {projects.map((project) => (
-                <SelectItem key={project} value={project}>
-                  {project}
+              {projectsList.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -573,12 +569,9 @@ export default function TasksPage() {
               <SelectValue placeholder="Duration" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Durations</SelectItem>
-              <SelectItem value="lt1">Less than 1 hour</SelectItem>
-              <SelectItem value="1to2">1–2 hours</SelectItem>
-              <SelectItem value="2to5">2–5 hours</SelectItem>
-              <SelectItem value="5to8">5–8 hours</SelectItem>
-              <SelectItem value="gt8">More than 8 hours</SelectItem>
+              {durationOptions.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="default" size="sm" className="h-9 px-3" type="submit">
