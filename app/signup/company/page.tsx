@@ -18,6 +18,7 @@ import { signupCompany, storeAuthData, getUserRole } from "@/services/auth"
 import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 // Expanded list of company sectors
 const sectors = [
@@ -47,6 +48,7 @@ interface FormData {
   email: string
   password: string
   currency: string // Added currency
+  roundoff?: boolean // Add roundoff field
 }
 
 export default function CompanySignup() {
@@ -58,6 +60,7 @@ export default function CompanySignup() {
     email: "",
     password: "",
     currency: "USD", // Default currency
+    roundoff: undefined, // Initially undefined
   })
   const [open, setOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -67,6 +70,8 @@ export default function CompanySignup() {
   // Track the selected sector value separately for UI display
   const [selectedSector, setSelectedSector] = useState<string>("")
   const [selectedCurrency, setSelectedCurrency] = useState<string>("USD")
+  const [showRoundoffDialog, setShowRoundoffDialog] = useState(false)
+  const [pendingSubmit, setPendingSubmit] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -102,11 +107,19 @@ export default function CompanySignup() {
       return
     }
 
+    // Instead of submitting, show the roundoff dialog
+    setShowRoundoffDialog(true)
+    setPendingSubmit(true)
+  }
+
+  // Handles the user's choice in the roundoff dialog
+  const handleRoundoffChoice = async (roundoffValue: boolean) => {
+    setShowRoundoffDialog(false)
     setIsLoading(true)
     setError(null)
-
+    setFormData((prev) => ({ ...prev, roundoff: roundoffValue }))
     try {
-      const response = await signupCompany(formData)
+      const response = await signupCompany({ ...formData, roundoff: roundoffValue })
       storeAuthData(response.data.token, response.data.user)
       // Redirect based on role, benchmarking from login
       const roleName = getUserRole() || ""
@@ -124,6 +137,7 @@ export default function CompanySignup() {
       setError(err.message || "An error occurred during signup")
     } finally {
       setIsLoading(false)
+      setPendingSubmit(false)
     }
   }
 
@@ -209,24 +223,6 @@ export default function CompanySignup() {
                   </PopoverContent>
                 </Popover>
               </div>
-              {/* Currency Dropdown */}
-              <div>
-                <Label htmlFor="currency" className="mb-1">Currency</Label>
-                <Select value={selectedCurrency} onValueChange={handleCurrencySelect}>
-                  <SelectTrigger id="currency" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                    <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                    <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
-                    <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
-                    <SelectItem value="KES">🇰🇪 KES</SelectItem>
-                    <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
-                    <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label htmlFor="fullName" className="mb-1">Full Name</Label>
                 <Input
@@ -296,6 +292,49 @@ export default function CompanySignup() {
       <div className="absolute left-1/2 bottom-8 -translate-x-1/2 z-20">
         <ModeToggle />
       </div>
+      {/* Roundoff Dialog */}
+      <Dialog open={showRoundoffDialog} onOpenChange={setShowRoundoffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Round Off Figures?</DialogTitle>
+            <DialogDescription>
+              Would you like to round off figures in your company account? This can be changed later in settings.
+            </DialogDescription>
+          </DialogHeader>
+          {/* Currency Dropdown moved here */}
+          <div className="mb-4">
+            <Label htmlFor="currency-modal" className="mb-1">Currency</Label>
+            <Select
+              value={selectedCurrency}
+              onValueChange={(value) => {
+                setFormData((prev) => ({ ...prev, currency: value }))
+                setSelectedCurrency(value)
+              }}
+            >
+              <SelectTrigger id="currency-modal" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                <SelectItem value="GBP">��🇧 GBP</SelectItem>
+                <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
+                <SelectItem value="KES">🇰🇪 KES</SelectItem>
+                <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
+                <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => handleRoundoffChoice(true)} disabled={isLoading || !formData.currency}>
+              Yes
+            </Button>
+            <Button variant="outline" onClick={() => handleRoundoffChoice(false)} disabled={isLoading || !formData.currency}>
+              No
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
