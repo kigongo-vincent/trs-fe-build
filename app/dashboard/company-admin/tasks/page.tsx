@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +45,29 @@ export default function TasksPage() {
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Add state to store file sizes
+  const [fileSizes, setFileSizes] = useState<{ [url: string]: number }>({});
+
+  // Helper to fetch file size from URL using HEAD request
+  const fetchFileSize = useCallback(async (url: string) => {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      const size = response.headers.get('Content-Length');
+      return size ? parseInt(size, 10) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Helper to format file size
+  function formatFileSize(bytes: number) {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
 
   // Constants and derived variables
   const FILTERS_KEY = "trs-tasks-filters";
@@ -228,6 +251,22 @@ export default function TasksPage() {
     filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft");
     setFilteredTasks(filtered);
   }, [tasks, filters]);
+
+  // Fetch file sizes for attachments when selectedTask changes
+  useEffect(() => {
+    if (selectedTask && Array.isArray((selectedTask as any).attachments)) {
+      (selectedTask as any).attachments.forEach((attachment: any) => {
+        if (attachment.url && fileSizes[attachment.url] === undefined) {
+          fetchFileSize(attachment.url).then(size => {
+            if (size !== null) {
+              setFileSizes(sizes => ({ ...sizes, [attachment.url]: size }));
+            }
+          });
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTask]);
 
   // Only now, after all hooks, do the early return
   if (userRole === null) {
@@ -708,7 +747,9 @@ export default function TasksPage() {
                         </div>
                         <div className="space-y-2">
                           {(selectedTask as any).attachments.map((attachment: any) => {
-                            const isImage = attachment.type === 'file' && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment.url || '');
+                            // Improved image detection: check URL extension regardless of type
+                            const isImage = /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(attachment.url || '');
+                            const isPDF = /\.pdf$/i.test(attachment.url || '');
                             if (attachment.type === 'url') {
                               return (
                                 <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
@@ -716,7 +757,33 @@ export default function TasksPage() {
                                     <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 underline">
                                       <Eye className="h-4 w-4" />
                                       <span className="truncate max-w-xs">{attachment.name || attachment.url}</span>
+                                      {fileSizes[attachment.url] !== undefined && (
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          {formatFileSize(fileSizes[attachment.url])}
+                                        </span>
+                                      )}
                                     </a>
+                                  </CardContent>
+                                </Card>
+                              );
+                            } else if (isPDF) {
+                              // PDF: show details and download button only
+                              return (
+                                <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
+                                  <CardContent className="p-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium truncate max-w-xs">{attachment.name}</span>
+                                      {fileSizes[attachment.url] !== undefined && (
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          {formatFileSize(fileSizes[attachment.url])}
+                                        </span>
+                                      )}
+                                      <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
+                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download PDF">
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      </a>
+                                    </div>
                                   </CardContent>
                                 </Card>
                               );
@@ -735,6 +802,11 @@ export default function TasksPage() {
                                       </a>
                                       <div className="flex items-center gap-2">
                                         <span className="font-medium truncate max-w-xs">{attachment.name}</span>
+                                        {fileSizes[attachment.url] !== undefined && (
+                                          <span className="text-xs text-muted-foreground ml-2">
+                                            {formatFileSize(fileSizes[attachment.url])}
+                                          </span>
+                                        )}
                                         <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
                                           <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download image">
                                             <Download className="h-4 w-4" />
@@ -746,7 +818,7 @@ export default function TasksPage() {
                                 </Card>
                               );
                             } else {
-                              // Default: file (not image)
+                              // Default: file (not image or pdf)
                               return (
                                 <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
                                   <CardContent className="p-0">
@@ -754,6 +826,11 @@ export default function TasksPage() {
                                       <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                                         <Download className="h-4 w-4 text-muted-foreground" />
                                         <span className="truncate max-w-xs">{attachment.name}</span>
+                                        {fileSizes[attachment.url] !== undefined && (
+                                          <span className="text-xs text-muted-foreground ml-2">
+                                            {formatFileSize(fileSizes[attachment.url])}
+                                          </span>
+                                        )}
                                       </a>
                                       <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
                                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download file">
