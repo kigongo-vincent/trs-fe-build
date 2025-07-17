@@ -100,6 +100,11 @@ export default function InvoicesPage() {
   // Add a ref to InvoiceTable for PDF download
   const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void } | null>(null)
 
+  // Get boardMemberRole from session
+  const authData = getAuthData();
+  const boardMemberRole = authData?.user?.boardMemberRole || null;
+  const roleName = authData?.user?.role?.name || null;
+
   const fetchSummaryWithRetry = async (retryAttempt = 0) => {
     setLoading(true)
     setError(null)
@@ -396,7 +401,7 @@ export default function InvoicesPage() {
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceTable ref={invoiceTableRef} currency={currency} searchTerm={searchTerm} filterParams={filterParams} />
+          <InvoiceTable ref={invoiceTableRef} currency={currency} searchTerm={searchTerm} filterParams={filterParams} boardMemberRole={boardMemberRole} roleName={roleName} />
         </CardContent>
       </Card>
     </div>
@@ -404,7 +409,7 @@ export default function InvoicesPage() {
 }
 
 const InvoiceTable = React.forwardRef(function InvoiceTable(
-  { currency, searchTerm, filterParams }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string } },
+  { currency, searchTerm, filterParams, boardMemberRole, roleName }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string }, boardMemberRole?: string, roleName?: string },
   ref: React.ForwardedRef<{ handleAllInvoicesPDF: () => void }>
 ) {
   const [invoices, setInvoices] = useState<any[]>([])
@@ -827,7 +832,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
         </TableBody>
       </Table>
       {/* Invoice Details Modal */}
-      <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} />
+      <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} boardMemberRole={boardMemberRole} roleName={roleName} />
     </>
   )
 })
@@ -841,7 +846,7 @@ function InvoiceActions({ onDownloadAll }: { onDownloadAll?: () => void }) {
 }
 
 // Modal component for invoice details
-function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: boolean, onOpenChange: (open: boolean) => void, invoice: any, currency: string }) {
+function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMemberRole, roleName }: { open: boolean, onOpenChange: (open: boolean) => void, invoice: any, currency: string, boardMemberRole?: string, roleName?: string }) {
   if (!invoice) return null
   // Helper functions
   const formatDate = (dateString: string) => {
@@ -997,17 +1002,17 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
         <br />
         <DialogTitle className="sr-only">Invoice Details {invoice.invoiceNumber ? `- ${invoice.invoiceNumber}` : ''}</DialogTitle>
         <Card className="shadow-none border-none bg-transparent">
-          
+
           <CardHeader className="pb-4">
-          {/* Company Logo at the top */}
-          <div className="flex  items-center pt-6 pb-2">
-            <img
-              src={companyLogo}
-              alt="Company Logo"
-              style={{ maxHeight: 64, maxWidth: 120, objectFit: 'contain', background: 'none' }}
-              className="mb-2"
-            />
-          </div>
+            {/* Company Logo at the top */}
+            <div className="flex  items-center pt-6 pb-2">
+              <img
+                src={companyLogo}
+                alt="Company Logo"
+                style={{ maxHeight: 64, maxWidth: 120, objectFit: 'contain', background: 'none' }}
+                className="mb-2"
+              />
+            </div>
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">INVOICE</CardTitle>
             <CardDescription className="text-base text-gray-600 dark:text-gray-300">{invoice.invoiceNumber}</CardDescription>
             {invoice.user?.company && (
@@ -1109,15 +1114,32 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency }: { open: 
             <Card className="bg-white border-none shadow-none w-full">
               <CardContent className="py-4 px-6">
                 <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)} /> Reviewed
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(checked === true)} /> Satisfied
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={approved} onCheckedChange={checked => setApproved(checked === true)} /> Approved
-                  </label>
+                  {roleName === "company-admin" ? (
+                    <>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={reviewed} disabled /> Reviewed
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={satisfied} disabled /> Satisfied
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={approved} disabled /> Approved
+                      </label>
+                    </>
+                  ) : boardMemberRole === "reviewer" ? (
+                    <>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={reviewed} onCheckedChange={checked => setReviewed(checked === true)} /> Reviewed
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={satisfied} onCheckedChange={checked => setSatisfied(checked === true)} /> Satisfied
+                      </label>
+                    </>
+                  ) : boardMemberRole === "approver" ? (
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={approved} onCheckedChange={checked => setApproved(checked === true)} /> Approved
+                    </label>
+                  ) : null}
                 </div>
                 <div className="mb-4">
                   <Label htmlFor="invoice-comment" className="text-xs mb-1">Add Comment</Label>

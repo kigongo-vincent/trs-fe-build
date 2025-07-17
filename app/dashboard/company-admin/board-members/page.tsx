@@ -27,7 +27,7 @@ interface BoardMember {
     email: string
     status: string
     fullName: string
-    role?: string // add role field
+    boardMemberRole?: "reviewer" | "approver" // use boardMemberRole field
     // add other fields as needed
 }
 
@@ -75,7 +75,7 @@ export default function BoardMembersPage() {
                         email: m.email,
                         status: m.status,
                         fullName: m.fullName || m.name || m.firstName || m.email,
-                        role: m.role || ""
+                        boardMemberRole: m.boardMemberRole || ""
                     }
                 }).filter(isBoardMember) : []
                 setMembers(members)
@@ -89,7 +89,7 @@ export default function BoardMembersPage() {
         if (!companyId) return
         setLoading(true)
         try {
-            await createBoardMember({ fullName: form.name, email: form.email, companyId, role: form.role })
+            await createBoardMember({ fullName: form.name, email: form.email, companyId, boardMemberRole: form.role as "reviewer" | "approver" })
             // Refetch members
             const res = await getBoardMembers(companyId)
             const members = Array.isArray(res.data) ? res.data.map((m: any) => {
@@ -98,7 +98,7 @@ export default function BoardMembersPage() {
                     email: m.email,
                     status: m.status,
                     fullName: m.fullName || m.name || m.firstName || m.email,
-                    role: m.role || ""
+                    boardMemberRole: m.boardMemberRole || ""
                 }
             }).filter(isBoardMember) : []
             setMembers(members)
@@ -119,7 +119,7 @@ export default function BoardMembersPage() {
         if (!editMember) return
         setLoading(true)
         try {
-            await updateBoardMember({ memberId: editMember.id, fullName: form.name, email: form.email, role: form.role })
+            await updateBoardMember({ memberId: editMember.id, fullName: form.name, email: form.email, boardMemberRole: form.role as "reviewer" | "approver" })
             // Refetch members
             if (companyId) {
                 const res = await getBoardMembers(companyId)
@@ -129,7 +129,7 @@ export default function BoardMembersPage() {
                         email: m.email,
                         status: m.status,
                         fullName: m.fullName || m.name || m.firstName || m.email,
-                        role: m.role || ""
+                        boardMemberRole: m.boardMemberRole || ""
                     }
                 }).filter(isBoardMember) : []
                 setMembers(members)
@@ -161,6 +161,7 @@ export default function BoardMembersPage() {
                         email: m.email,
                         status: m.status,
                         fullName: m.fullName || m.name || m.firstName || m.email,
+                        boardMemberRole: m.boardMemberRole || ""
                     }
                 }).filter(isBoardMember) : []
                 setMembers(members)
@@ -242,13 +243,13 @@ export default function BoardMembersPage() {
                                                             : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>{typeof member.role === 'string' && member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : "_"}</TableCell>
+                                        <TableCell>{typeof member.boardMemberRole === 'string' && member.boardMemberRole ? member.boardMemberRole.charAt(0).toUpperCase() + member.boardMemberRole.slice(1) : "_"}</TableCell>
                                         <TableCell className={`text-right flex gap-2 justify-end${isDeactivated(member.status) ? ' pointer-events-none bg-transparent hover:bg-transparent' : ''}`}>
                                             {!isDeactivated(member.status) ? (
                                                 <>
                                                     <Button size="icon" variant="ghost" onClick={() => {
                                                         setEditMember(member)
-                                                        setForm({ name: member.fullName || "", email: member.email, role: member.role || "" })
+                                                        setForm({ name: member.fullName || "", email: member.email, role: member.boardMemberRole || "" })
                                                         setIsEditOpen(true)
                                                     }} aria-label="Edit">
                                                         <Pencil className="h-4 w-4" />

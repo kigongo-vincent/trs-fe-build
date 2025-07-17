@@ -501,7 +501,7 @@ export async function createBoardMember(data: {
   fullName: string;
   email: string;
   companyId: string;
-  role?: string;
+  boardMemberRole: "reviewer" | "approver";
 }): Promise<any> {
   return postRequest(`/company/board-members`, data);
 }
@@ -511,7 +511,7 @@ export async function updateBoardMember(data: {
   fullName: string;
   email: string;
   status?: string;
-  role?: string;
+  boardMemberRole?: "reviewer" | "approver";
 }): Promise<any> {
   return putRequest(`/company/board-members`, data);
 }
