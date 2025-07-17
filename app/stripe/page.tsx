@@ -9,6 +9,7 @@ import Link from "next/link"
 import { getRequest } from "@/services/api"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog"
+import SuccessCheckIcon from "@/components/SuccessCheckIcon";
 
 type Company = {
     id: string;
@@ -232,49 +233,64 @@ function StripeSuccessPageInner() {
                 </DialogContent>
             </Dialog>
             <div className="w-full max-w-xl">
-                <Card className="border-0 shadow">
+                <Card className="border">
                     <CardHeader className="flex flex-col items-center gap-2">
-                        <CheckCircle2 className="h-12 w-12 text-green-500 mb-2" />
+                        <SuccessCheckIcon className="mb-2" size={90} />
                         <CardTitle className="text-2xl font-bold text-green-500 dark:text-green-400">Payment Successful!</CardTitle>
                         <CardDescription className="text-center text-muted-foreground">
                             {message || "Your payment was processed successfully."}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-6 mt-2">
-                        {/* Transaction Details */}
-                        <div>
-                            <h3 className="text-lg text-primary font-semibold mb-2 flex items-center gap-2">
-                                Transaction Details <Badge variant={paymentStatus === "paid" ? "success" : "destructive" as any} className="capitalize ml-2">{paymentStatus}</Badge>
-                            </h3>
-                            <div className="flex flex-wrap gap-4 text-sm mt-2">
+                    <CardContent className="flex flex-col gap-8 mt-2">
+                        {/* Transaction Summary */}
+                        <div className="bg-muted/50 rounded-xl p-6 shadow-sm flex flex-col items-center">
+                            <div className="mb-4 flex flex-col items-center">
+                                {/* <SuccessCheckIcon size={90} className="mb-2" /> */}
+                                {/* <div className="text-lg font-semibold text-green-600 mb-1">Payment Successful</div> */}
+                                {/* <div className="text-sm text-muted-foreground">{message || "Your payment was processed successfully."}</div> */}
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 w-full max-w-md text-sm">
+                                <div className="text-muted-foreground">Amount</div>
+                                <div className="font-medium">${amount} {currency?.toUpperCase()}</div>
+                                <div className="text-muted-foreground">Status</div>
+                                <div>
+                                    <Badge variant={paymentStatus === "paid" ? "success" : "destructive" as any} className="capitalize">
+                                        {paymentStatus}
+                                    </Badge>
+                                </div>
+                                <div className="text-muted-foreground">Date</div>
+                                <div>{new Date(createdAt).toLocaleString()}</div>
+                                <div className="text-muted-foreground">Subscription ID</div>
+                                <div className="truncate">{subscriptionId}</div>
+                                <div className="text-muted-foreground">Expires</div>
+                                <div>{expiresAt ? new Date(expiresAt).toLocaleString() : "-"}</div>
+                            </div>
+                        </div>
 
-                                <span><span className="font-medium">Subscription ID:</span> {subscriptionId}</span>
+                        {/* Company Info */}
+                        <div className="bg-card/80 rounded-xl p-5 shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-base font-semibold text-primary">Company</span>
+                                <Badge variant={company.status === "active" ? "success" : "destructive" as any} className="capitalize">
+                                    {company.status}
+                                </Badge>
                             </div>
-                            <div className="flex flex-wrap gap-4 text-sm mt-2">
-                                <span><span className="font-medium">Amount:</span> ${amount} {currency?.toUpperCase()}</span>
-                                <span><span className="font-medium">Created:</span> {new Date(createdAt).toLocaleString()}</span>
-                                <span><span className="font-medium">Expires At:</span> {expiresAt ? new Date(expiresAt).toLocaleString() : "-"}</span>
-                            </div>
-                        </div>
-                        {/* Company Details */}
-                        <div>
-                            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2 text-primary">
-                                Company Details <Badge variant={company.status === "active" ? "success" : "destructive" as any} className="capitalize ml-2">{company.status}</Badge>
-                            </h3>
-                            <div className="flex flex-col gap-1 text-sm">
-                                <span><span className="font-medium">Name:</span> {company.name}</span>
-                                <span><span className="font-medium">Sector:</span> {company.sector}</span>
-                                <span><span className="font-medium">Address:</span> {company.address || "-"}</span>
-                                <span><span className="font-medium">Email:</span> {company.email || "-"}</span>
-                                <span><span className="font-medium">Phone:</span> {company.phone || "-"}</span>
-                                <span><span className="font-medium">Created:</span> {company.createdAt ? new Date(company.createdAt).toLocaleDateString() : "-"}</span>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                                <div className="text-muted-foreground">Name</div>
+                                <div>{company.name}</div>
+                                <div className="text-muted-foreground">Sector</div>
+                                <div>{company.sector}</div>
+                                <div className="text-muted-foreground">Email</div>
+                                <div>{company.email || "-"}</div>
+                                <div className="text-muted-foreground">Phone</div>
+                                <div>{company.phone || "-"}</div>
                             </div>
                         </div>
-                        <div className="flex justify-center mt-4">
-                            <Button asChild variant="default" className="px-8 w-full py-6 text-base">
-                                <Link href="/dashboard/company-admin">Go to Dashboard</Link>
-                            </Button>
-                        </div>
+
+                        {/* CTA */}
+                        <Button asChild variant="default" className="w-full py-6 text-base mt-2">
+                            <Link href="/dashboard/company-admin">Go to Dashboard</Link>
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
