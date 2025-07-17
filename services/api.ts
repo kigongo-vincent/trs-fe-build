@@ -492,6 +492,48 @@ export async function createCompanyInvoice(
   return postRequest("/super-admin/company-invoices", payload);
 }
 
+// Type for a single billing transaction
+export interface BillingTransaction {
+  id: string;
+  transactionId: string;
+  subscriptionId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+  updatedAt: string;
+  company: {
+    id: string;
+    name: string;
+    sector: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+    currency: string;
+    roundOff: boolean;
+    licenseKeyId: string | null;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string | null;
+  };
+}
+
+export interface BillingHistoryApiResponse {
+  status: number;
+  message: string;
+  data: BillingTransaction[];
+}
+
+// Fetch billing/transaction history for a company
+export async function fetchBillingHistory(
+  companyId: string
+): Promise<BillingHistoryApiResponse> {
+  return getRequest<BillingHistoryApiResponse>(`/billing/list/${companyId}`);
+}
+
 // Board Members API
 export async function getBoardMembers(companyId: string): Promise<any> {
   return getRequest(`/company/board-members/${companyId}`);
