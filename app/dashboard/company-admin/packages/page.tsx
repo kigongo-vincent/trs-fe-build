@@ -7,10 +7,12 @@ import { Package } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { fetchPackages, fetchLicenseKeys, LicenseKey } from "@/services/api"
+import { fetchPackages, fetchLicenseKeys, LicenseKey, fetchBillingHistory, BillingTransaction } from "@/services/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAuthUser } from "@/services/auth"
 import { Input } from "@/components/ui/input"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
+import { format } from "date-fns"
 
 // Type for a package (from API)
 type PackageType = {
@@ -23,6 +25,7 @@ type PackageType = {
     status: string;
     createdAt: string;
     updatedAt: string;
+    url?: string; // Add url property
 }
 
 type PackagesApiResponse = {
@@ -43,6 +46,9 @@ export default function CompanyAdminPackagesPage() {
     const [customDialogOpen, setCustomDialogOpen] = useState(false)
     const [customUserCount, setCustomUserCount] = useState(1)
     const [customError, setCustomError] = useState<string | null>(null)
+    const [billingHistory, setBillingHistory] = useState<BillingTransaction[]>([])
+    const [billingLoading, setBillingLoading] = useState(true)
+    const [billingError, setBillingError] = useState<string | null>(null)
 
     useEffect(() => {
         async function loadData() {
@@ -90,6 +96,23 @@ export default function CompanyAdminPackagesPage() {
                 // If the license has a package, use that as the current plan
                 if (latest && latest.package) {
                     setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
+                }
+
+                // Fetch billing history
+                setBillingLoading(true)
+                setBillingError(null)
+                try {
+                    const billingRes = await fetchBillingHistory(companyId)
+                    if (billingRes && Array.isArray(billingRes.data)) {
+                        setBillingHistory(billingRes.data)
+                    } else {
+                        setBillingHistory([])
+                    }
+                } catch (err: any) {
+                    setBillingError("Failed to fetch billing history")
+                    setBillingHistory([])
+                } finally {
+                    setBillingLoading(false)
                 }
             } catch (err: any) {
                 console.error("Packages page error:", err)
@@ -156,6 +179,7 @@ export default function CompanyAdminPackagesPage() {
             status: "active",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            url: undefined, // No url for custom
         }
     }
 
@@ -166,6 +190,18 @@ export default function CompanyAdminPackagesPage() {
 
     const confirmUpgrade = () => {
         if (pendingUpgrade) {
+            if (pendingUpgrade.url) {
+                const user = getAuthUser();
+                const email = user && user.email ? user.email : null;
+                let url = pendingUpgrade.url;
+                if (email) {
+                    const urlObj = new URL(url, window.location.origin);
+                    urlObj.searchParams.set('prefilled_email', email);
+                    url = urlObj.toString();
+                }
+                window.open(url, '_blank');
+                return;
+            }
             setSelectedPlan(pendingUpgrade)
             if (typeof window !== "undefined") {
                 localStorage.setItem("companyPlanName", pendingUpgrade.name)
@@ -400,6 +436,56 @@ export default function CompanyAdminPackagesPage() {
                             </div>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Transaction History Section */}
+                    <div className="mt-10">
+                        <h2 className="text-lg font-semibold mb-4">Transaction History</h2>
+                        {billingLoading ? (
+                            <div className="text-muted-foreground">Loading transaction history...</div>
+                        ) : billingError ? (
+                            <div className="text-red-500">{billingError}</div>
+                        ) : billingHistory.length === 0 ? (
+                            <div className="text-muted-foreground">No transactions found.</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Subscription ID</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Currency</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Created At</TableHead>
+                                        <TableHead>Expires At</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {billingHistory.map(tx => (
+                                        <TableRow key={tx.id}>
+                                            <TableCell className="font-mono break-all">{tx.subscriptionId}</TableCell>
+                                            <TableCell className="text-right">{Number(tx.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                            <TableCell className="uppercase">{tx.currency}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        tx.status === "paid"
+                                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                                            : tx.status === "pending"
+                                                                ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                                                                : "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950 dark:text-gray-400 dark:border-gray-800"
+                                                    }
+                                                >
+                                                    {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>{tx.createdAt ? format(new Date(tx.createdAt), "MMM d, yyyy") : "-"}</TableCell>
+                                            <TableCell>{tx.expiresAt ? format(new Date(tx.expiresAt), "MMM d, yyyy") : "-"}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
                 </>
             )}
         </div>
