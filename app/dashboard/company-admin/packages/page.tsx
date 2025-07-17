@@ -358,7 +358,11 @@ export default function CompanyAdminPackagesPage() {
                                 </div>
                             </Card>
                             {/* Existing Packages */}
-                            {packages.map(pkg => (
+                            {packages.filter(pkg => {
+                                const name = pkg.name?.toLowerCase() || "";
+                                const status = pkg.status?.toLowerCase() || "";
+                                return name !== "trial" && name !== "free" && status !== "archived";
+                            }).map(pkg => (
                                 <Card key={pkg.id} className="flex items-center gap-4 p-4 border-gray-300 shadow-sm">
                                     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary">
                                         <Package className="h-6 w-6" />
