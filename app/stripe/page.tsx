@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, Suspense, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -149,6 +149,7 @@ function StripeSuccessPageInner() {
     const [data, setData] = useState<StripeSessionData | null>(null)
     const [message, setMessage] = useState<string>("")
     const [showDeviceAlert, setShowDeviceAlert] = useState(false)
+    const dummyRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!session_id) {
@@ -182,6 +183,12 @@ function StripeSuccessPageInner() {
         return () => clearTimeout(timer)
     }, [session_id, planId])
 
+    useEffect(() => {
+        if (showDeviceAlert && dummyRef.current) {
+            dummyRef.current.focus();
+        }
+    }, [showDeviceAlert]);
+
     if (loading) return <StripeSkeleton />
     if (error) return <StripeError message={error} />
     if (!data) return null
@@ -189,15 +196,26 @@ function StripeSuccessPageInner() {
     return (
         <div className="flex flex-col items-center justify-center h-[100vh] py-12 px-4">
             <Dialog open={showDeviceAlert} onOpenChange={setShowDeviceAlert}>
-                <DialogContent className="p-0 overflow-hidden min-w-[75vw] max-w-2xl min-h-[75vh] max-h-[75vh]">
+                <DialogContent className="p-0 overflow-hidden min-w-[75vw] max-w-2xl min-h-[70vh] max-h-[70vh]">
+                    <div
+                        tabIndex={0}
+                        ref={dummyRef}
+                        style={{
+                            position: 'absolute',
+                            width: 1,
+                            height: 1,
+                            opacity: 0,
+                            pointerEvents: 'none',
+                        }}
+                        aria-hidden="true"
+                    />
                     <div className="flex flex-col items-center md:flex-row w-full h-full">
                         {/* Left: Image */}
-                        <div className="hidden md:block md:w-1/2 relative bg-black/40 dark:bg-black/60">
+                        <div className="hidden h-full w-[50%] md:block md:w-1/2 relative bg-black/40 dark:bg-black/60">
                             <img
                                 src="https://images.pexels.com/photos/2528118/pexels-photo-2528118.jpeg"
                                 alt="Devices security"
-                                className="object-cover object-center w-full h-full min-h-[220px]"
-                                style={{ minHeight: 220 }}
+                                className="absolute inset-0 w-full h-full object-cover object-center rounded-l-xl"
                             />
                         </div>
                         {/* Right: Content */}
@@ -208,7 +226,7 @@ function StripeSuccessPageInner() {
                                     For security, you must re-login on your other devices (such as your phone or tablet) to continue using your account with the updated company subscription. This device is already updated.
                                 </p>
                             </div>
-                            <Button onClick={() => setShowDeviceAlert(false)} className="mt-6 self-end w-[max-content] max-w-xs" autoFocus>OK</Button>
+                            <Button onClick={() => setShowDeviceAlert(false)} className="mt-6 max-w-xs outline-none" tabIndex={-1}>CONFIRM</Button>
                         </div>
                     </div>
                 </DialogContent>
