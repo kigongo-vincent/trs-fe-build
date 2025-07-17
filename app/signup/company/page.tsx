@@ -17,6 +17,7 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { signupCompany, storeAuthData, getUserRole } from "@/services/auth"
 import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Expanded list of company sectors
 const sectors = [
@@ -45,6 +46,7 @@ interface FormData {
   fullName: string
   email: string
   password: string
+  currency: string // Added currency
 }
 
 export default function CompanySignup() {
@@ -55,6 +57,7 @@ export default function CompanySignup() {
     fullName: "",
     email: "",
     password: "",
+    currency: "USD", // Default currency
   })
   const [open, setOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -63,6 +66,7 @@ export default function CompanySignup() {
 
   // Track the selected sector value separately for UI display
   const [selectedSector, setSelectedSector] = useState<string>("")
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD")
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -78,12 +82,23 @@ export default function CompanySignup() {
     setOpen(false)
   }
 
+  // Currency select handler
+  const handleCurrencySelect = (value: string) => {
+    setFormData((prev) => ({ ...prev, currency: value }))
+    setSelectedCurrency(value)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validate sector is selected
     if (!formData.sector) {
       setError("Please select a company sector")
+      return
+    }
+    // Validate currency is selected
+    if (!formData.currency) {
+      setError("Please select a currency")
       return
     }
 
@@ -193,6 +208,24 @@ export default function CompanySignup() {
                     </Command>
                   </PopoverContent>
                 </Popover>
+              </div>
+              {/* Currency Dropdown */}
+              <div>
+                <Label htmlFor="currency" className="mb-1">Currency</Label>
+                <Select value={selectedCurrency} onValueChange={handleCurrencySelect}>
+                  <SelectTrigger id="currency" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                    <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                    <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
+                    <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
+                    <SelectItem value="KES">🇰🇪 KES</SelectItem>
+                    <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
+                    <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="fullName" className="mb-1">Full Name</Label>

@@ -170,6 +170,7 @@ export default function SettingsPage() {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
   const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
+  const [companyCurrency, setCompanyCurrency] = useState<string>("USD");
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -275,6 +276,7 @@ export default function SettingsPage() {
     if (userRole === "Company Admin" && user?.company) {
       setCompanyName(user.company.name || "");
       setCompanyLogo(user.company.logo || null);
+      setCompanyCurrency(user.company.currency || "USD");
     }
   }, [userRole, user]);
 
@@ -583,10 +585,11 @@ export default function SettingsPage() {
         name: companyName.trim(),
         logo: logoData,
         roundOff: enableFloatingPoint,
+        currency: companyCurrency,
       };
       await updateCompany(payload);
       toast.success("Company updated successfully");
-      setUser((prev: any) => prev ? { ...prev, company: { ...prev.company, name: companyName.trim(), logo: logoData } } : prev);
+      setUser((prev: any) => prev ? { ...prev, company: { ...prev.company, name: companyName.trim(), logo: logoData, currency: companyCurrency } } : prev);
       setCompanyLogoFile(null);
     } catch (error: any) {
       toast.error("Failed to update company", { description: error?.message || "An error occurred." });
@@ -986,6 +989,27 @@ export default function SettingsPage() {
                 />
               </div>
               <Separator />
+              {/* Currency Dropdown */}
+              <div className="flex block flex-col md:flex-row gap-6 items-center w-full">
+                <div className="flex-1 w-full">
+                  <Label htmlFor="companyCurrency">Currency</Label>
+                  <Select value={companyCurrency} onValueChange={setCompanyCurrency}>
+                    <SelectTrigger id="companyCurrency" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                      <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                      <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
+                      <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
+                      <SelectItem value="KES">🇰🇪 KES</SelectItem>
+                      <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
+                      <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Company Name and Logo */}
               <div className="flex block flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1">
                   <Label htmlFor="companyName">Company Name</Label>
