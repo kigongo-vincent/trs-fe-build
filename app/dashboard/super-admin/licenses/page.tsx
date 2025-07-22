@@ -314,7 +314,6 @@ export default function LicensesPage() {
                     <th className="h-12 px-4 text-left align-middle font-medium">Package</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Status</th>
                     <th className="h-12 px-4 text-left align-middle font-medium">Expiry Date</th>
-                    <th className="h-12 px-4 text-right align-middle font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,8 +336,8 @@ export default function LicensesPage() {
                     filteredLicenses.map((license) => (
                       <tr key={license.id} className="border-b transition-colors hover:bg-muted/50">
                         <td className="p-4 align-middle font-mono text-xs">{license.key}</td>
-                        <td className="p-4 align-middle">{license.company.name}</td>
-                        <td className="p-4 align-middle">{license.package.name}</td>
+                        <td className="p-4 align-middle">{license.company?.name || "-"}</td>
+                        <td className="p-4 align-middle">{license.package?.name || "-"}</td>
                         <td className="p-4 align-middle">
                           <Badge className={
                             license.status.toLowerCase() === "active"
@@ -353,11 +352,6 @@ export default function LicensesPage() {
                           </Badge>
                         </td>
                         <td className="p-4 align-middle">{license.expiryDate}</td>
-                        <td className="p-4 align-middle text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dashboard/super-admin/licenses/${license.id}`}>View</Link>
-                          </Button>
-                        </td>
                       </tr>
                     ))
                   )}
