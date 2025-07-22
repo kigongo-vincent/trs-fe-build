@@ -585,11 +585,27 @@ export default function SettingsPage() {
         name: companyName.trim(),
         logo: logoData,
         roundOff: enableFloatingPoint,
-        currency: companyCurrency,
+        // currency: companyCurrency, // REMOVE currency from payload
       };
-      await updateCompany(payload);
+
+      await updateCompany(payload, (JSON.parse(localStorage.getItem("user") ?? "") as { company: { id: number } }).company.id.toString());
       toast.success("Company updated successfully");
-      setUser((prev: any) => prev ? { ...prev, company: { ...prev.company, name: companyName.trim(), logo: logoData, currency: companyCurrency } } : prev);
+      // Update session company info
+      const authData = getAuthData();
+      if (authData) {
+        const updatedUser = {
+          ...authData.user,
+          company: {
+            ...authData.user.company,
+            name: companyName.trim(),
+            logo: logoData,
+            roundOff: enableFloatingPoint,
+            // currency: companyCurrency, // not needed
+          },
+        };
+        storeAuthData(authData.token, updatedUser);
+        setUser(updatedUser);
+      }
       setCompanyLogoFile(null);
     } catch (error: any) {
       toast.error("Failed to update company", { description: error?.message || "An error occurred." });
@@ -990,10 +1006,10 @@ export default function SettingsPage() {
               </div>
               <Separator />
               {/* Currency Dropdown */}
-              <div className="flex block flex-col md:flex-row gap-6 items-center w-full">
+              <div className="flex flex-col md:flex-row gap-6 items-center w-full">
                 <div className="flex-1 w-full">
                   <Label htmlFor="companyCurrency">Currency</Label>
-                  <Select value={companyCurrency} onValueChange={setCompanyCurrency}>
+                  <Select value={companyCurrency} onValueChange={setCompanyCurrency} disabled>
                     <SelectTrigger id="companyCurrency" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -1010,7 +1026,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               {/* Company Name and Logo */}
-              <div className="flex block flex-col md:flex-row gap-6 items-center">
+              <div className="flex flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1">
                   <Label htmlFor="companyName">Company Name</Label>
                   <Input

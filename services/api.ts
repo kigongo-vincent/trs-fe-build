@@ -563,10 +563,13 @@ export async function deleteBoardMember(memberId: string): Promise<any> {
 }
 
 // Update company details (name, logo, etc.)
-export async function updateCompany(payload: {
-  id: string;
-  name: string;
-  logo?: string;
-}): Promise<any> {
-  return putRequest(`/company/update`, payload);
+export async function updateCompany(
+  payload: {
+    id: string;
+    name: string;
+    logo?: string;
+  },
+  companyId: string
+): Promise<any> {
+  return putRequest(`/company/${companyId}`, payload);
 }

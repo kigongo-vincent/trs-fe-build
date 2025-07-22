@@ -838,13 +838,12 @@ export default function ConsultantsPage() {
                                   <TableHead>Updated Date</TableHead>
                                   <TableHead>Duration</TableHead>
                                   <TableHead>Status</TableHead>
-                                  <TableHead>Attachments</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {[...Array(5)].map((_, i) => (
                                   <TableRow key={i}>
-                                    {[...Array(8)].map((_, j) => (
+                                    {[...Array(7)].map((_, j) => (
                                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                     ))}
                                   </TableRow>
@@ -868,7 +867,6 @@ export default function ConsultantsPage() {
                                   <TableHead>Updated Date</TableHead>
                                   <TableHead>Duration</TableHead>
                                   <TableHead>Status</TableHead>
-                                  <TableHead>Attachments</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -914,29 +912,6 @@ export default function ConsultantsPage() {
                                       >
                                         {log.status}
                                       </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      {log.attachments && Array.isArray(log.attachments) && log.attachments.length > 0 ? (
-                                        log.attachments.map((att: string, idx: number) => {
-                                          let fileName = `Attachment ${idx + 1}`;
-                                          const nameMatch = att.match(/name=([^;]+);/);
-                                          if (nameMatch) fileName = nameMatch[1];
-                                          return (
-                                            <a
-                                              key={idx}
-                                              href={att}
-                                              download={fileName}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="underline text-blue-600 block"
-                                            >
-                                              {fileName}
-                                            </a>
-                                          );
-                                        })
-                                      ) : (
-                                        <span className="text-muted-foreground">-</span>
-                                      )}
                                     </TableCell>
                                   </TableRow>
                                 ))}
@@ -1091,15 +1066,14 @@ export default function ConsultantsPage() {
                                     <TableHead>Updated Date</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Attachments</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                   {tasksLoading ? (
-                                    // Show 5 skeleton rows, 8 columns each
+                                    // Show 5 skeleton rows, 7 columns each
                                     [...Array(5)].map((_, i) => (
                                       <TableRow key={i}>
-                                        {[...Array(8)].map((_, j) => (
+                                        {[...Array(7)].map((_, j) => (
                                           <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                                         ))}
                                       </TableRow>
@@ -1147,29 +1121,6 @@ export default function ConsultantsPage() {
                                           >
                                             {timeLog.status}
                                           </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                          {timeLog.attachments && Array.isArray(timeLog.attachments) && timeLog.attachments.length > 0 ? (
-                                            timeLog.attachments.map((att: string, idx: number) => {
-                                              let fileName = `Attachment ${idx + 1}`;
-                                              const nameMatch = att.match(/name=([^;]+);/);
-                                              if (nameMatch) fileName = nameMatch[1];
-                                              return (
-                                                <a
-                                                  key={idx}
-                                                  href={att}
-                                                  download={fileName}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="underline text-blue-600 block"
-                                                >
-                                                  {fileName}
-                                                </a>
-                                              );
-                                            })
-                                          ) : (
-                                            <span className="text-muted-foreground">-</span>
-                                          )}
                                         </TableCell>
                                       </TableRow>
                                     ))
@@ -1266,7 +1217,7 @@ export default function ConsultantsPage() {
                                     let fileName = `ID ${idx + 1}.pdf`;
                                     let url = att;
                                     // Try to extract name if present
-                                    const nameMatch = att.match(/name=([^;]+);/);
+                                    const nameMatch = typeof att === "string" ? att.match(/name=([^;]+);/) : null;
                                     if (nameMatch) fileName = nameMatch[1];
                                     // PDF icon
                                     const icon = (
