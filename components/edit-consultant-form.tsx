@@ -13,6 +13,7 @@ import { FileAttachment, type Attachment } from "@/components/file-attachment"
 import { uploadFile } from "@/services/upload"
 import "react-phone-input-2/lib/style.css"
 import { toast } from "sonner"
+import { CurrencyI, getCurrencies } from "@/services/getCurrencies"
 
 interface Department {
     id: string
@@ -245,6 +246,13 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
         }
     }
 
+    const [currencies, setCurrencies] = useState<CurrencyI[]>([])
+    const [loadingCurrencies, setLoadingCurrencies] = useState(false)
+
+    useEffect(() => {
+        getCurrencies(setLoadingCurrencies, setCurrencies)
+    }, [])
+
     return (
         <div className="flex flex-col gap-6">
             <Card>
@@ -349,13 +357,22 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                                        <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                                        <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
-                                        <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
-                                        <SelectItem value="KES">🇰🇪 KES</SelectItem>
-                                        <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
-                                        <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
+                                        {
+                                            loadingCurrencies
+                                                ?
+                                                <span>Fetching currencies...</span>
+                                                :
+                                                currencies.length == 0
+                                                    ?
+                                                    <span>No currencies found</span>
+                                                    :
+                                                    currencies.map((c, i) => <SelectItem key={i} value={c.code}>
+                                                        <div className="flex items-center space-x-3">
+                                                            {c.code != "USD" ? <img src={c.logo} className="h-5 w-5" alt="" /> : <p className="text-2xl">🇱🇷</p>} <span>{c.code}</span>
+                                                        </div>
+                                                    </SelectItem>)
+                                        }
+
                                     </SelectContent>
                                 </Select>
                                 <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
