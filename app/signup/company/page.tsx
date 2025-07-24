@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
@@ -19,6 +19,7 @@ import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { CurrencyI, getCurrencies } from "@/services/getCurrencies"
 
 // Expanded list of company sectors
 const sectors = [
@@ -48,7 +49,7 @@ interface FormData {
   email: string
   password: string
   currency: string // Added currency
-  roundoff?: boolean // Add roundoff field
+  roundOff?: boolean // Add roundoff field
 }
 
 export default function CompanySignup() {
@@ -60,7 +61,7 @@ export default function CompanySignup() {
     email: "",
     password: "",
     currency: "USD", // Default currency
-    roundoff: undefined, // Initially undefined
+    roundOff: undefined, // Initially undefined
   })
   const [open, setOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -72,6 +73,8 @@ export default function CompanySignup() {
   const [selectedCurrency, setSelectedCurrency] = useState<string>("USD")
   const [showRoundoffDialog, setShowRoundoffDialog] = useState(false)
   const [pendingSubmit, setPendingSubmit] = useState(false)
+  const [currencies, setCurrencies] = useState<CurrencyI[]>([])
+  const [loadingCurrencies, setLoadingCurrencies] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -117,9 +120,9 @@ export default function CompanySignup() {
     setShowRoundoffDialog(false)
     setIsLoading(true)
     setError(null)
-    setFormData((prev) => ({ ...prev, roundoff: roundoffValue }))
+    setFormData((prev) => ({ ...prev, roundOff: roundoffValue }))
     try {
-      const response = await signupCompany({ ...formData, roundoff: roundoffValue })
+      const response = await signupCompany({ ...formData, roundOff: roundoffValue })
       storeAuthData(response.data.token, response.data.user)
       // Redirect based on role, benchmarking from login
       const roleName = getUserRole() || ""
@@ -140,6 +143,10 @@ export default function CompanySignup() {
       setPendingSubmit(false)
     }
   }
+
+  useEffect(() => {
+    getCurrencies(setLoadingCurrencies, setCurrencies)
+  }, [])
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 bg-card">
@@ -311,17 +318,26 @@ export default function CompanySignup() {
                 setSelectedCurrency(value)
               }}
             >
-              <SelectTrigger id="currency-modal" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+              <SelectTrigger id="currency-modal" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base ">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                <SelectItem value="GBP">��🇧 GBP</SelectItem>
-                <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
-                <SelectItem value="KES">🇰🇪 KES</SelectItem>
-                <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
-                <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
+                {
+                  loadingCurrencies
+                    ?
+                    <span>Fetching currencies...</span>
+                    :
+                    currencies.length == 0
+                      ?
+                      <span>No currencies found</span>
+                      :
+                      currencies.map((c, i) => <SelectItem key={i} value={c.code}>
+                        <div className="flex items-center space-x-3">
+                          {c.code != "USD" ? <img src={c.logo}  className="h-5 w-5" alt="" />: <p className="text-2xl">🇱🇷</p>} <span>{c.code}</span>
+                        </div>
+                      </SelectItem>)
+                }
+
               </SelectContent>
             </Select>
           </div>

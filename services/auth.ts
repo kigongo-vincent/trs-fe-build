@@ -7,7 +7,7 @@ interface SignupData {
   email: string;
   password: string;
   currency?: string; // allow currency
-  roundoff?: boolean; // allow roundoff
+  roundOff?: boolean; // allow roundoff
 }
 
 interface LoginData {
