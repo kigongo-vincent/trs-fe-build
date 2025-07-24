@@ -136,7 +136,9 @@ export default function AddConsultantPage() {
       toast.error("Email is required")
       return
     }
-    if (!formData.email.includes("@")) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (!emailRegex.test(formData.email.trim())) {
       toast.error("Please enter a valid email address")
       return
     }
@@ -325,7 +327,7 @@ export default function AddConsultantPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
-                <Input id="email" name="email" type="email" placeholder="consultant@example.com" value={formData.email} onChange={handleInputChange} required />
+                <Input id="email" name="email" type="email" required placeholder="consultant@example.com" value={formData.email} onChange={handleInputChange} />
                 <p className="text-sm text-muted-foreground">The consultant will use this email to log in to the system.</p>
               </div>
               <div className="space-y-2">
@@ -434,7 +436,7 @@ export default function AddConsultantPage() {
 
             {/* Next of Kin (optional) */}
             <div className="space-y-4 pt-6">
-              <h2 className="text-lg font-semibold mb-2">Next of Kin (optional)</h2>
+              <h2 className="text-lg font-semibold mb-2">Next of Kin</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <Input id="nextOfKinName" name="nextOfKinName" placeholder="Name" value={formData.nextOfKinName} onChange={handleInputChange} />
                 <Input id="nextOfKinRelationship" name="nextOfKinRelationship" placeholder="Relationship" value={formData.nextOfKinRelationship} onChange={handleInputChange} />
@@ -447,7 +449,7 @@ export default function AddConsultantPage() {
 
             {/* Bank Details (optional) */}
             <div className="space-y-4 pt-6">
-              <h2 className="text-lg font-semibold mb-2">Bank Details (optional)</h2>
+              <h2 className="text-lg font-semibold mb-2">Bank Details </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="bankAccountName">Account Name</Label>
