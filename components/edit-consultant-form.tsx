@@ -115,10 +115,13 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
             toast.error("Full name is required")
             return
         }
-        if (!formData.email.trim()) {
-            toast.error("Email is required")
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+        if (!emailRegex.test(formData.email.trim())) {
+            toast.error("Please enter a valid email address")
             return
         }
+
         if (!formData.email.includes("@")) {
             toast.error("Please enter a valid email address")
             return
@@ -363,14 +366,14 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                         {/* ID Documents */}
                         <div className="space-y-4 pt-6">
                             <h2 className="text-lg font-semibold mb-2">ID Documents</h2>
-                            <Label>ID Documents <span className="text-muted-foreground">(optional)</span></Label>
+                            <Label>ID Documents <span className="text-muted-foreground"></span></Label>
                             <FileAttachment attachments={attachments} onAttachmentsChange={setAttachments} maxFiles={5} acceptedFileTypes={["application/pdf"]} autoUpload={false} showUrlInput={false} />
                             <p className="text-sm text-muted-foreground">You may upload up to 5 PDF files of the consultant's identification documents (e.g., passport, national ID, driver's license).</p>
                         </div>
 
                         {/* Next of Kin (optional) */}
                         <div className="space-y-4 pt-6">
-                            <h2 className="text-lg font-semibold mb-2">Next of Kin (optional)</h2>
+                            <h2 className="text-lg font-semibold mb-2">Next of Kin </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <Input id="nextOfKinName" name="nextOfKinName" placeholder="Name" value={formData.nextOfKinName} onChange={handleInputChange} />
                                 <Input id="nextOfKinRelationship" name="nextOfKinRelationship" placeholder="Relationship" value={formData.nextOfKinRelationship} onChange={handleInputChange} />
@@ -383,7 +386,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
 
                         {/* Bank Details (optional) */}
                         <div className="space-y-4 pt-6">
-                            <h2 className="text-lg font-semibold mb-2">Bank Details (optional)</h2>
+                            <h2 className="text-lg font-semibold mb-2">Bank Details </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="bankAccountName">Account Name</Label>
