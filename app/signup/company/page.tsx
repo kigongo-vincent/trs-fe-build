@@ -175,8 +175,8 @@ export default function CompanySignup() {
           </div>
         </div>
         {/* Right: Signup form */}
-        <div className="flex-1 flex flex-col justify-center items-center p-8">
-          <div className="w-full max-w-md">
+        <div className="flex-1 flex  max-h-[80vh] overflow-auto flex-col justify-center items-center">
+          <div className="w-full px-[6rem]  overflow-auto h-full py-[3rem]">
             <h1 className="text-2xl md:text-3xl font-bold mb-2 text-primary">Create Company Account</h1>
             <p className="text-muted-foreground mb-8">Enter your company and admin details to get started.</p>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -333,7 +333,7 @@ export default function CompanySignup() {
                       :
                       currencies.map((c, i) => <SelectItem key={i} value={c.code}>
                         <div className="flex items-center space-x-3">
-                          {c.code != "USD" ? <img src={c.logo}  className="h-5 w-5" alt="" />: <p className="text-2xl">🇱🇷</p>} <span>{c.code}</span>
+                          {c.code != "USD" ? <img src={c.logo} className="h-5 w-5" alt="" /> : <p className="text-2xl">🇱🇷</p>} <span>{c.code}</span>
                         </div>
                       </SelectItem>)
                 }
