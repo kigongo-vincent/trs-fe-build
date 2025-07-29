@@ -518,13 +518,13 @@ export default function TasksPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {/* Search Form */}
         <form
-          className="flex w-full max-w-sm items-center space-x-2"
+          className="flex w-full  max-w-[20rem] items-center space-x-2"
           onSubmit={handleSearch}
         >
           <Input
             type="text"
             placeholder="Search tasks..."
-            className="h-9"
+            className="h-9 "
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -539,7 +539,7 @@ export default function TasksPage() {
           onSubmit={handleApplyFilters}
         >
           <Select value={filters.department} onValueChange={val => setFilters(f => ({ ...f, department: val }))}>
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger className="h-9 w-[80px]">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
