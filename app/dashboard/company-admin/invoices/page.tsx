@@ -13,7 +13,7 @@ import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
-import { getCompanyInvoicesSummary, getRequest } from "@/services/api"
+import { createInvoiceApproval, getCompanyInvoicesSummary, getRequest, fetchApproverActions, ApproverAction } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
@@ -883,44 +883,68 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
   const [satisfied, setSatisfied] = useState(false)
   const [approved, setApproved] = useState(false)
   // Comments state: array of {author, date, content}
-  const [comments, setComments] = useState<Array<{ author: string, date: string, content: string }>>([
-    // Example initial comment (could be empty)
-    // { author: invoice.user?.fullName || 'Consultant', date: formatDate(invoice.createdAt), content: 'Initial invoice created.' }
-  ])
+  const [comments, setComments] = useState<Array<{ author: string, date: string, content: string }>>([])
   const [comment, setComment] = useState("")
   const [saving, setSaving] = useState(false)
   // Comments loading state
   const [commentsLoading, setCommentsLoading] = useState(true)
   // Show more/less state
   const [showAllComments, setShowAllComments] = useState(false)
-  // Simulate loading comments on mount
+  // Load comments only when modal is open and invoice is present
   React.useEffect(() => {
-    setCommentsLoading(true)
-    const timeout = setTimeout(() => setCommentsLoading(false), 400)
-    return () => clearTimeout(timeout)
-  }, [])
+    if (!open || !invoice?.id) return;
+    setCommentsLoading(true);
+    fetchApproverActions(
+      invoice.id,
+      setCommentsLoading,
+      (error) => {
+        setComments([]);
+        setCommentsLoading(false);
+        // Optionally show error UI
+      }
+    )
+      .then((actions: ApproverAction[]) => {
+        setComments(
+          actions.map((a) => ({
+            author: a.user.name,
+            date: new Date(a.date).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            content: a.comment,
+          }))
+        );
+      })
+      .catch(() => {
+        setComments([]);
+      });
+  }, [open, invoice?.id])
   const checksChanged = reviewed !== false || satisfied !== false || approved !== false // always allow save for demo
   // Save both checks and comment
   const handleSave = async () => {
-    setSaving(true)
-    // Add comment if not empty
-    let newComments = comments
-    if (comment.trim()) {
-      newComments = [
-        ...comments,
-        {
-          author: 'You',
-          date: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-          content: comment.trim(),
-        },
-      ]
-      setComments(newComments)
-      setComment("")
+    setSaving(true);
+    try {
+      await createInvoiceApproval(
+        invoice.id,
+        comment.trim(),
+        setSaving,
+        (error) => {
+          alert(error?.message || "Failed to create approval");
+        }
+      );
+      // Optionally update comments UI
+      if (comment.trim()) {
+        setComments([
+          ...comments,
+          {
+            author: "You",
+            date: new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            content: comment.trim(),
+          },
+        ]);
+        setComment("");
+      }
+    } catch (e) {
+      // Error already handled by onError
     }
-    // Simulate save delay
-    await new Promise(res => setTimeout(res, 700))
-    setSaving(false)
-  }
+  };
   // PDF Generation (basic, organized, with inline HTML/CSS and table borders)
   const handleDownloadPDF = () => {
     const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })

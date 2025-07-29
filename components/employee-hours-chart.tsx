@@ -39,7 +39,7 @@ export function EmployeeHoursChart({ data }: EmployeeHoursChartProps) {
   // Transform the data for the chart
   const chartData = data.map((item) => ({
     name: getDayName(item.day),
-    hours: Number.parseFloat(formatHoursCount(item.hours)),
+    hours: (Number.parseFloat(formatHoursCount(item.hours))/60).toFixed(2),
   }))
 
   return (

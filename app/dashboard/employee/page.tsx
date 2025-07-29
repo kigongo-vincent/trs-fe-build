@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation"
 import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 
 export default function EmployeeDashboard() {
+  const [showAdd, setShowAdd] = useState(true)
+
   const [dashboardData, setDashboardData] = useState<EmployeeDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -180,16 +182,20 @@ export default function EmployeeDashboard() {
 
   const yesterdayLogs = dashboardData.recentLogs.filter((log) => new Date(log.date).toDateString() === yesterday)
 
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">My Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/dashboard/employee/time-logs/new">
-              <Plus className="mr-2 h-4 w-4" /> Log Time
-            </Link>
-          </Button>
+          {
+            showAdd ? <Button asChild>
+              <Link href="/dashboard/employee/time-logs/new">
+                <Plus className="mr-2 h-4 w-4" /> Log Time
+              </Link>
+            </Button>
+              : ""
+          }
         </div>
       </div>
 
@@ -265,8 +271,8 @@ export default function EmployeeDashboard() {
 
       <Tabs defaultValue="today" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="today">Today's Tasks ({todayLogs.length})</TabsTrigger>
-          <TabsTrigger value="yesterday">Yesterday's Tasks ({yesterdayLogs.length})</TabsTrigger>
+          <TabsTrigger onClick={() => setShowAdd(true)} value="today">Today's Tasks ({todayLogs.length})</TabsTrigger>
+          <TabsTrigger onClick={() => setShowAdd(false)} value="yesterday">Yesterday's Tasks ({yesterdayLogs.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="today" className="space-y-4">

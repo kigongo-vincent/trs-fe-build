@@ -573,3 +573,102 @@ export async function updateCompany(
 ): Promise<any> {
   return putRequest(`/company/${companyId}`, payload);
 }
+
+/**
+ * Create an approval for an invoice.
+ * @param invoiceNumber - The invoice number to approve
+ * @param comment - The comment for the approval
+ * @returns Promise<any>
+ */
+export async function createInvoiceApproval(
+  invoiceNumber: string,
+  comment: string,
+  setLoading: (loading: boolean) => void,
+  onError?: (error: any) => void
+): Promise<any> {
+  setLoading(true);
+  try {
+    const authData = getAuthData();
+    if (!authData || !authData.user) {
+      throw new Error("User session not found");
+    }
+    const approverId = authData.user.id;
+    // Prefer boardMemberRole if present, otherwise use role.name
+    let boardRole = authData.user.boardMemberRole || authData.user.role?.name;
+    if (typeof boardRole === "string") boardRole = boardRole.toLowerCase();
+    let status: string;
+    if (boardRole === "approver") {
+      status = "approved";
+    } else if (boardRole === "reviewer") {
+      status = "review";
+    } else {
+      throw new Error("User is not authorized as approver or reviewer");
+    }
+    return await postRequest("/approvers", {
+      invoiceId: invoiceNumber,
+      approverId,
+      status,
+      comment,
+    });
+  } catch (error) {
+    if (onError) {
+      onError(error);
+    }
+    // Optionally rethrow or return a structured error
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+}
+
+// Type for a single approver action
+export interface ApproverAction {
+  comment: string;
+  action: string; // status
+  date: string;
+  user: {
+    name: string;
+    photo: string | null;
+  };
+}
+
+/**
+ * Fetches the list of actions for a given approver.
+ * @param approverId - The approver's ID
+ * @param setLoading - Function to set external loading state
+ * @param onError - Optional error handler
+ * @returns Promise<ApproverAction[]>
+ */
+export async function fetchApproverActions(
+  approverId: string,
+  setLoading: (loading: boolean) => void,
+  onError?: (error: any) => void
+): Promise<ApproverAction[]> {
+  setLoading(true);
+  try {
+    const authData = getAuthData();
+    const loggedInUserId = authData?.user?.id;
+    const res = await getRequest<any>(`/approvers/${approverId}`);
+    if (!res?.data || !Array.isArray(res.data)) {
+      throw new Error(res?.message || "No data returned");
+    }
+    // Map the data to ApproverAction[]
+    return res.data.map((item: any) => ({
+      comment: item.comment,
+      action: item.status,
+      date: item.createdAt,
+      user: {
+        name:
+          item.approver?.id === loggedInUserId
+            ? "You"
+            : item.approver?.fullName || "Unknown",
+        photo: item.approver?.profileImage || null,
+      },
+    }));
+  } catch (error) {
+    if (onError) onError(error);
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+}

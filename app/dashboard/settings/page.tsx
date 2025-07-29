@@ -170,7 +170,7 @@ export default function SettingsPage() {
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
   const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
-  const [companyCurrency, setCompanyCurrency] = useState<string>("USD");
+  const [companyCurrency, setCompanyCurrency] = useState<string>("USD"); // Now read-only, set from session
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -276,7 +276,8 @@ export default function SettingsPage() {
     if (userRole === "Company Admin" && user?.company) {
       setCompanyName(user.company.name || "");
       setCompanyLogo(user.company.logo || null);
-      setCompanyCurrency(user.company.currency || "USD");
+      setCompanyCurrency(user.company.currency || "USD"); // set from session
+      setEnableFloatingPoint(typeof user.company.roundOff === 'boolean' ? user.company.roundOff : false);
     }
   }, [userRole, user]);
 
@@ -569,16 +570,27 @@ export default function SettingsPage() {
     try {
       let logoData: string | undefined = undefined;
       if (companyLogoFile && companyLogo) {
-        // companyLogo is data:image/png;base64,xxxxxx
-        const base64Data = companyLogo.split(',')[1];
-        if (base64Data) logoData = base64Data;
+        // companyLogo is a Data URL: data:image/png;base64,xxxxxx
+        const matches = companyLogo.match(/^data:(.*);base64,(.*)$/);
+        if (matches && matches.length === 3) {
+          const mimetype = matches[1];
+          const base64Data = matches[2];
+          const filename = companyLogoFile.name;
+          logoData = `data:${mimetype};name=${filename};base64,${base64Data}`;
+        }
       } else if (companyLogo && companyLogo.startsWith('data:')) {
-        // If companyLogo is a data URL, extract base64
-        const base64Data = companyLogo.split(',')[1];
-        if (base64Data) logoData = base64Data;
+        // If companyLogo is a data URL, but no file object (fallback)
+        // Try to extract mimetype and base64, but filename will be generic
+        const matches = companyLogo.match(/^data:(.*);base64,(.*)$/);
+        if (matches && matches.length === 3) {
+          const mimetype = matches[1];
+          const base64Data = matches[2];
+          logoData = `data:${mimetype};name=logo.${mimetype.split('/')[1]};base64,${base64Data}`;
+        }
       } else if (companyLogo && !companyLogo.startsWith('http')) {
         // If it's already a base64 string (not a URL)
-        logoData = companyLogo;
+        // We cannot determine mimetype or filename, so fallback to SVG
+        logoData = `data:image/svg+xml;name=logo.svg;base64,${companyLogo}`;
       }
       const payload = {
         id: user.company.id,
@@ -1006,25 +1018,6 @@ export default function SettingsPage() {
               </div>
               <Separator />
               {/* Currency Dropdown */}
-              <div className="flex flex-col md:flex-row gap-6 items-center w-full">
-                <div className="flex-1 w-full">
-                  <Label htmlFor="companyCurrency">Currency</Label>
-                  <Select value={companyCurrency} onValueChange={setCompanyCurrency} disabled>
-                    <SelectTrigger id="companyCurrency" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                      <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                      <SelectItem value="GBP">🇬🇧 GBP</SelectItem>
-                      <SelectItem value="NGN">🇳🇬 NGN</SelectItem>
-                      <SelectItem value="KES">🇰🇪 KES</SelectItem>
-                      <SelectItem value="ZAR">🇿🇦 ZAR</SelectItem>
-                      <SelectItem value="UGX">🇺🇬 UGX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               {/* Company Name and Logo */}
               <div className="flex flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1">
@@ -1035,6 +1028,15 @@ export default function SettingsPage() {
                     onChange={e => setCompanyName(e.target.value)}
                     placeholder="Enter company name"
                     disabled={isUpdatingCompany}
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="companyCurrency">Currency</Label>
+                  <Input
+                    id="companyCurrency"
+                    value={companyCurrency}
+                    disabled
+                    readOnly
                   />
                 </div>
               </div>
