@@ -1211,105 +1211,41 @@ export default function ConsultantsPage() {
                             <div className="flex flex-col gap-2 mt-4">
                               <Label>IDs</Label>
                               <div className="space-y-2">
-                                {Array.isArray((selectedConsultant as any)?.attachments) && (selectedConsultant as any).attachments.length > 0 ? (
-                                  (selectedConsultant as any).attachments.map((att: string, idx: number) => {
-                                    // Assume all are PDFs
-                                    let fileName = `ID ${idx + 1}.pdf`;
-                                    let url = att;
-                                    // Try to extract name if present
-                                    const nameMatch = typeof att === "string" ? att.match(/name=([^;]+);/) : null;
-                                    if (nameMatch) fileName = nameMatch[1];
-                                    // PDF icon
-                                    const icon = (
-                                      <FileText className="h-5 w-5 text-red-500" />
-                                    );
-                                    return (
-                                      <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-                                        <div className="flex-shrink-0">{icon}</div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="font-medium truncate">{fileName}</div>
-                                        </div>
-                                        <a
-                                          href={url}
-                                          download={fileName}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4" />
-                                            View
-                                          </Button>
-                                        </a>
-                                        <a
-                                          href={url}
-                                          download={fileName}
-                                          rel="noopener noreferrer"
-                                        >
-                                          <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-                                            <Download className="h-4 w-4" />
-                                            Download
-                                          </Button>
-                                        </a>
-                                      </div>
-                                    );
-                                  })
-                                ) : (
-                                  // Default sample documents
-                                  <>
-                                    <div className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-                                      <FileText className="h-5 w-5 text-red-500" />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium truncate">Passport.pdf</div>
-                                      </div>
-                                      <a
-                                        href="https://images.pexels.com/photos/8061986/pexels-photo-8061986.jpeg"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                          <FileText className="h-4 w-4" />
-                                          View
-                                        </Button>
-                                      </a>
-                                      <a
-                                        href="https://images.pexels.com/photos/8061986/pexels-photo-8061986.jpeg"
-                                        download="Passport.pdf"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-                                          <Download className="h-4 w-4" />
-                                          Download
-                                        </Button>
-                                      </a>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-                                      <FileText className="h-5 w-5 text-red-500" />
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium truncate">Driving License.pdf</div>
-                                      </div>
-                                      <a
-                                        href="https://images.pexels.com/photos/45113/pexels-photo-45113.jpeg"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                          <FileText className="h-4 w-4" />
-                                          View
-                                        </Button>
-                                      </a>
-                                      <a
-                                        href="https://images.pexels.com/photos/45113/pexels-photo-45113.jpeg"
-                                        download="Driving License.pdf"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-                                          <Download className="h-4 w-4" />
-                                          Download
-                                        </Button>
-                                      </a>
-                                    </div>
-                                  </>
-                                )}
+                                {Array.isArray(selectedConsultant?.attachments) && selectedConsultant.attachments.length > 0 ? (
+  selectedConsultant.attachments.map((att: { url: string; name: string }, idx: number) => (
+    <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+      <div className="flex-shrink-0">
+        <FileText className="h-5 w-5 text-red-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
+      </div>
+      <a
+        href={att.url}
+        download={att.name}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Button variant="outline" size="sm" className="flex items-center gap-2">
+          <FileText className="h-4 w-4" />
+          View
+        </Button>
+      </a>
+      <a
+        href={att.url}
+        download={att.name}
+        rel="noopener noreferrer"
+      >
+        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
+          <Download className="h-4 w-4" />
+          Download
+        </Button>
+      </a>
+    </div>
+  ))
+) : (
+  <div className="text-muted-foreground text-sm">No attachments found.</div>
+)}
                               </div>
                             </div>
                             {/* End IDs Section */}
