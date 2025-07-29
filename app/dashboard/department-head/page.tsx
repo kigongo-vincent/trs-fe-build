@@ -1,10 +1,30 @@
+"use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Clock, FileText, Plus, Users } from "lucide-react"
 import Link from "next/link"
-import { DepartmentHoursChart } from "@/components/department-hours-chart"
-import { DepartmentTasksChart } from "@/components/department-tasks-chart"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell, ResponsiveContainer
+} from '@/components/ui/chart';
+
+// Hardcoded data for Hours Overview (Bar Chart)
+const hoursData = [
+  { week: 'Week 1', hours: 40 },
+  { week: 'Week 2', hours: 55 },
+  { week: 'Week 3', hours: 60 },
+  { week: 'Week 4', hours: 50 },
+];
+
+// Hardcoded data for Task Status (Pie Chart)
+const taskStatusData = [
+  { name: 'Completed', value: 20 },
+  { name: 'In Progress', value: 15 },
+  { name: 'Pending', value: 7 },
+];
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
 export default function DepartmentHeadDashboard() {
   return (
@@ -12,11 +32,7 @@ export default function DepartmentHeadDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">Department Head Dashboard</h1>
         <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/dashboard/department-head/tasks/new">
-              <Plus className="mr-2 h-4 w-4" /> Assign Task
-            </Link>
-          </Button>
+        
         </div>
       </div>
 
@@ -77,7 +93,16 @@ export default function DepartmentHeadDashboard() {
                 <CardDescription>Hours spent across time periods</CardDescription>
               </CardHeader>
               <CardContent className="pl-2">
-                <DepartmentHoursChart />
+                <ResponsiveContainer width="100%" height={350}>
+  <BarChart data={hoursData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+    <CartesianGrid strokeDasharray="3 3" />
+    <XAxis dataKey="week" />
+    <YAxis />
+    <Tooltip />
+    <Legend />
+    <Bar dataKey="hours" fill="#8884d8" />
+  </BarChart>
+</ResponsiveContainer>
               </CardContent>
             </Card>
             <Card className="col-span-3">
@@ -86,7 +111,26 @@ export default function DepartmentHeadDashboard() {
                 <CardDescription>Department tasks by status</CardDescription>
               </CardHeader>
               <CardContent>
-                <DepartmentTasksChart />
+                <ResponsiveContainer width="100%" height={300}>
+  <PieChart>
+    <Pie
+      data={taskStatusData}
+      cx="50%"
+      cy="50%"
+      labelLine={false}
+      outerRadius={80}
+      fill="#8884d8"
+      dataKey="value"
+      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+    >
+      {taskStatusData.map((entry, index) => (
+        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+      ))}
+    </Pie>
+    <Tooltip />
+    <Legend />
+  </PieChart>
+</ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
