@@ -882,8 +882,8 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
   const [reviewed, setReviewed] = useState(false)
   const [satisfied, setSatisfied] = useState(false)
   const [approved, setApproved] = useState(false)
-  // Comments state: array of {author, date, content}
-  const [comments, setComments] = useState<Array<{ author: string, date: string, content: string }>>([])
+  // Comments state: array of {author, date, content, boardMemberRole}
+  const [comments, setComments] = useState<Array<{ author: string, date: string, content: string, boardMemberRole?: string }>>([])
   const [comment, setComment] = useState("")
   const [saving, setSaving] = useState(false)
   // Comments loading state
@@ -909,6 +909,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
             author: a.user.name,
             date: new Date(a.date).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
             content: a.comment,
+            boardMemberRole: a.boardMemberRole,
           }))
         );
       })
@@ -1165,24 +1166,40 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
                     </label>
                   ) : null}
                 </div>
-                <div className="mb-4">
-                  <Label htmlFor="invoice-comment" className="text-xs mb-1">Add Comment</Label>
-                  <Textarea
-                    id="invoice-comment"
-                    value={comment}
-                    onChange={e => setComment(e.target.value)}
-                    placeholder="Add a comment..."
-                    rows={2}
-                    className="resize-none mt-1"
-                    disabled={saving}
-                  />
-                </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold">Comments</span>
-                  <Button size="sm" variant="default" onClick={handleSave} disabled={saving || (!comment.trim() && !checksChanged)}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
+                {/* Get current user role and conditionally render comment input */}
+                {(() => {
+                  let userRole = undefined;
+                  if (typeof window !== 'undefined') {
+                    const authData = getAuthData();
+                    userRole = authData?.user?.role?.name;
+                  }
+                  if (userRole !== 'Company Admin') {
+                    return (
+                      <>
+                        <div className="mb-4">
+                          <Label htmlFor="invoice-comment" className="text-xs mb-1">Add Comment</Label>
+                          <Textarea
+                            id="invoice-comment"
+                            value={comment}
+                            onChange={e => setComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            rows={2}
+                            className="resize-none mt-1"
+                            disabled={saving}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-semibold">Comments</span>
+                          <Button size="sm" variant="default" onClick={handleSave} disabled={saving || (!comment.trim() && !checksChanged)}>
+                            {saving ? 'Saving...' : 'Save'}
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <div className="flex flex-col gap-3 max-h-48 overflow-y-auto">
                   {commentsLoading ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1201,6 +1218,9 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{c.author}</span>
+                              {c.boardMemberRole && (
+                                <Badge variant="secondary" className="text-xs capitalize">{c.boardMemberRole}</Badge>
+                              )}
                               <span className="text-xs text-muted-foreground">{c.date}</span>
                             </div>
                             <div className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line">{c.content}</div>
