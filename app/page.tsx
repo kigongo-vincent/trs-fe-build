@@ -29,23 +29,20 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window !== "undefined" && isAuthenticated()) {
-      // Remove role-based redirect
-      // const role = getUserRole()
-      // switch (role) {
-      //   case "Super Admin":
-      //     router.replace("/dashboard/super-admin")
-      //     break
-      //   case "Company Admin":
-      //     router.replace("/dashboard/company-admin")
-      //     break
-      //   case "Consultant":
-      //   case "Employee":
-      //     router.replace("/dashboard/employee")
-      //     break
-      //   default:
-      //     router.replace("/dashboard/employee")
-      // }
-      router.replace("/dashboard")
+      // Check for departmentHeadId in stored user
+      const storedUser = localStorage.getItem("user");
+      let parsedUser = null;
+      try {
+        parsedUser = storedUser ? JSON.parse(storedUser) : null;
+      } catch (e) {
+        parsedUser = null;
+      }
+      if (parsedUser && parsedUser.departmentHeadId) {
+        router.replace("/dashboard/department-head");
+      } else {
+        // fallback to default dashboard
+        router.replace("/dashboard");
+      }
     }
   }, [router])
 
@@ -65,18 +62,23 @@ export default function Home() {
       // Store auth data
       storeAuthData(response.data.token, response.data.user)
 
-      // Redirect based on role
-      const roleName = response.data.user.role.name
-      if (roleName === "Super Admin") {
-        router.push("/dashboard/super-admin/companies")
-      } else if (roleName === "Company Admin") {
-        router.push("/dashboard/company-admin")
-      } else if (roleName === "Board Member") {
-        router.push("/dashboard/company-admin")
-      } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
-        router.push("/dashboard/employee")
+      // Redirect based on departmentHeadId or role
+      const user = response.data.user;
+      if (user.departmentHeadId) {
+        router.push("/dashboard/department-head");
       } else {
-        router.push("/dashboard/employee")
+        const roleName = user.role.name;
+        if (roleName === "Super Admin") {
+          router.push("/dashboard/super-admin/companies");
+        } else if (roleName === "Company Admin") {
+          router.push("/dashboard/company-admin");
+        } else if (roleName === "Board Member") {
+          router.push("/dashboard/company-admin");
+        } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
+          router.push("/dashboard/employee");
+        } else {
+          router.push("/dashboard/employee");
+        }
       }
     } catch (err) {
       console.error("Login error:", err)
