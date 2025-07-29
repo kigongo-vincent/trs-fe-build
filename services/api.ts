@@ -630,7 +630,8 @@ export interface ApproverAction {
     name: string;
     photo: string | null;
   };
-}
+  boardMemberRole?: string;
+} 
 
 /**
  * Fetches the list of actions for a given approver.
@@ -664,6 +665,7 @@ export async function fetchApproverActions(
             : item.approver?.fullName || "Unknown",
         photo: item.approver?.profileImage || null,
       },
+      boardMemberRole: item.approver?.boardMemberRole || undefined,
     }));
   } catch (error) {
     if (onError) onError(error);
