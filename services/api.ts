@@ -621,6 +621,22 @@ export async function createInvoiceApproval(
   }
 }
 
+// Fetch super-admin overview stats
+export interface SuperAdminOverviewItem {
+  label: string;
+  value: number;
+}
+
+export interface SuperAdminOverviewResponse {
+  status: number;
+  message: string;
+  data: SuperAdminOverviewItem[];
+}
+
+export async function fetchSuperAdminOverview(): Promise<SuperAdminOverviewResponse> {
+  return getRequest<SuperAdminOverviewResponse>("/super-admin/overview");
+}
+
 // Type for a single approver action
 export interface ApproverAction {
   comment: string;
