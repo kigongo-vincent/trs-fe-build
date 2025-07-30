@@ -73,6 +73,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
   const shouldShowDepartmentAdmin = userRole === "Department Admin"
 
+
   const isProfileActive = pathname.startsWith("/dashboard/profile")
   const profileSections = [
     { key: "personal", label: "Personal Information" },
@@ -364,44 +365,34 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
               <div className="px-3 py-2">
                 <div className="space-y-1">
                   <Link
-                    href="/dashboard/department-admin"
+                    href="/dashboard/department-head"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/department-admin", true) && "bg-primary/10 text-primary font-semibold",
+                      isActive("/dashboard/department-head", true) && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Home className="h-4 w-4" />
                     <span>Overview</span>
                   </Link>
                   <Link
-                    href="/dashboard/department-admin?tab=consultants"
+                    href="/dashboard/department-head/consultants"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/department-admin/consultants") && "bg-primary/10 text-primary font-semibold",
+                      isActive("/dashboard/department-head/consultants") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
                     <Users className="h-4 w-4" />
                     <span>Consultants</span>
                   </Link>
                   <Link
-                    href="/dashboard/profile"
+                    href="/dashboard/department-head/time-logs"
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/profile") && "bg-primary/10 text-primary font-semibold",
+                      isActive("/dashboard/department-head/time-logs") && "bg-primary/10 text-primary font-semibold",
                     )}
                   >
-                    <User className="h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                      isActive("/dashboard/settings") && "bg-primary/10 text-primary font-semibold",
-                    )}
-                  >
-                    <Cog className="h-4 w-4" />
-                    <span>Settings</span>
+                    <FileText className="h-4 w-4" />
+                    <span>Time Logs</span>
                   </Link>
                 </div>
               </div>

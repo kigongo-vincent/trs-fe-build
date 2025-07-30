@@ -21,6 +21,7 @@ interface AuthResponse {
   data: {
     user: {
       id: string;
+      departmentHead?: any;
       fullName: string;
       email: string;
       status: string;
