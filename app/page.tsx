@@ -37,7 +37,9 @@ export default function Home() {
       } catch (e) {
         parsedUser = null;
       }
-      if (parsedUser && parsedUser.departmentHeadId) {
+      if (parsedUser && parsedUser.departmentHead && parsedUser.departmentHead.name) {
+        router.replace("/dashboard/department-head");
+      } else if (parsedUser && parsedUser.departmentHeadId) {
         router.replace("/dashboard/department-head");
       } else {
         // fallback to default dashboard
@@ -60,11 +62,16 @@ export default function Home() {
       const response = await login(formData)
 
       // Store auth data
+      if (response?.data?.user?.departmentHead?.id) {
+        response.data.user.role.name = "Department Admin"
+      }
       storeAuthData(response.data.token, response.data.user)
 
       // Redirect based on departmentHeadId or role
       const user = response.data.user;
-      if (user.departmentHeadId) {
+      if (user.departmentHead && user.departmentHead.name) {
+        router.push("/dashboard/department-head");
+      } else if (user.departmentHeadId) {
         router.push("/dashboard/department-head");
       } else {
         const roleName = user.role.name;
