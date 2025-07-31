@@ -596,7 +596,7 @@ export default function TasksPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleViewTask(task)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        
+
                       </div>
                     </TableCell>
                   </TableRow>

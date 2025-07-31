@@ -626,6 +626,22 @@ export async function createInvoiceApproval(
   }
 }
 
+// Department Head Stats
+export interface DepartmentHeadStatItem {
+  label: string;
+  value: number;
+}
+
+export interface DepartmentHeadStatsResponse {
+  status: number;
+  message: string;
+  data: DepartmentHeadStatItem[];
+}
+
+export async function fetchDepartmentHeadStats(): Promise<DepartmentHeadStatsResponse> {
+  return getRequest<DepartmentHeadStatsResponse>("/departments/head/stats");
+}
+
 // Fetch super-admin overview stats
 export interface SuperAdminOverviewItem {
   label: string;
