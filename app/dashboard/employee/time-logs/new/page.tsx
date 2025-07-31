@@ -128,19 +128,19 @@ export default function NewTimeLogPage() {
         ...(formData.project ? { project: formData.project } : {}),
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
         urls: urlAttachments.length > 0 ? urlAttachments : undefined,
-      }
-      console.log("payload", payload)
-      const response = await postRequest("/consultants/time-logs", payload)
-      if (response.status === 201) {
-        toast.success("Time log created successfully!")
-        router.push("/dashboard/employee")
+      };
+      console.log("payload", payload);
+      const response = await postRequest("/consultants/time-logs", payload);
+      if ((response as { status: number }).status === 201) {
+        toast.success("Time log created successfully!");
+        router.push("/dashboard/employee");
       } else {
-        toast.error("Failed to create time log")
+        toast.error("Failed to create time log");
       }
     } catch (error) {
-      console.error("Error creating time log:", error)
+      console.error("Error creating time log:", error);
       if (error instanceof Error && error.message) {
-        toast.error(error.message)
+        toast.error(error.message);
       } else {
         toast.error("Failed to create time log. Please try again.")
       }
