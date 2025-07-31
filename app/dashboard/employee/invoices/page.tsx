@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Download, Eye, Filter, Search, Calendar, Building2, Mail, Phone, MapPin, Info } from "lucide-react"
+import { CalendarIcon, Download, Eye, Filter, Search, Calendar, Building2, Mail, Phone, MapPin, Info, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -33,6 +33,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { generatePdf } from "@/utils/GeneratePDF"
+import { toast } from "sonner"
 
 export default function InvoicesPage() {
   const [summaryData, setSummaryData] = useState<ConsultantInvoiceSummaryItem[]>([])
@@ -40,10 +42,12 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<ConsultantInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState<string>('')
   const [isInvoicesLoading, setIsInvoicesLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<ConsultantInvoiceListItem | null>(null)
   const [userSession, setUserSession] = useState<any>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
   // Get user session data
   useEffect(() => {
@@ -74,6 +78,8 @@ export default function InvoicesPage() {
       year: 'numeric', month: 'short', day: 'numeric'
     })
   }
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,9 +148,22 @@ export default function InvoicesPage() {
     }
   }
 
-  // Remove frontend date filtering, only filter by status
+  // Filter invoices by status and search query
   const filteredInvoices = invoices.filter((inv) => {
+    // Filter by status
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false
+
+    // Filter by search query (invoice number or period)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const invoiceNumber = inv.invoiceNumber?.toLowerCase() || ''
+      const period = format(new Date(inv.startDate), 'MMM yyyy').toLowerCase()
+
+      if (!invoiceNumber.includes(query) && !period.includes(query)) {
+        return false
+      }
+    }
+
     return true
   })
 
@@ -153,13 +172,347 @@ export default function InvoicesPage() {
     return currency ? currency.toUpperCase() : 'USD';
   }
 
+  // Generate PDF for a single invoice
+  const generateInvoicePdf = async (invoice: ConsultantInvoiceListItem) => {
+    if (!userSession) return
+
+    setIsGeneratingPdf(true)
+    try {
+      const invoiceHtml = generateInvoiceHtml(invoice)
+      await generatePdf(invoiceHtml)
+      toast.success(`Invoice ${invoice.invoiceNumber} generated successfully!`)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  // Generate PDF for all filtered invoices
+  const generateFilteredInvoicesPdf = async () => {
+    if (!userSession || filteredInvoices.length === 0) {
+      toast.error('No invoices to generate PDF for.')
+      return
+    }
+
+    setIsGeneratingPdf(true)
+    try {
+      const invoicesHtml = generateInvoicesSummaryHtml()
+      await generatePdf(invoicesHtml)
+      toast.success(`Generated PDF for ${filteredInvoices.length} invoices!`)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  // Generate HTML for a single invoice
+  const generateInvoiceHtml = (invoice: ConsultantInvoiceListItem) => {
+    const statusColor = getStatusColor(invoice.status)
+    const statusText = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)
+
+    return `
+      <div class="bg-white p-8 max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="border-b-2 border-gray-300 pb-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
+              <p class="text-lg text-gray-600">${invoice.invoiceNumber}</p>
+            </div>
+            <div class="text-right">
+              <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
+                ${statusText}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Info -->
+        <div class="bg-primary text-white p-6 rounded-lg mb-6">
+          <h2 class="text-xl font-bold mb-1">${userSession?.company?.name || 'Company Name'}</h2>
+          <p class="text-blue-100 text-sm">${userSession?.company?.sector || 'Sector'}</p>
+        </div>
+
+        <!-- Invoice Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              Invoice Details
+            </h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Issue Date:</span>
+                <span class="font-medium">${formatDate(invoice.createdAt)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Period:</span>
+                <span class="font-medium">${formatDate(invoice.startDate)} - ${formatDate(invoice.endDate)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Last Updated:</span>
+                <span class="font-medium">${formatDate(invoice.updatedAt)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+              </svg>
+              Consultant Information
+            </h3>
+            <div class="space-y-2 text-sm">
+              <div>
+                <span class="font-semibold text-gray-900">${userSession?.fullName || 'Consultant Name'}</span>
+                <p class="text-gray-600 capitalize">${userSession?.jobTitle || 'Consultant'} Consultant</p>
+              </div>
+              <div class="flex items-center text-gray-600">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                <span>${userSession?.email || 'email@example.com'}</span>
+              </div>
+              <div class="flex items-center text-gray-600">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                </svg>
+                <span>${userSession?.phoneNumber || 'Phone Number'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Description -->
+        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+          <h3 class="font-semibold text-gray-900 mb-2">Service Description</h3>
+          <p class="text-gray-700">${invoice.description || 'Consulting services for the specified period.'}</p>
+        </div>
+
+        <!-- Invoice Items -->
+        <div class="bg-white border border-gray-200 rounded-lg mb-6">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">Invoice Items</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Rate</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr>
+                  <td class="px-4 py-3">
+                    <span class="font-medium text-gray-900">Consulting Services</span>
+                    <p class="text-xs text-gray-500">Period: ${formatDate(invoice.startDate)} to ${formatDate(invoice.endDate)}</p>
+                  </td>
+                  <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours}</td>
+                  <td class="px-4 py-3 text-center text-gray-900">${formatCurrency(invoice.amount && invoice.totalHours ? Number(invoice.amount) / Number(invoice.totalHours) : 0, currency)}</td>
+                  <td class="px-4 py-3 text-right font-medium text-gray-900">${formatCurrency(invoice.amount, currency)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Total -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between text-gray-600">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(invoice.amount, currency)}</span>
+            </div>
+            <div class="flex justify-between text-gray-600">
+              <span>Tax:</span>
+              <span>${formatCurrency(0, currency)}</span>
+            </div>
+            <div class="border-t pt-2">
+              <div class="flex justify-between text-base font-bold text-gray-900">
+                <span>Total:</span>
+                <span>${formatCurrency(invoice.amount, currency)}</span>
+              </div>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-gray-500 text-right">
+            Showing amounts in <span class="font-semibold">${currency}</span> (Company currency)
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        <div class="bg-gradient-to-r from-gray-900 to-blue-900 text-white p-4 rounded-lg mb-6">
+          <h3 class="font-semibold mb-3 flex items-center">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Payment Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div>
+              <span class="text-gray-300 text-xs">Bank Name</span>
+              <p class="font-medium">${userSession?.bankDetails?.bankName || 'N/A'}</p>
+            </div>
+            <div>
+              <span class="text-gray-300 text-xs">Branch</span>
+              <p class="font-medium">${userSession?.bankDetails?.branch || 'N/A'}</p>
+            </div>
+            <div>
+              <span class="text-gray-300 text-xs">Account Name</span>
+              <p class="font-medium">${userSession?.bankDetails?.accountName || 'N/A'}</p>
+            </div>
+            <div>
+              <span class="text-gray-300 text-xs">Account Number</span>
+              <p class="font-medium">${userSession?.bankDetails?.accountNumber || 'N/A'}</p>
+            </div>
+            <div class="md:col-span-2">
+              <span class="text-gray-300 text-xs">SWIFT Code</span>
+              <p class="font-medium">${userSession?.bankDetails?.swiftCode || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-xs border-t pt-4">
+          <p>Thank you for your business!</p>
+          <p class="mt-1">For any questions regarding this invoice, please contact ${userSession?.email || 'support@company.com'}</p>
+        </div>
+      </div>
+    `
+  }
+
+  // Generate HTML for invoices summary
+  const generateInvoicesSummaryHtml = () => {
+    const totalAmount = filteredInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0)
+    const totalHours = filteredInvoices.reduce((sum, inv) => sum + Number(inv.totalHours), 0)
+
+    return `
+      <div class="bg-white p-8 max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="border-b-2 border-gray-300 pb-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICES SUMMARY</h1>
+              <p class="text-lg text-gray-600">Generated on ${new Date().toLocaleDateString()}</p>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-600">
+                <p>Total Invoices: ${filteredInvoices.length}</p>
+                <p>Total Amount: ${formatCurrency(totalAmount, currency)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Info -->
+        <div class="bg-primary text-white p-6 rounded-lg mb-6">
+          <h2 class="text-xl font-bold mb-1">${userSession?.company?.name || 'Company Name'}</h2>
+          <p class="text-blue-100 text-sm">${userSession?.company?.sector || 'Sector'}</p>
+        </div>
+
+        <!-- Consultant Info -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+          <h3 class="font-semibold text-gray-900 mb-3">Consultant Information</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-600">Name:</span>
+              <p class="font-medium">${userSession?.fullName || 'Consultant Name'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Email:</span>
+              <p class="font-medium">${userSession?.email || 'email@example.com'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Phone:</span>
+              <p class="font-medium">${userSession?.phoneNumber || 'Phone Number'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Position:</span>
+              <p class="font-medium capitalize">${userSession?.jobTitle || 'Consultant'}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoices Table -->
+        <div class="bg-white border border-gray-200 rounded-lg mb-6">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">Invoice Details</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Invoice #</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Period</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                ${filteredInvoices.map(invoice => `
+                  <tr>
+                    <td class="px-4 py-3">
+                      <span class="font-medium text-gray-900">${invoice.invoiceNumber}</span>
+                    </td>
+                    <td class="px-4 py-3 text-gray-900">
+                      ${format(new Date(invoice.startDate), 'MMM yyyy')}
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours}</td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-900">
+                      ${formatCurrency(invoice.amount, currency)}
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                      <span class="">
+                        ${invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-xs border-t pt-4">
+          <p>This summary was generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+         
+        </div>
+      </div>
+    `
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-primary">My Invoices</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" /> Export All
+          <Button
+            variant="outline"
+            onClick={generateFilteredInvoicesPdf}
+            disabled={isGeneratingPdf || filteredInvoices.length === 0}
+          >
+            {isGeneratingPdf ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Export Filtered ({filteredInvoices.length})
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -207,11 +560,13 @@ export default function InvoicesPage() {
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input type="text" placeholder="Search invoices..." className="h-9" />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-          </Button>
+          <Input
+            type="text"
+            placeholder="Search invoices..."
+            className="h-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         <div className="flex flex-row items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -225,10 +580,10 @@ export default function InvoicesPage() {
               <SelectItem value="processing">Processing</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="h-9">
+          {/* <Button variant="outline" size="sm" className="h-9">
             <Filter className="mr-2 h-4 w-4" />
             Filters
-          </Button>
+          </Button> */}
         </div>
       </div>
 
@@ -290,11 +645,19 @@ export default function InvoicesPage() {
                         <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setModalOpen(true); }}>
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
-                        {invoice.status === 'paid' && (
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-4 w-4 mr-1" /> PDF
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => generateInvoicePdf(invoice)}
+                          disabled={isGeneratingPdf}
+                        >
+                          {isGeneratingPdf ? (
+                            <div className="h-4 w-4 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          ) : (
+                            <Download className="h-4 w-4 mr-1" />
+                          )}
+                          PDF
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -394,6 +757,20 @@ export default function InvoicesPage() {
                 </Card>
               </CardContent>
               <CardFooter className="flex-col border-t pt-4">
+                <div className="flex justify-center gap-2 mb-4">
+                  <Button
+                    onClick={() => generateInvoicePdf(selectedInvoice)}
+                    disabled={isGeneratingPdf}
+                    className="flex items-center gap-2"
+                  >
+                    {isGeneratingPdf ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    Download PDF
+                  </Button>
+                </div>
                 <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
                   <p>Thank you for your business!</p>
                   <p className="mt-1">For any questions regarding this invoice, please contact {userSession?.email}</p>
