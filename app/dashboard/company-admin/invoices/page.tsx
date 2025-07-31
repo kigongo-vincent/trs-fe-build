@@ -13,7 +13,7 @@ import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
-import { createInvoiceApproval, getCompanyInvoicesSummary, getRequest, fetchApproverActions, ApproverAction } from "@/services/api"
+import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
@@ -178,21 +178,48 @@ export default function InvoicesPage() {
   const currency = totalAmountItem?.currency || "USD"
   const showDisclaimer = !totalAmountItem?.currency || totalAmountItem.currency !== "USD"
 
-  // Sample data for MonthlyInvoiceChart (you can replace this with real API data)
-  const monthlyInvoiceData = [
-    { month: "January", totalAmount: 0, currency: currency },
-    { month: "February", totalAmount: 0, currency: currency },
-    { month: "March", totalAmount: 0, currency: currency },
-    { month: "April", totalAmount: 0, currency: currency },
-    { month: "May", totalAmount: 0, currency: currency },
-    { month: "June", totalAmount: 0, currency: currency },
-    { month: "July", totalAmount: 0, currency: currency },
-    { month: "August", totalAmount: 0, currency: currency },
-    { month: "September", totalAmount: 0, currency: currency },
-    { month: "October", totalAmount: 0, currency: currency },
-    { month: "November", totalAmount: 0, currency: currency },
-    { month: "December", totalAmount: 0, currency: currency },
-  ]
+  // State for monthly invoice chart data
+  const [monthlyInvoiceData, setMonthlyInvoiceData] = useState<Array<{ month: string, totalAmount: number, currency: string }>>([])
+  const [monthlyChartLoading, setMonthlyChartLoading] = useState(true)
+  const [monthlyChartError, setMonthlyChartError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchMonthlyChart = async () => {
+      setMonthlyChartLoading(true)
+      setMonthlyChartError(null)
+      try {
+        const authData = getAuthData()
+        const companyId = authData?.user?.company?.id
+        if (!companyId) throw new Error("Company ID not found")
+        const res = await getCompanyPaidInvoicesByMonth(companyId)
+        // If API doesn't return currency, fallback to summary currency
+        const chartCurrency = currency || "USD"
+        // Normalize data to match chart props
+        const months = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ]
+        // API likely returns months as "Jan 2025", so we need to map to chart months
+        const apiData = Array.isArray(res.data) ? res.data : []
+        const normalized = months.map((month) => {
+          // Try to find a matching month from API (partial match, e.g., "Jan" in "Jan 2025")
+          const apiMonth = apiData.find((item: any) => item.month.toLowerCase().startsWith(month.slice(0, 3).toLowerCase()))
+          return {
+            month,
+            totalAmount: apiMonth ? apiMonth.totalAmount : 0,
+            currency: chartCurrency,
+          }
+        })
+        setMonthlyInvoiceData(normalized)
+      } catch (err: any) {
+        setMonthlyChartError(err.message || "Failed to fetch chart data")
+      } finally {
+        setMonthlyChartLoading(false)
+      }
+    }
+    fetchMonthlyChart()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency])
 
   const handleSearch = async () => {
     setSearchLoading(true)
