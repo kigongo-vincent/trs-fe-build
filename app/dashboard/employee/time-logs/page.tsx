@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +24,7 @@ import { putRequest } from "@/services/api"
 import { Label } from "@/components/ui/label"
 import TaskDetailModal from "@/components/TaskDetailModal"
 import { toast } from "sonner"
+import { generatePdf } from "@/utils/GeneratePDF"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
@@ -59,6 +60,7 @@ export default function TimeLogsPage() {
   const [isPublishingAll, setIsPublishingAll] = useState(false)
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
   // Fetch time logs data
   useEffect(() => {
@@ -157,6 +159,274 @@ export default function TimeLogsPage() {
       return matchesSearch && matchesStatus && matchesProject
     })
   }, [timeLogs, searchTerm, statusFilter, projectFilter])
+
+  // Generate PDF for all filtered time logs
+  const generateFilteredTimeLogsPdf = async () => {
+    if (filteredTimeLogs.length === 0) {
+      toast.error('No time logs to generate PDF for.')
+      return
+    }
+
+    setIsGeneratingPdf(true)
+    try {
+      const timeLogsHtml = generateTimeLogsSummaryHtml()
+      await generatePdf(timeLogsHtml)
+      toast.success(`Generated PDF for ${filteredTimeLogs.length} time logs!`)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  // Generate PDF for a single time log
+  const generateTimeLogPdf = async (timeLog: TimeLog) => {
+    setIsGeneratingPdf(true)
+    try {
+      const timeLogHtml = generateTimeLogHtml(timeLog)
+      await generatePdf(timeLogHtml)
+      toast.success(`Time log "${timeLog.title}" generated successfully!`)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
+  // Generate HTML for a single time log
+  const generateTimeLogHtml = (timeLog: TimeLog) => {
+    const user = getAuthUser()
+    const statusColor = timeLog.status === "active"
+      ? "bg-green-50 text-green-700 border-green-200"
+      : "bg-yellow-50 text-yellow-700 border-yellow-200"
+    const statusText = timeLog.status.charAt(0).toUpperCase() + timeLog.status.slice(1)
+
+    return `
+      <div class="bg-white p-8 max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="border-b-2 border-gray-300 pb-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 mb-2">TIME LOG</h1>
+              <p class="text-lg text-gray-600">${timeLog.title}</p>
+            </div>
+            <div class="text-right">
+              <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
+                ${statusText}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Info -->
+        <div class="bg-primary text-white p-6 rounded-lg mb-6">
+          <h2 class="text-xl font-bold mb-1">${user?.company?.name || 'Company Name'}</h2>
+          <p class="text-blue-100 text-sm">${user?.company?.sector || 'Sector'}</p>
+        </div>
+
+        <!-- Time Log Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              Time Log Details
+            </h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Date:</span>
+                <span class="font-medium">${formatDate(timeLog.createdAt)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Duration:</span>
+                <span class="font-medium">${formatDurationString(timeLog.duration)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Project:</span>
+                <span class="font-medium">${timeLog.project}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Status:</span>
+                <span class="font-medium">${statusText}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+              </svg>
+              Employee Information
+            </h3>
+            <div class="space-y-2 text-sm">
+              <div>
+                <span class="font-semibold text-gray-900">${user?.fullName || 'Employee Name'}</span>
+                <p class="text-gray-600 capitalize">${user?.jobTitle || 'Employee'}</p>
+              </div>
+              <div class="flex items-center text-gray-600">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                <span>${user?.email || 'email@example.com'}</span>
+              </div>
+              <div class="flex items-center text-gray-600">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                </svg>
+                <span>${user?.phoneNumber || 'Phone Number'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Task Description -->
+        <div class="bg-blue-50 p-4 rounded-lg mb-6">
+          <h3 class="font-semibold text-gray-900 mb-2">Task Description</h3>
+          <div class="text-gray-700 prose prose-sm max-w-none">
+            ${timeLog.description.replace(/<[^>]*>/g, '')}
+          </div>
+        </div>
+
+        <!-- Time Summary -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+          <h3 class="font-semibold text-gray-900 mb-3">Time Summary</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-3 rounded border">
+              <div class="text-sm text-gray-600">Duration</div>
+              <div class="text-lg font-bold text-gray-900">${formatDurationString(timeLog.duration)}</div>
+            </div>
+            <div class="bg-white p-3 rounded border">
+              <div class="text-sm text-gray-600">Project</div>
+              <div class="text-lg font-bold text-gray-900">${timeLog.project}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-xs border-t pt-4">
+          <p>This time log was generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+          <p class="mt-1">For any questions, please contact ${user?.email || 'support@company.com'}</p>
+        </div>
+      </div>
+    `
+  }
+
+  // Generate HTML for time logs summary
+  const generateTimeLogsSummaryHtml = () => {
+    const user = getAuthUser()
+    const totalDuration = filteredTimeLogs.reduce((sum, log) => sum + Number(log.duration), 0)
+    const activeLogs = filteredTimeLogs.filter(log => log.status === 'active')
+    const draftLogs = filteredTimeLogs.filter(log => log.status === 'draft')
+    const uniqueProjects = [...new Set(filteredTimeLogs.map(log => log.project))]
+
+    return `
+      <div class="bg-white p-8 max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="border-b-2 border-gray-300 pb-6 mb-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 mb-2">TIME LOGS SUMMARY</h1>
+              <p class="text-lg text-gray-600">Generated on ${new Date().toLocaleDateString()}</p>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-600">
+                <p>Total Time Logs: ${filteredTimeLogs.length}</p>
+                <p>Total Duration: ${formatDurationString(String(totalDuration))}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Info -->
+        <div class="bg-primary text-white p-6 rounded-lg mb-6">
+          <h2 class="text-xl font-bold mb-1">${user?.company?.name || 'Company Name'}</h2>
+          <p class="text-blue-100 text-sm">${user?.company?.sector || 'Sector'}</p>
+        </div>
+
+        <!-- Employee Info -->
+        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+          <h3 class="font-semibold text-gray-900 mb-3">Employee Information</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-600">Name:</span>
+              <p class="font-medium">${user?.fullName || 'Employee Name'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Email:</span>
+              <p class="font-medium">${user?.email || 'email@example.com'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Phone:</span>
+              <p class="font-medium">${user?.phoneNumber || 'Phone Number'}</p>
+            </div>
+            <div>
+              <span class="text-gray-600">Position:</span>
+              <p class="font-medium capitalize">${user?.jobTitle || 'Employee'}</p>
+            </div>
+          </div>
+        </div>
+
+       
+
+        <!-- Time Logs Table -->
+        <div class="bg-white border border-gray-200 rounded-lg mb-6">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-900">Time Log Details</h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Task Title</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Project</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Duration</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                ${filteredTimeLogs.map(log => `
+                  <tr>
+                    <td class="px-4 py-3 text-gray-900">
+                      ${formatDate(log.createdAt)}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="font-medium text-gray-900">${log.title}</span>
+                      <p class="text-xs text-gray-500 mt-1">
+                        ${log.description.replace(/<[^>]*>/g, '').substring(0, 100)}
+                        ${log.description.length > 100 ? '...' : ''}
+                      </p>
+                    </td>
+                    <td class="px-4 py-3 text-gray-900">
+                      ${log.project}
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-900">
+                      ${formatDurationString(log.duration)}
+                    </td>
+                    <td class="">
+                        ${log.status.charAt(0).toUpperCase() + log.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+       
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-xs border-t pt-4">
+          <p>This summary was generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+        </div>
+      </div>
+    `
+  }
 
   const handleViewDetails = (timeLog: TimeLog) => {
     setSelectedTimeLog(timeLog)
@@ -512,9 +782,24 @@ export default function TimeLogsPage() {
             </span>
 
             <span className="flex items-center space-x-3">
-              <Button variant="outline" size="sm" className="h-9">
-                <Download className="mr-2 h-4 w-4" />
-                Export
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={generateFilteredTimeLogsPdf}
+                disabled={isGeneratingPdf || filteredTimeLogs.length === 0}
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export ({filteredTimeLogs.length})
+                  </>
+                )}
               </Button>
               {timeLogs.some(log => log.status === 'draft') && (
                 <Button
@@ -606,6 +891,19 @@ export default function TimeLogsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => generateTimeLogPdf(log)}
+                          disabled={isGeneratingPdf}
+                          aria-label="Download PDF"
+                        >
+                          {isGeneratingPdf ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
                         {log.status === "draft" && (
                           <>
                             <Button
@@ -654,6 +952,29 @@ export default function TimeLogsPage() {
         attachments={selectedTimeLog ? getMockAttachments(selectedTimeLog) : []}
         urls={[]}
       />
+
+      {/* PDF Generation Button for Selected Time Log */}
+      {selectedTimeLog && isDetailDialogOpen && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Button
+            onClick={() => generateTimeLogPdf(selectedTimeLog)}
+            disabled={isGeneratingPdf}
+            className="shadow-lg"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
