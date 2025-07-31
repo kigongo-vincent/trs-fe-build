@@ -209,6 +209,63 @@ export async function fetchEmployeeTimeLogs(): Promise<TimeLog[]> {
   }
 }
 
+// Fetch employee time logs with search
+export async function fetchEmployeeTimeLogsWithSearch(
+  query?: string
+): Promise<TimeLog[]> {
+  try {
+    let url = "/consultants/time-logs/";
+    if (query && query.trim()) {
+      url += `?search=${encodeURIComponent(query.trim())}`;
+    }
+    const result: TimeLogsResponse = await getRequest(url);
+    return result.data;
+  } catch (error) {
+    console.error("Error fetching employee time logs with search:", error);
+    throw error;
+  }
+}
+
+// Fetch employee time logs with filters
+export async function fetchEmployeeTimeLogsWithFilters(filters: {
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  project?: string;
+}): Promise<TimeLog[]> {
+  try {
+    let url = "/consultants/time-logs/";
+    const params = new URLSearchParams();
+
+    if (filters.search && filters.search.trim()) {
+      params.append("search", filters.search.trim());
+    }
+    if (filters.startDate) {
+      params.append("startDate", filters.startDate);
+    }
+    if (filters.endDate) {
+      params.append("endDate", filters.endDate);
+    }
+    if (filters.status && filters.status !== "all") {
+      params.append("status", filters.status);
+    }
+    if (filters.project && filters.project !== "all") {
+      params.append("project", filters.project);
+    }
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const result: TimeLogsResponse = await getRequest(url);
+    return result.data;
+  } catch (error) {
+    console.error("Error fetching employee time logs with filters:", error);
+    throw error;
+  }
+}
+
 // Fetch employee time logs by date range
 export async function fetchEmployeeTimeLogsByRange(
   startDate: string,
