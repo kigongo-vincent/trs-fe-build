@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState, useMemo } from "react"
-import { fetchEmployeeTimeLogs, formatDurationString, formatDate, type TimeLog } from "@/services/employee"
+import { fetchEmployeeTimeLogs, fetchEmployeeTimeLogsWithFilters, formatDurationString, formatDate, type TimeLog } from "@/services/employee"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
@@ -61,6 +61,29 @@ export default function TimeLogsPage() {
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [isFiltering, setIsFiltering] = useState(false)
+
+  // Fetch time logs with filters
+  const fetchTimeLogsWithFilters = async () => {
+    setIsFiltering(true)
+    try {
+      setError(null)
+      const filters = {
+        search: searchTerm,
+        startDate,
+        endDate,
+        status: statusFilter,
+        project: projectFilter
+      }
+      const data = await fetchEmployeeTimeLogsWithFilters(filters)
+      setTimeLogs(data)
+    } catch (err) {
+      console.error("Error fetching time logs with filters:", err)
+      setError("Failed to fetch time logs. Please try again.")
+    } finally {
+      setIsFiltering(false)
+    }
+  }
 
   // Fetch time logs data
   useEffect(() => {
@@ -80,6 +103,32 @@ export default function TimeLogsPage() {
 
     loadTimeLogs()
   }, [])
+
+  // Apply filters function
+  const handleApplyFilters = async () => {
+    await fetchTimeLogsWithFilters()
+  }
+
+  // Reset filters function
+  const handleResetFilters = async () => {
+    setSearchTerm("")
+    setStatusFilter("all")
+    setProjectFilter("all")
+    setStartDate("")
+    setEndDate("")
+
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await fetchEmployeeTimeLogs()
+      setTimeLogs(data)
+    } catch (err) {
+      console.error("Error loading time logs:", err)
+      setError("Failed to load time logs. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     const fetchProjectsList = async () => {
@@ -138,27 +187,14 @@ export default function TimeLogsPage() {
     })
   }, [timeLogs])
 
-  // Get unique projects for filter
+  // Get unique projects for filter - this will be populated from API
   const uniqueProjects = useMemo(() => {
     const projects = [...new Set(timeLogs.map((log) => log.project))]
     return projects.filter(Boolean)
   }, [timeLogs])
 
-  // Filter time logs based on search and filters
-  const filteredTimeLogs = useMemo(() => {
-    return timeLogs.filter((log) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.project.toLowerCase().includes(searchTerm.toLowerCase())
-
-      const matchesStatus = statusFilter === "all" || log.status === statusFilter
-      const matchesProject = projectFilter === "all" || log.project === projectFilter
-
-      return matchesSearch && matchesStatus && matchesProject
-    })
-  }, [timeLogs, searchTerm, statusFilter, projectFilter])
+  // No client-side filtering needed - all filtering is now handled by the API
+  const filteredTimeLogs = timeLogs
 
   // Generate PDF for all filtered time logs
   const generateFilteredTimeLogsPdf = async () => {
@@ -710,20 +746,58 @@ export default function TimeLogsPage() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {/* Search Row */}
+      <div className="flex items-center gap-2">
         <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input
-            type="text"
-            placeholder="Search logs..."
-            className="h-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
+          <div className="relative flex-1">
+            <Input
+              type="text"
+              placeholder="Search logs..."
+              className="h-9 pr-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleApplyFilters()
+                }
+              }}
+            />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1 h-7 w-6 p-0"
+                onClick={() => setSearchTerm("")}
+                disabled={isFiltering}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-2 lg:px-3"
+            onClick={handleApplyFilters}
+            disabled={isFiltering}
+          >
+            {isFiltering ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4" />
+                <span className="sr-only md:not-sr-only md:ml-2">Search</span>
+              </>
+            )}
           </Button>
         </div>
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-row items-center gap-2">
           <div className="flex items-center gap-2">
             <label htmlFor="start-date" className="text-sm text-muted-foreground">Start:</label>
@@ -766,11 +840,36 @@ export default function TimeLogsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="h-9">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={handleApplyFilters}
+            disabled={isFiltering}
+          >
+            {isFiltering ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Applying...
+              </>
+            ) : (
+              <>
+                <Filter className="mr-2 h-4 w-4" />
+                Apply Filters
+              </>
+            )}
           </Button>
-
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={handleResetFilters}
+            disabled={isFiltering}
+          >
+            Reset
+          </Button>
         </div>
       </div>
 
@@ -816,7 +915,17 @@ export default function TimeLogsPage() {
             </span>
           </CardTitle>
           <CardDescription>
-            Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
+            {searchTerm || statusFilter !== 'all' || projectFilter !== 'all' || startDate || endDate ? (
+              <>
+                Showing {filteredTimeLogs.length} filtered time logs
+                {searchTerm && ` for "${searchTerm}"`}
+                {(startDate || endDate) && ` (${startDate || 'any'} to ${endDate || 'any'})`}
+              </>
+            ) : (
+              <>
+                Showing {filteredTimeLogs.length} time logs
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -891,19 +1000,6 @@ export default function TimeLogsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => generateTimeLogPdf(log)}
-                          disabled={isGeneratingPdf}
-                          aria-label="Download PDF"
-                        >
-                          {isGeneratingPdf ? (
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          ) : (
-                            <Download className="h-4 w-4" />
-                          )}
-                        </Button>
                         {log.status === "draft" && (
                           <>
                             <Button
@@ -953,28 +1049,7 @@ export default function TimeLogsPage() {
         urls={[]}
       />
 
-      {/* PDF Generation Button for Selected Time Log */}
-      {selectedTimeLog && isDetailDialogOpen && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Button
-            onClick={() => generateTimeLogPdf(selectedTimeLog)}
-            disabled={isGeneratingPdf}
-            className="shadow-lg"
-          >
-            {isGeneratingPdf ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Generating PDF...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
-              </>
-            )}
-          </Button>
-        </div>
-      )}
+
 
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
