@@ -225,6 +225,11 @@ export async function getCompanyInvoicesSummary(companyID: string) {
   return getRequest(`/company/invoices/summary/${companyID}`);
 }
 
+// Fetch paid invoices by month for a company
+export async function getCompanyPaidInvoicesByMonth(companyID: string) {
+  return getRequest(`/company/invoices/paid-by-month/${companyID}`);
+}
+
 export function getImage(path: string): string {
   if (!path) return "";
   if (path.startsWith("http")) return path;
