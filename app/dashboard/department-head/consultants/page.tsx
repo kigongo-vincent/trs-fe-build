@@ -15,9 +15,7 @@ import { ConsultantsByDepartmentChart } from "@/components/consultants-by-depart
 import Link from "next/link"
 import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 import {
-  type Consultant,
   type DepartmentSummary,
-  getAllConsultants,
   getConsultantsSummary,
   getConsultantDashboard,
   formatMinutesToHours,
@@ -27,6 +25,10 @@ import {
   updateConsultantStatus,
   getConsultantLogsByRange,
 } from "@/services/consultants"
+import {
+  type DepartmentHeadConsultant,
+  getDepartmentHeadConsultants
+} from "@/services/departmentHead"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
 import { getAuthData, getUserRole } from "@/services/auth"
@@ -39,10 +41,16 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 
 export default function ConsultantsPage() {
   // All useState hooks
-  const [consultants, setConsultants] = useState<Consultant[]>([])
+  const [consultants, setConsultants] = useState<DepartmentHeadConsultant[]>([])
   const [departmentSummary, setDepartmentSummary] = useState<DepartmentSummary[]>([])
-  const [filteredConsultants, setFilteredConsultants] = useState<Consultant[]>([])
+  const [filteredConsultants, setFilteredConsultants] = useState<DepartmentHeadConsultant[]>([])
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1
+  })
   const [chartLoading, setChartLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
@@ -125,31 +133,35 @@ export default function ConsultantsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (!companyId) {
-          console.error("Company ID not found in auth data")
-          return
+        setLoading(true)
+
+        // Fetch consultants using department head service
+        const response = await getDepartmentHeadConsultants(pagination.page, pagination.limit)
+
+        if (response.status === 200) {
+          setConsultants(response.data.consultants)
+          setFilteredConsultants(response.data.consultants)
+          setPagination(response.data.pagination)
         }
-        // Fetch both consultants and department summary in parallel
-        const [consultantsResponse, summaryResponse] = await Promise.all([
-          getAllConsultants(companyId),
-          getConsultantsSummary(companyId),
-        ])
-        if (consultantsResponse.status === 200) {
-          setConsultants(consultantsResponse.data)
-          setFilteredConsultants(consultantsResponse.data)
-        }
-        if (summaryResponse.status === 200) {
-          setDepartmentSummary(summaryResponse.data)
+
+        // Fetch department summary (if still needed)
+        const authData = getAuthData()
+        if (authData?.companyId) {
+          const summaryResponse = await getConsultantsSummary(authData.companyId)
+          if (summaryResponse.status === 200) {
+            setDepartmentSummary(summaryResponse.data)
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch data:", error)
+        console.error("Error fetching data:", error)
+        toast.error("Failed to load consultants data")
       } finally {
         setLoading(false)
-        setChartLoading(false)
       }
     }
+
     fetchData()
-  }, [companyId])
+  }, [pagination.page, pagination.limit])
 
   // Fetch logs by range only when confirmed date range or selectedConsultant changes
   useEffect(() => {
@@ -309,74 +321,6 @@ export default function ConsultantsPage() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const newHires = consultants.filter((c) => new Date(c.createdAt) >= thirtyDaysAgo).length
 
-  // Chart data for modal
-  const chartData =
-    dashboardData?.weekDistribution.map((item) => ({
-      day: getDayName(item.day),
-      hours: item.hours / 60, // Convert minutes to hours for display
-      fullDay: getDayName(item.day),
-    })) || []
-
-  const todayTrend = dashboardData ? getTrendIndicator(dashboardData.hoursToday.percentage) : null
-  const weekTrend = dashboardData ? getTrendIndicator(dashboardData.hoursWeek.percentage) : null
-  const monthTrend = dashboardData ? getTrendIndicator(dashboardData.hoursMonth.percentage) : null
-  const lastMonthTrend = dashboardData?.hoursLastMonth ? getTrendIndicator(dashboardData.hoursLastMonth.percentage) : null
-
-  // Default values for missing data
-  const lastMonthHours = dashboardData?.hoursLastMonth?.count ?? 0
-  const lastMonthMinutes = dashboardData?.hoursLastMonth?.count ?? 0
-
-  // Handle edit consultant
-  const handleEditConsultant = (consultant: Consultant) => {
-    setEditConsultant(consultant)
-    setIsEditModalOpen(true)
-  }
-
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false)
-    setEditConsultant(null)
-  }
-
-  // Open confirmation dialog for status change
-  const handleStatusDialog = (consultant: Consultant, action: 'activate' | 'deactivate' | 'on-leave') => {
-    setStatusAction(action)
-    setStatusTargetConsultant(consultant)
-    setStatusDialogOpen(true)
-  }
-
-  // Confirm status change handler
-  const handleConfirmStatusChange = async () => {
-    if (!statusTargetConsultant || !statusAction) return
-    let newStatus: "active" | "inactive" | "on-leave" = "active"
-    if (statusAction === 'activate') newStatus = 'active'
-    else if (statusAction === 'deactivate') newStatus = 'inactive'
-    else if (statusAction === 'on-leave') newStatus = 'on-leave'
-    setStatusLoading(true)
-    try {
-      if (!companyId) throw new Error('Company ID not found')
-      await updateConsultantStatus(companyId, statusTargetConsultant.id, newStatus)
-      // Refetch consultants after status change
-      const consultantsResponse = await getAllConsultants(companyId)
-      if (consultantsResponse.status === 200) {
-        setConsultants(consultantsResponse.data)
-        setFilteredConsultants(consultantsResponse.data)
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to update consultant status')
-    } finally {
-      setStatusLoading(false)
-      setStatusDialogOpen(false)
-      setStatusTargetConsultant(null)
-      setStatusAction(null)
-    }
-  }
-
-  // Cancel status change
-  const handleCancelStatusChange = () => {
-    setStatusDialogOpen(false)
-    setStatusTargetConsultant(null)
-    setStatusAction(null)
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -461,38 +405,10 @@ export default function ConsultantsPage() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex items-center h-12 w-[260px] border border-gray-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-100">
-          <span className="absolute left-3 text-gray-400">
-            <SearchIcon className="h-6 w-6" />
-          </span>
-          <Input
-            type="text"
-            placeholder="Search consultants..."
-            className="pl-12 h-12 w-full border-none bg-transparent text-lg placeholder:text-gray-400 focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-row items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="on-leave">On Leave</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>All Consultants</CardTitle>
-          <CardDescription>Manage your company consultants</CardDescription>
+          <CardDescription>Manage your department consultants</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -516,7 +432,6 @@ export default function ConsultantsPage() {
                   <TableHead>Position</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -586,13 +501,6 @@ export default function ConsultantsPage() {
                               : consultant.status.charAt(0).toUpperCase() + consultant.status.slice(1)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewConsultant(consultant)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     )
                   })
@@ -603,771 +511,6 @@ export default function ConsultantsPage() {
         </CardContent>
       </Card>
 
-      {/* Consultant Details Modal */}
-      {selectedConsultant && isConsultantModalOpen && (
-        <Dialog open={true} onOpenChange={open => { if (!open) handleCloseModal(); }}>
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
-            {/* Fullscreen Modal Content */}
-            <div
-              className="relative w-screen h-screen bg-background flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
-              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
-            >
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
-                <DialogHeader className="flex flex-row items-center gap-4 w-full">
-                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                    {/* <User className="h-6 w-6" /> */}
-                    {selectedConsultant?.fullName || "Consultant"}
-                  </DialogTitle>
-                </DialogHeader>
-                <button
-                  onClick={handleCloseModal}
-                  className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-                >
-                  <span className="sr-only">Close</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              {/* Sidebar + Main Content Layout */}
-              <div className="flex flex-1 w-full h-[calc(100vh-80px)] px-0">
-                {/* Sidebar Navigation */}
-                <div className="w-56 min-w-[180px] border-r bg-muted/30 flex flex-col py-8 gap-2 text-base">
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'recent' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('recent')}>Recent Activity</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('bank')}>Bank Details</button>
-                </div>
-                {/* Main Content - only this is scrollable */}
-                <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full pb-0">
-                  {modalSection === 'overview' && (
-                    <div className="flex flex-col gap-8">
-                      {/* Hours Overview */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-primary">Hours Overview</CardTitle>
-                          <CardDescription>Time tracked across different periods</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-                            {/* Today */}
-                            <Card>
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Today</CardTitle>
-                                {todayTrend && (
-                                  <div className={`flex items-center gap-1 ${todayTrend.color}`}>
-                                    {todayTrend.icon === "up" && <TrendingUp className="h-4 w-4" />}
-                                    {todayTrend.icon === "down" && <TrendingDown className="h-4 w-4" />}
-                                    {todayTrend.icon === "neutral" && <Minus className="h-4 w-4" />}
-                                    <span className="text-xs">{todayTrend.text}</span>
-                                  </div>
-                                )}
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-primary">
-                                  {formatMinutesToHours(dashboardData?.hoursToday.count || 0)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{dashboardData?.hoursToday.count || 0} minutes</p>
-                              </CardContent>
-                            </Card>
-                            {/* This Week */}
-                            <Card>
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">This Week</CardTitle>
-                                {weekTrend && (
-                                  <div className={`flex items-center gap-1 ${weekTrend.color}`}>
-                                    {weekTrend.icon === "up" && <TrendingUp className="h-4 w-4" />}
-                                    {weekTrend.icon === "down" && <TrendingDown className="h-4 w-4" />}
-                                    {weekTrend.icon === "neutral" && <Minus className="h-4 w-4" />}
-                                    <span className="text-xs">{weekTrend.text}</span>
-                                  </div>
-                                )}
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-primary">
-                                  {formatMinutesToHours(dashboardData?.hoursWeek.count || 0)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{dashboardData?.hoursWeek.count || 0} minutes</p>
-                              </CardContent>
-                            </Card>
-                            {/* This Month */}
-                            <Card>
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                                {monthTrend && (
-                                  <div className={`flex items-center gap-1 ${monthTrend.color}`}>
-                                    {monthTrend.icon === "up" && <TrendingUp className="h-4 w-4" />}
-                                    {monthTrend.icon === "down" && <TrendingDown className="h-4 w-4" />}
-                                    {monthTrend.icon === "neutral" && <Minus className="h-4 w-4" />}
-                                    <span className="text-xs">{monthTrend.text}</span>
-                                  </div>
-                                )}
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-primary">
-                                  {formatMinutesToHours(dashboardData?.hoursMonth.count || 0)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{dashboardData?.hoursMonth.count || 0} minutes</p>
-                              </CardContent>
-                            </Card>
-                            {/* Last Month */}
-                            <Card>
-                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Last Month</CardTitle>
-                                {lastMonthTrend && (
-                                  <div className={`flex items-center gap-1 ${lastMonthTrend.color}`}>
-                                    {lastMonthTrend.icon === "up" && <TrendingUp className="h-4 w-4" />}
-                                    {lastMonthTrend.icon === "down" && <TrendingDown className="h-4 w-4" />}
-                                    {lastMonthTrend.icon === "neutral" && <Minus className="h-4 w-4" />}
-                                    <span className="text-xs">{lastMonthTrend.text}</span>
-                                  </div>
-                                )}
-                              </CardHeader>
-                              <CardContent>
-                                <div className="text-2xl font-bold text-primary">
-                                  {formatMinutesToHours(dashboardData?.hoursLastMonth?.count || 0)}
-                                </div>
-                                <p className="text-xs text-muted-foreground">{dashboardData?.hoursLastMonth?.count || 0} minutes</p>
-                              </CardContent>
-                            </Card>
-                          </div>
-                          {/* Week Distribution Chart */}
-                          <div className="mt-6">
-                            <h3 className="text-lg font-semibold mb-4">Week Distribution</h3>
-                            {chartData.length > 0 ? (
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={chartData}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="day" angle={-45} textAnchor="end" height={80} />
-                                  <YAxis label={{ value: "Hours", angle: -90, position: "insideLeft" }} />
-                                  <Tooltip
-                                    formatter={(value: number) => [`${value.toFixed(1)}h`, "Hours"]}
-                                    labelFormatter={(label) => `${label}`}
-                                  />
-                                  <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            ) : (
-                              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                                <div className="text-center">
-                                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                  <p>No hours data available</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {modalSection === 'recent' && (
-                    <div className="flex flex-col gap-8">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-primary">Recent Activity</CardTitle>
-                          <CardDescription>Latest time logs and tasks (This week)</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          {recentLogsLoading ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Task Title</TableHead>
-                                  <TableHead>Description</TableHead>
-                                  <TableHead>Project</TableHead>
-                                  <TableHead>Created Date</TableHead>
-                                  <TableHead>Updated Date</TableHead>
-                                  <TableHead>Duration</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {[...Array(5)].map((_, i) => (
-                                  <TableRow key={i}>
-                                    {[...Array(7)].map((_, j) => (
-                                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                                    ))}
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          ) : recentLogsError ? (
-                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                              <Clock className="h-10 w-10 mb-3 opacity-40" />
-                              <div className="text-lg font-semibold mb-1">{recentLogsError}</div>
-                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
-                            </div>
-                          ) : recentLogs.length > 0 ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Task Title</TableHead>
-                                  <TableHead>Description</TableHead>
-                                  <TableHead>Project</TableHead>
-                                  <TableHead>Created Date</TableHead>
-                                  <TableHead>Updated Date</TableHead>
-                                  <TableHead>Duration</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {recentLogs.map((log) => (
-                                  <TableRow key={log.id}>
-                                    <TableCell className="font-medium">{log.title}</TableCell>
-                                    <TableCell>
-                                      <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
-                                        <span dangerouslySetInnerHTML={{ __html: log.description || '' }} />
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant="outline">{log.project}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : '-'}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        {log.updatedAt ? new Date(log.updatedAt).toLocaleDateString() : '-'}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
-                                        {formatDurationString(log.duration)}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          log.status === "active"
-                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                            : log.status === "completed"
-                                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                              : "bg-gray-50 text-gray-700 border-gray-200"
-                                        }
-                                      >
-                                        {log.status}
-                                      </Badge>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                              <Clock className="h-10 w-10 mb-3 opacity-40" />
-                              <div className="text-lg font-semibold mb-1">No recent activity</div>
-                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {modalSection === 'logs' && (
-                    <div className="flex flex-col gap-8">
-                      <Card>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-primary">Time Logs by Date Range</CardTitle>
-                              <CardDescription>View time logs within a specific time period</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                {/* <Filter className="h-4 w-4 text-muted-foreground" /> */}
-                                <div className="flex items-center gap-2">
-                                  <div className="flex flex-col gap-1">
-                                    <label htmlFor="start-date" className="text-xs text-muted-foreground">
-                                      Start Date
-                                    </label>
-                                    <Input
-                                      id="start-date"
-                                      type="date"
-                                      value={pendingStartDate}
-                                      onChange={(e) => setPendingStartDate(e.target.value)}
-                                      className="w-40"
-                                    />
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <label htmlFor="end-date" className="text-xs text-muted-foreground">
-                                      End Date
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                      <Input
-                                        id="end-date"
-                                        type="date"
-                                        value={pendingEndDate}
-                                        onChange={(e) => setPendingEndDate(e.target.value)}
-                                        className="w-40"
-                                      />
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        className="ml-2"
-                                        onClick={() => {
-                                          setConfirmedStartDate(pendingStartDate);
-                                          setConfirmedEndDate(pendingEndDate);
-                                        }}
-                                        disabled={tasksLoading}
-                                      >
-                                        {tasksLoading ? (
-                                          <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>Loading...</span>
-                                        ) : (
-                                          "Confirm"
-                                        )}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <label className="text-xs text-muted-foreground">
-                                      Quick Actions
-                                    </label>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={setCurrentDate}
-                                      className="w-40"
-                                      disabled={tasksLoading}
-                                    >
-                                      {tasksLoading ? (
-                                        <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></span>Loading...</span>
-                                      ) : (
-                                        "Today"
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {tasksLoading ? (
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-center h-32">
-                                <div className="text-center">
-                                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                                  <p className="text-sm text-muted-foreground">Loading time logs...</p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : tasksError ? (
-                            <div className="flex items-center justify-center h-32 text-muted-foreground">
-                              <div className="text-center">
-                                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-red-600 mb-2">{tasksError}</p>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setConfirmedStartDate(pendingStartDate);
-                                    setConfirmedEndDate(pendingEndDate);
-                                  }}
-                                >
-                                  Try Again
-                                </Button>
-                              </div>
-                            </div>
-                          ) : filteredTasks.length > 0 ? (
-                            <>
-                              {/* Summary Card */}
-                              <Card className="mb-6">
-                                <CardContent className="pt-6">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="text-center p-4 rounded-lg bg-muted/50">
-                                      <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                                      <p className="text-2xl font-bold">
-                                        {totalHours}h {remainingMinutes > 0 ? `${remainingMinutes}m` : ''}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">Total Hours</p>
-                                    </div>
-                                    <div className="text-center p-4 rounded-lg bg-muted/50">
-                                      <div className="h-8 w-8 mx-auto mb-2 text-muted-foreground flex items-center justify-center">
-                                        <span className="text-xl">📊</span>
-                                      </div>
-                                      <p className="text-2xl font-bold">{filteredTasks.length}</p>
-                                      <p className="text-sm text-muted-foreground">Time Logs</p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Task Title</TableHead>
-                                    <TableHead>Description</TableHead>
-                                    <TableHead>Project</TableHead>
-                                    <TableHead>Created Date</TableHead>
-                                    <TableHead>Updated Date</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                    <TableHead>Status</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {tasksLoading ? (
-                                    // Show 5 skeleton rows, 7 columns each
-                                    [...Array(5)].map((_, i) => (
-                                      <TableRow key={i}>
-                                        {[...Array(7)].map((_, j) => (
-                                          <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                                        ))}
-                                      </TableRow>
-                                    ))
-                                  ) : (
-                                    filteredTasks.map((timeLog) => (
-                                      <TableRow key={timeLog.id}>
-                                        <TableCell className="font-medium">{timeLog.title}</TableCell>
-                                        <TableCell>
-                                          <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
-                                            <span dangerouslySetInnerHTML={{ __html: timeLog.description || '' }} />
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <Badge variant="outline">{timeLog.project}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            {timeLog.createdAt ? new Date(timeLog.createdAt).toLocaleDateString() : '-'}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                                            {timeLog.updatedAt ? new Date(timeLog.updatedAt).toLocaleDateString() : '-'}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <div className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-muted-foreground" />
-                                            {formatDurationString(timeLog.duration)}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>
-                                          <Badge
-                                            variant="outline"
-                                            className={
-                                              timeLog.status === "active"
-                                                ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                                : timeLog.status === "completed"
-                                                  ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                                  : "bg-gray-50 text-gray-700 border-gray-200"
-                                            }
-                                          >
-                                            {timeLog.status}
-                                          </Badge>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </>
-                          ) : (
-                            <div className="flex items-center justify-center h-32 text-muted-foreground">
-                              <div className="text-center">
-                                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p>No time logs found in the selected date range</p>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {modalSection === 'personal' && (
-                    <div className="flex flex-col gap-8">
-                      {/* Profile Section - All Personal Info Merged */}
-                      <Card className="w-full">
-                        <CardContent className="pt-8 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
-                          <Avatar className="h-28 w-28 mx-auto md:mx-0">
-                            <AvatarImage
-                              src={selectedConsultant?.profileImage || "/placeholder.svg"}
-                              alt={selectedConsultant?.fullName || "User"}
-                            />
-                            <AvatarFallback>
-                              {(selectedConsultant?.fullName || "U")
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 flex flex-col gap-2">
-                            <h2 className="text-2xl font-bold">{selectedConsultant?.fullName || '-'}</h2>
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <Badge>{selectedConsultant?.department?.name || "-"}</Badge>
-                              <span className="text-base text-muted-foreground">{selectedConsultant?.jobTitle || selectedConsultant?.role?.name || "-"}</span>
-                            </div>
-                            <div className="flex flex-wrap gap-4 mt-2">
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">{selectedConsultant?.email || "-"}</span>
-                              </div>
-                              <div><div className="text-muted-foreground text-sm flex items-center space-x-2">
-                                <PhoneIcon size={14} className="mr-2" />
-                                +{(selectedConsultant as any)?.phoneNumber || '-'}</div></div>
-
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">{selectedConsultant?.role?.name || "-"}</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-4 mt-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">Status:</span>
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    selectedConsultant?.status === "active"
-                                      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                      : selectedConsultant?.status === "inactive"
-                                        ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800"
-                                        : selectedConsultant?.status === "on-leave" || selectedConsultant?.status === ""
-                                          ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:text-primary-400 dark:border-primary-800"
-                                          : "bg-gray-50 text-gray-700 border-gray-200"
-                                  }
-                                >
-                                  {(selectedConsultant?.status === "on-leave" || selectedConsultant?.status === "")
-                                    ? "On Leave"
-                                    : selectedConsultant?.status || "-"}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center space-x-3 mx-4"><Label>Born: </Label><div className="text-muted-foreground text-sm">{(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString() : '-'}</div></div>
-                                <span className="text-sm text-muted-foreground">Joined:</span>
-                                <span className="text-sm">{selectedConsultant?.createdAt ? new Date(selectedConsultant.createdAt).toLocaleDateString() : "-"}</span>
-                              </div>
-                            </div>
-
-                            <div className="xl:col-span-2 flex items-center space-x-2 mt-2"><MapPin className="text-red-500" size={15} /><div className="text-muted-foreground text-sm whitespace-pre-line">{(selectedConsultant as any)?.address ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}` : '-'}</div></div>
-
-
-                            {/* IDs Section */}
-                            <div className="flex flex-col gap-2 mt-4">
-                              <Label>IDs</Label>
-                              <div className="space-y-2">
-                                {Array.isArray(selectedConsultant?.attachments) && selectedConsultant.attachments.length > 0 ? (
-  selectedConsultant.attachments.map((att: { url: string; name: string }, idx: number) => (
-    <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-      <div className="flex-shrink-0">
-        <FileText className="h-5 w-5 text-red-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
-      </div>
-      <a
-        href={att.url}
-        download={att.name}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <FileText className="h-4 w-4" />
-          View
-        </Button>
-      </a>
-      <a
-        href={att.url}
-        download={att.name}
-        rel="noopener noreferrer"
-      >
-        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-          <Download className="h-4 w-4" />
-          Download
-        </Button>
-      </a>
-    </div>
-  ))
-) : (
-  <div className="text-muted-foreground text-sm">No attachments found.</div>
-)}
-                              </div>
-                            </div>
-                            {/* End IDs Section */}
-                            <div className="flex flex-col gap-2 mt-4">
-                              {/* Gross Pay with visual hierarchy (no outside label) */}
-                              <div className="w-full">
-                                <Card className="bg-primary/10 border-primary/20 shadow-none mb-2">
-                                  <CardContent className="py-4 flex flex-col items-center">
-                                    <span className="text-3xl font-extrabold text-primary">
-                                      {(() => {
-                                        let grossPay = (selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay;
-                                        let currency = (selectedConsultant as any)?.currency;
-                                        if (!currency) currency = 'USD';
-                                        if (!grossPay || isNaN(Number(grossPay))) return '-';
-                                        // Format with commas
-                                        const formattedGrossPay = Number(grossPay).toLocaleString();
-                                        return `${currency} ${formattedGrossPay}`;
-                                      })()}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground mt-1">Monthly Gross Pay</span>
-                                  </CardContent>
-                                </Card>
-                                <span className="text-xs text-muted-foreground block text-center mt-1">If no currency is set, USD is used by default.</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-2 mt-4">
-                              <Label>Office Days</Label>
-                              <div className="flex flex-row gap-2 flex-wrap">
-                                {(() => {
-                                  let days: string[] = [];
-                                  if (Array.isArray((selectedConsultant as any)?.days_to_come)) days = (selectedConsultant as any).days_to_come;
-                                  else if ((selectedConsultant as any)?.days_to_come) days = JSON.parse((selectedConsultant as any).days_to_come);
-                                  else if ((selectedConsultant as any)?.officeDays) days = (selectedConsultant as any).officeDays;
-                                  if (!days || days.length === 0) return <span className="text-muted-foreground">-</span>;
-                                  return days.map((day: string, idx: number) => (
-                                    <Card key={idx} className="px-3 py-1 bg-muted/50 shadow-none text-sm font-medium rounded-full">
-                                      <CardContent className="p-0 flex items-center justify-center">{day}</CardContent>
-                                    </Card>
-                                  ));
-                                })()}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {modalSection === 'nextOfKin' && (
-                    <div className="flex flex-col gap-8">
-                      <Card className="w-full">
-                        <CardHeader>
-                          <CardTitle className="text-primary">Next of Kin</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 pt-6 pb-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><Label>Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.name || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.name) || '-'}</div></div>
-                            <div><Label>Relationship</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.relationship || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.relationship) || '-'}</div></div>
-                            <div><Label>Phone</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.phoneNumber || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.phoneNumber) || '-'}</div></div>
-                            <div><Label>Email</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.nextOfKin?.email || ((selectedConsultant as any)?.next_of_kin && (selectedConsultant as any).next_of_kin.email) || '-'}</div></div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                  {modalSection === 'bank' && (
-                    <div className="flex flex-col gap-8">
-                      <Card className="w-full">
-                        <CardHeader>
-                          <CardTitle className="text-primary">Bank Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 pt-6 pb-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><Label>Account Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountName) || '-'}</div></div>
-                            <div><Label>Account Number</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.accountNumber || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.accountNumber) || '-'}</div></div>
-                            <div><Label>Bank Name</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.bankName || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.bankName) || '-'}</div></div>
-                            <div><Label>SWIFT Code</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.swiftCode || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.swiftCode) || '-'}</div></div>
-                            <div><Label>Branch</Label><div className="text-muted-foreground">{(selectedConsultant as any)?.bankDetails?.branch || ((selectedConsultant as any)?.bank_details && (selectedConsultant as any).bank_details.branch) || '-'}</div></div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </Dialog>
-      )}
-
-      {/* Consultant Edit Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={handleCloseEditModal}>
-        <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
-          <DialogTitle><VisuallyHidden>Edit Consultant</VisuallyHidden></DialogTitle>
-          <div className="sticky top-0 left-0 w-full bg-background border-b shadow z-20 px-8 py-6 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-2xl font-semibold">
-              <Edit className="h-5 w-5" />
-              Edit Consultant
-            </div>
-            <DialogClose asChild>
-              <button
-                type="button"
-                className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-                aria-label="Close"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </DialogClose>
-          </div>
-          <div className="flex-1 overflow-auto px-8 py-6 pb-0">
-            {editConsultant && (
-              <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={async () => {
-                setIsEditModalOpen(false);
-                setEditConsultant(null);
-                // Refetch consultants and department summary after update
-                if (companyId) {
-                  setLoading(true);
-                  setChartLoading(true);
-                  try {
-                    const [consultantsResponse, summaryResponse] = await Promise.all([
-                      getAllConsultants(companyId),
-                      getConsultantsSummary(companyId),
-                    ]);
-                    if (consultantsResponse.status === 200) {
-                      setConsultants(consultantsResponse.data);
-                      setFilteredConsultants(consultantsResponse.data);
-                    }
-                    if (summaryResponse.status === 200) {
-                      setDepartmentSummary(summaryResponse.data);
-                    }
-                  } catch (error) {
-                    console.error("Failed to refetch data after consultant update:", error);
-                  } finally {
-                    setLoading(false);
-                    setChartLoading(false);
-                  }
-                }
-              }} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Status Change Confirmation Dialog */}
-      <Dialog open={statusDialogOpen} onOpenChange={handleCancelStatusChange}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              {statusAction === 'activate' && 'Activate Consultant'}
-              {statusAction === 'deactivate' && 'Deactivate Consultant'}
-              {statusAction === 'on-leave' && 'Set Consultant On Leave'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {statusAction === 'activate' && `Are you sure you want to activate ${statusTargetConsultant?.fullName}?`}
-            {statusAction === 'deactivate' && `Are you sure you want to deactivate ${statusTargetConsultant?.fullName}?`}
-            {statusAction === 'on-leave' && `Are you sure you want to set ${statusTargetConsultant?.fullName} as On Leave?`}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleCancelStatusChange} disabled={statusLoading}>Cancel</Button>
-            <Button
-              variant={statusAction === 'deactivate' ? 'destructive' : 'default'}
-              onClick={handleConfirmStatusChange}
-              disabled={statusLoading}
-            >
-              {statusLoading ? (
-                <span className="flex items-center gap-2"><span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></span>Processing...</span>
-              ) : (
-                <>
-                  {statusAction === 'activate' && 'Activate'}
-                  {statusAction === 'deactivate' && 'Deactivate'}
-                  {statusAction === 'on-leave' && 'Set On Leave'}
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
