@@ -24,12 +24,33 @@ import { Textarea } from "@/components/ui/textarea"
 import jsPDF from "jspdf"
 import React from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { generatePdf, imageToBase64 } from "@/utils/GeneratePDF"
+import { Invoice } from "@/services/employee"
+import { User } from "@/services/departments"
 
 // Helper function for date formatting (top-level, shared)
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric'
   })
+}
+
+
+function getInvoiceDateRange(invoices: Invoice[]): string {
+
+  let startDate = new Date(invoices[0].createdAt);
+  let endDate = new Date(invoices[0].createdAt);
+  invoices.forEach((invoice) => {
+    const createdAt = new Date(invoice.createdAt);
+    if (createdAt < startDate) {
+      startDate = createdAt;
+    }
+    if (createdAt > endDate) {
+      endDate = createdAt;
+    }
+  });
+
+  return `${formatDate(startDate.toISOString())} - ${formatDate(endDate.toISOString())}`;
 }
 
 // Utility for PDF table rendering with page breaks
@@ -423,6 +444,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   // Modal state
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const authData = getAuthData()
 
   const fetchInvoicesWithRetry = async (retryAttempt = 0) => {
     setLoading(true)
@@ -605,55 +627,67 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   }
 
   // PDF download for all visible invoices
-  const handleAllInvoicesPDF = () => {
-    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
-    const margin = 32
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const title = 'Company Invoices'
-    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-    // Summations
-    let totalAmount = 0
-    let totalHours = 0
-    sortedInvoices.forEach(inv => {
-      totalAmount += Number(inv.amount) || 0
-      totalHours += Number(inv.totalHours) || 0
-    })
-    // Table headers and rows
-    const headers = ['Invoice #', 'Consultant', 'Period Start', 'Amount', 'Status', 'Hours']
-    const columnWidths = [100, 120, 80, 80, 100, 60]
-    const rows = sortedInvoices.map(inv => [
-      String(inv.invoiceNumber || inv.id),
-      inv.user?.fullName || '-',
-      typeof inv.startDate === 'string' ? formatDate(inv.startDate) : '-',
-      `${currency} ${(Number(inv.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      inv.status ? inv.status.toUpperCase() : '-',
-      String(inv.totalHours || '-')
-    ])
-    // Title
-    doc.setFontSize(18)
-    doc.text(title, margin, margin)
-    doc.setFontSize(10)
-    doc.setTextColor(120)
-    doc.text(`Generated: ${dateStr}`, margin, margin + 16)
-    doc.setTextColor(30)
-    doc.setFontSize(11)
-    // Table
-    let y = margin + 32
-    y = renderTableWithPageBreaks(doc, headers, rows, y, { columnWidths, marginLeft: margin, marginRight: margin })
-    // Summations
-    y += 16
-    doc.setFont('helvetica', 'bold')
-    doc.text('Total Amount:', pageWidth - margin - 160, y)
-    doc.text(`${currency} ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 60, y, { align: 'right' })
-    y += 18
-    doc.text('Total Hours:', pageWidth - margin - 160, y)
-    doc.text(`${totalHours}`, pageWidth - margin - 60, y, { align: 'right' })
-    doc.setFont('helvetica', 'normal')
-    y += 32
-    doc.setFontSize(10)
-    doc.setTextColor(120)
-    doc.text('Thank you for your business!', margin, y)
-    doc.save(`Company_Invoices_${dateStr.replace(/\s+/g, '_')}.pdf`)
+  const handleAllInvoicesPDF = async () => {
+
+    try {
+      // Table headers
+      const headers = [
+        'Invoice Number',
+        'Email',
+        'Status',
+        'Amount',
+      ];
+      // Build table rows from filteredInvoices
+      const rows = filteredInvoices.map(inv => [
+        inv.invoiceNumber || inv.id || '-',
+        inv.user?.email || '-',
+        inv.status ? inv.status.charAt(0).toUpperCase() + inv.status.slice(1) : '-',
+        (inv.amount != null && !isNaN(Number(inv.amount)))
+          ? `${currency} ${Number(inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : 'N/A',
+      ]);
+
+
+      let logo = authData?.user?.company?.logo;
+      let logoBase64 = '';
+      if (logo) {
+        try {
+          logoBase64 = await imageToBase64(logo);
+        } catch (e) {
+          logoBase64 = '';
+        }
+      }
+
+      // Build HTML table
+      const tableHtml = `
+      ${logoBase64 ? `<img src="${logoBase64}" alt="Company Logo" class="h-32 mb-4">` : ''}
+      <h1 class="text-3xl text-primary font-bold mb-4">${authData?.user?.company?.name || ''}</h1>
+        <p class="mb-4">Invoices for the duration: &nbsp; ${getInvoiceDateRange(filteredInvoices)}</p>
+        <span class=" text-xs  mb-4">Printed: ${format(new Date(), 'yyyy-MM-dd')}</span>
+        <br/>
+        <br/>
+        <table class="min-w-full border border-gray-300 rounded overflow-hidden text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              ${headers.map(h => `<th class="border border-gray-300 px-4 py-2 text-left font-semibold">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.length === 0 ? `<tr><td class="border border-gray-300 px-4 py-2 text-center text-gray-500" colspan="${headers.length}">No invoices found.</td></tr>` :
+          rows.map(row =>
+            `<tr>
+                  ${row.map(cell => `<td class="border border-gray-300 px-4 py-2">${cell}</td>`).join('')}
+                </tr>`
+          ).join('')
+        }
+          </tbody>
+        </table>
+      `;
+      await generatePdf(tableHtml);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      alert('Failed to generate PDF. Please try again.');
+    }
   }
 
   useImperativeHandle(ref, () => ({ handleAllInvoicesPDF }))
