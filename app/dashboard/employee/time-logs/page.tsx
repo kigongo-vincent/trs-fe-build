@@ -469,40 +469,19 @@ export default function TimeLogsPage() {
     setIsDetailDialogOpen(true)
   }
 
-  // Mock attachments data - in real app, this would come from the API
-  const getMockAttachments = (timeLog: TimeLog): Attachment[] => {
-    // Generate some mock attachments based on the time log content
-    const attachments: Attachment[] = []
-
-    if (timeLog.description.toLowerCase().includes('screenshot') || timeLog.description.toLowerCase().includes('image')) {
-      attachments.push({
-        id: '1',
-        name: 'Screenshot.png',
-        type: 'file',
-        size: 1024000,
-        preview: '/placeholder.jpg'
-      })
+  // Convert API attachments to component format
+  const getAttachmentsFromTimeLog = (timeLog: TimeLog): Attachment[] => {
+    if (!timeLog.attachments || timeLog.attachments.length === 0) {
+      return []
     }
 
-    if (timeLog.description.toLowerCase().includes('document') || timeLog.description.toLowerCase().includes('pdf')) {
-      attachments.push({
-        id: '2',
-        name: 'Document.pdf',
-        type: 'file',
-        size: 2048000
-      })
-    }
-
-    if (timeLog.description.toLowerCase().includes('link') || timeLog.description.toLowerCase().includes('url')) {
-      attachments.push({
-        id: '3',
-        name: 'Project Link',
-        type: 'url',
-        url: 'https://example.com/project'
-      })
-    }
-
-    return attachments
+    return timeLog.attachments.map((attachment, index) => ({
+      id: `attachment-${index}`,
+      name: attachment.name,
+      type: 'file' as const,
+      url: attachment.url,
+      size: 0, // Size not provided by API
+    }))
   }
 
   // Edit form state
@@ -524,7 +503,19 @@ export default function TimeLogsPage() {
         status: editTimeLog.status,
         project: editTimeLog.projectId || ""
       })
-      setEditAttachments([]) // TODO: Load real attachments if available
+      // Load real attachments if available
+      if (editTimeLog.attachments && editTimeLog.attachments.length > 0) {
+        const existingAttachments: Attachment[] = editTimeLog.attachments.map((attachment, index) => ({
+          id: `existing-${index}`,
+          name: attachment.name,
+          type: 'file' as const,
+          url: attachment.url,
+          size: 0, // Size not provided by API
+        }))
+        setEditAttachments(existingAttachments)
+      } else {
+        setEditAttachments([])
+      }
     }
   }, [editTimeLog])
 
@@ -550,10 +541,12 @@ export default function TimeLogsPage() {
     }
     setIsEditSubmitting(true)
     try {
-      // Separate file and url attachments
-      const fileAttachments = editAttachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+      // Separate new file attachments and existing attachments
+      const newFileAttachments = editAttachments.filter(a => a.type === "file" && a.file) as (Attachment & { file: File })[]
+      const existingAttachments = editAttachments.filter(a => a.type === "file" && a.url && !a.file)
       const urlAttachments = editAttachments.filter(a => a.type === "url" && a.url).map(a => ({ url: a.url!, name: a.name }))
-      // Convert files to base64
+
+      // Convert new files to base64
       const toBase64 = (file: File) =>
         new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -571,14 +564,22 @@ export default function TimeLogsPage() {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-      const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
+
+      const newAttachmentsBase64 = await Promise.all(newFileAttachments.map(a => toBase64(a.file)));
+
+      // Combine existing and new attachments
+      const allAttachments = [
+        ...existingAttachments.map(a => ({ url: a.url!, name: a.name })),
+        ...newAttachmentsBase64.map(base64 => ({ url: base64, name: 'new-file' }))
+      ];
+
       await putRequest(`/consultants/time-logs/${editTimeLog.id}`, {
         title: editForm.title.trim(),
         description: editForm.description.trim(),
         duration: Number(editForm.duration),
         status: editForm.status,
         project: editForm.project,
-        attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+        attachments: allAttachments.length > 0 ? allAttachments : undefined,
         urls: urlAttachments.length > 0 ? urlAttachments : undefined,
       })
       toast.success("Time log updated successfully!")
@@ -1045,7 +1046,7 @@ export default function TimeLogsPage() {
         open={isDetailDialogOpen}
         onClose={() => setIsDetailDialogOpen(false)}
         task={selectedTimeLog}
-        attachments={selectedTimeLog ? getMockAttachments(selectedTimeLog) : []}
+        attachments={selectedTimeLog ? getAttachmentsFromTimeLog(selectedTimeLog) : []}
         urls={[]}
       />
 

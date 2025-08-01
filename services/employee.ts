@@ -53,6 +53,11 @@ export interface TimeLogUser {
   updatedAt: string;
 }
 
+export interface TimeLogAttachment {
+  url: string;
+  name: string;
+}
+
 export interface TimeLog {
   id: string;
   duration: string;
@@ -65,6 +70,7 @@ export interface TimeLog {
   userId: string;
   user: TimeLogUser;
   project: string;
+  attachments?: TimeLogAttachment[];
 }
 
 export interface TimeLogsResponse {
