@@ -14,14 +14,15 @@ if ! $BUILD_CMD; then
 fi
 echo -e "${GREEN}✅ Build succeeded. Proceeding with deployment.${NC}"
 
-# Interactive Branch Merge and Push Script
-# Usage: ./merge-and-push.sh "Your commit message"
+# Interactive Branch Sync Script
+# Usage: ./sync-branches.sh "Your commit message"
 
 # Configuration
 PERSONAL_REPO_REMOTE="personal"  # Default name for personal repo remote
-WORK_BRANCH="b1"                 # Working branch
-MASTER_BRANCH="master"           # Master branch in org repo
+WORK_BRANCH="b1"                 # Working branch (syncs with develop)
+MASTER_BRANCH="master"           # Master branch in org repo (syncs with main)
 MAIN_BRANCH="main"               # Main branch in personal repo
+DEVELOP_BRANCH="develop"         # Develop branch in personal repo
 DEFAULT_PERSONAL_REPO="https://github.com/kigongo-vincent/trs-fe-build.git"  # Default personal repo
 
 # Colors for output
@@ -202,7 +203,10 @@ fi
 COMMIT_MESSAGE="$1"
 
 # Initial setup and checks
-echo -e "${BLUE}🚀 Interactive Git Workflow Script${NC}"
+echo -e "${BLUE}🚀 Interactive Git Branch Sync Script${NC}"
+echo -e "${CYAN}Branch Sync Strategy:${NC}"
+echo -e "${GREEN}  • $WORK_BRANCH (org) ↔ $DEVELOP_BRANCH (personal)${NC}"
+echo -e "${GREEN}  • $MASTER_BRANCH (org) ↔ $MAIN_BRANCH (personal)${NC}"
 echo ""
 
 # Check if we're in a git repository
@@ -278,7 +282,7 @@ echo ""
 CURRENT_BRANCH=$(git branch --show-current)
 echo -e "${YELLOW}Current branch: ${CURRENT_BRANCH}${NC}"
 
-# Step 3: Switch to b1 and commit changes
+# Step 4: Switch to b1 and commit changes
 echo -e "${YELLOW}📝 Step 1: Switching to $WORK_BRANCH and committing changes...${NC}"
 git checkout "$WORK_BRANCH"
 if [ $? -ne 0 ]; then
@@ -299,17 +303,26 @@ else
     echo -e "${GREEN}✅ Changes committed to $WORK_BRANCH${NC}"
 fi
 
-# Step 4: Push b1 to organization repo
-echo -e "${YELLOW}📤 Step 2: Pushing $WORK_BRANCH to origin...${NC}"
+# Step 5: Push b1 to organization repo
+echo -e "${YELLOW}📤 Step 2: Pushing $WORK_BRANCH to organization repo (origin)...${NC}"
 git push origin "$WORK_BRANCH"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to push $WORK_BRANCH to origin${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ Pushed $WORK_BRANCH to origin${NC}"
+echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
 
-# Step 5: Switch to master
-echo -e "${YELLOW}🔄 Step 3: Switching to $MASTER_BRANCH...${NC}"
+# Step 6: Push b1 to personal repo's develop branch
+echo -e "${YELLOW}📤 Step 3: Pushing $WORK_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $DEVELOP_BRANCH)...${NC}"
+git push "$PERSONAL_REPO_REMOTE" "$WORK_BRANCH:$DEVELOP_BRANCH" --force
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Failed to push $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Pushed $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
+
+# Step 7: Switch to master
+echo -e "${YELLOW}🔄 Step 4: Switching to $MASTER_BRANCH...${NC}"
 git checkout "$MASTER_BRANCH"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to checkout $MASTER_BRANCH${NC}"
@@ -317,24 +330,16 @@ if [ $? -ne 0 ]; then
 fi
 
 # Pull latest changes from master first
+echo -e "${YELLOW}⬇️ Step 5: Pulling latest changes from $MASTER_BRANCH...${NC}"
 git pull origin "$MASTER_BRANCH"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to pull latest $MASTER_BRANCH${NC}"
     exit 1
 fi
+echo -e "${GREEN}✅ Pulled latest $MASTER_BRANCH from origin${NC}"
 
-# Step 6: Merge b1 into master
-echo -e "${YELLOW}🔄 Step 4: Merging $WORK_BRANCH into $MASTER_BRANCH...${NC}"
-git merge "$WORK_BRANCH" --no-ff -m "Merge $WORK_BRANCH: $COMMIT_MESSAGE"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to merge $WORK_BRANCH into $MASTER_BRANCH${NC}"
-    echo -e "${YELLOW}You may need to resolve conflicts manually${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Merged $WORK_BRANCH into $MASTER_BRANCH${NC}"
-
-# Step 7: Push master to organization repo
-echo -e "${YELLOW}📤 Step 5: Pushing $MASTER_BRANCH to organization repo (origin)...${NC}"
+# Step 8: Push master to organization repo
+echo -e "${YELLOW}📤 Step 6: Pushing $MASTER_BRANCH to organization repo (origin)...${NC}"
 git push origin "$MASTER_BRANCH"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to push $MASTER_BRANCH to origin${NC}"
@@ -342,17 +347,17 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to organization repo${NC}"
 
-# Step 8: Force push master to personal repo's main branch
-echo -e "${YELLOW}📤 Step 6: Force pushing to personal repo ($PERSONAL_REPO_REMOTE $MAIN_BRANCH)...${NC}"
+# Step 9: Push master to personal repo's main branch
+echo -e "${YELLOW}📤 Step 7: Pushing $MASTER_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $MAIN_BRANCH)...${NC}"
 git push "$PERSONAL_REPO_REMOTE" "$MASTER_BRANCH:$MAIN_BRANCH" --force
 if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to push to personal repo${NC}"
+    echo -e "${RED}❌ Failed to push $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ Force pushed $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
+echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
 
-# Step 9: Return to b1 branch
-echo -e "${YELLOW}🔄 Step 7: Returning to $WORK_BRANCH...${NC}"
+# Step 10: Return to b1 branch
+echo -e "${YELLOW}🔄 Step 8: Returning to $WORK_BRANCH...${NC}"
 git checkout "$WORK_BRANCH"
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Failed to return to $WORK_BRANCH${NC}"
@@ -362,12 +367,19 @@ echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
 
 # Final Summary
 echo ""
-echo -e "${GREEN}🎉 Workflow completed successfully!${NC}"
+echo -e "${GREEN}🎉 Branch sync completed successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}✅ Committed changes to $WORK_BRANCH${NC}"
-echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
-echo -e "${GREEN}✅ Merged $WORK_BRANCH into $MASTER_BRANCH${NC}"
-echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to organization repo${NC}"
-echo -e "${GREEN}✅ Force pushed $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
+echo -e "${GREEN}✅ Synced $WORK_BRANCH (org) → $DEVELOP_BRANCH (personal)${NC}"
+echo -e "${GREEN}✅ Synced $MASTER_BRANCH (org) → $MAIN_BRANCH (personal)${NC}"
+echo -e "${GREEN}✅ All branches pushed to respective repositories${NC}"
 echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${CYAN}Branch Sync Summary:${NC}"
+echo -e "${BLUE}Organization Repo (origin):${NC}"
+echo -e "${GREEN}  • $WORK_BRANCH ← Latest changes${NC}"
+echo -e "${GREEN}  • $MASTER_BRANCH ← Latest changes${NC}"
+echo -e "${BLUE}Personal Repo ($PERSONAL_REPO_REMOTE):${NC}"
+echo -e "${GREEN}  • $DEVELOP_BRANCH ← Synced with org $WORK_BRANCH${NC}"
+echo -e "${GREEN}  • $MAIN_BRANCH ← Synced with org $MASTER_BRANCH${NC}"
