@@ -1,10 +1,9 @@
-
 export const S3_CORS_ENABLE = false;
 
 export const imageToBase64 = async (url) => {
-  if (!url) return '';
+  if (!url) return "";
   // Handle SVGs
-  if (url.endsWith('.svg') || url.includes('image/svg+xml')) {
+  if (url.endsWith(".svg") || url.includes("image/svg+xml")) {
     try {
       let fetchUrl = url;
       if (!S3_CORS_ENABLE) {
@@ -15,7 +14,7 @@ export const imageToBase64 = async (url) => {
       const base64 = btoa(unescape(encodeURIComponent(svgText)));
       return `data:image/svg+xml;base64,${base64}`;
     } catch (e) {
-      return '';
+      return "";
     }
   }
   // Handle raster images (jpeg, png, etc)
@@ -25,17 +24,18 @@ export const imageToBase64 = async (url) => {
       imgUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     }
     const img = new Image();
-    img.crossOrigin = 'anonymous'; // Handle CORS
+    img.crossOrigin = "anonymous"; // Handle CORS
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
       try {
         // Use original format if possible
-        let format = 'image/png';
-        if (url.endsWith('.jpg') || url.endsWith('.jpeg')) format = 'image/jpeg';
+        let format = "image/png";
+        if (url.endsWith(".jpg") || url.endsWith(".jpeg"))
+          format = "image/jpeg";
         const dataURL = canvas.toDataURL(format, 0.8);
         resolve(dataURL);
       } catch (error) {
@@ -48,17 +48,18 @@ export const imageToBase64 = async (url) => {
   // Handle raster images (jpeg, png, etc)
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous'; // Handle CORS
+    img.crossOrigin = "anonymous"; // Handle CORS
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
       try {
         // Use original format if possible
-        let format = 'image/png';
-        if (url.endsWith('.jpg') || url.endsWith('.jpeg')) format = 'image/jpeg';
+        let format = "image/png";
+        if (url.endsWith(".jpg") || url.endsWith(".jpeg"))
+          format = "image/jpeg";
         const dataURL = canvas.toDataURL(format, 0.8);
         resolve(dataURL);
       } catch (error) {
@@ -71,9 +72,8 @@ export const imageToBase64 = async (url) => {
 };
 
 const generateDynamicHtmlContent = async (content) => {
-    try {
-      
-      return `
+  try {
+    return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -108,10 +108,10 @@ const generateDynamicHtmlContent = async (content) => {
         </body>
         </html>
       `;
-    } catch (error) {
-      console.error('Error processing content:', error);
-      // Fallback to original content without image processing
-      return `
+  } catch (error) {
+    console.error("Error processing content:", error);
+    // Fallback to original content without image processing
+    return `
         <!DOCTYPE html>
         <html>
         <head>
@@ -140,19 +140,19 @@ const generateDynamicHtmlContent = async (content) => {
         </body>
         </html>
       `;
-    }
-  };
+  }
+};
 
 export const generatePdf = async (content) => {
   try {
-    const html2pdf = (await import('html2pdf.js')).default;
+    const html2pdf = (await import("html2pdf.js")).default;
     // Generate the dynamic HTML content with Tailwind styling
     const htmlContent = await generateDynamicHtmlContent(content);
 
     // Use html2pdf.js to generate the PDF directly from HTML string
     const options = {
       margin: [0.5, 0.5, 0.5, 0.5],
-      filename: "tailwind-styled-content.pdf",
+      filename: "document.pdf",
       image: {
         type: "jpeg",
         quality: 0.9,

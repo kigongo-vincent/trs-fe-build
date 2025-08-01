@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import jsPDF from "jspdf"
+
 import React from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { generatePdf, imageToBase64 } from "@/utils/GeneratePDF"
@@ -471,7 +471,24 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   // Modal state
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  // Selection state
+  const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set())
+  const [selectAll, setSelectAll] = useState(false)
   const authData = getAuthData()
+
+  // Helper function for status colors
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'processing':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'overdue':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
 
   const fetchInvoicesWithRetry = async (retryAttempt = 0) => {
     setLoading(true)
@@ -539,6 +556,9 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
   useEffect(() => {
     setFilteredInvoices(invoices)
+    // Reset selection when invoices change
+    setSelectedInvoices(new Set())
+    setSelectAll(false)
   }, [invoices])
 
   const handleSort = (column: string) => {
@@ -548,6 +568,43 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       setSortBy(column)
       setSortDir("asc")
     }
+  }
+
+  // Selection handlers
+  const handleSelectInvoice = (invoiceId: string, checked: boolean) => {
+    const newSelected = new Set(selectedInvoices)
+    if (checked) {
+      newSelected.add(invoiceId)
+    } else {
+      newSelected.delete(invoiceId)
+    }
+    setSelectedInvoices(newSelected)
+
+    // Update select all state
+    if (checked && newSelected.size === sortedInvoices.length) {
+      setSelectAll(true)
+    } else if (!checked) {
+      setSelectAll(false)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(sortedInvoices.map(invoice => invoice.id))
+      setSelectedInvoices(allIds)
+      setSelectAll(true)
+    } else {
+      setSelectedInvoices(new Set())
+      setSelectAll(false)
+    }
+  }
+
+  const handleApproveAll = () => {
+    const selectedIds = Array.from(selectedInvoices)
+    console.log('Selected invoice IDs for approval:', selectedIds)
+    alert(`Approving ${selectedIds.length} invoices with IDs: ${selectedIds.join(', ')}`)
+    // Here you would typically make an API call to approve the invoices
+    // For now, we just log the IDs and show an alert
   }
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
@@ -583,74 +640,213 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   })
 
   // PDF download for row (stateless: checkboxes No, comment empty)
-  const handleRowDownloadPDF = (invoice: any) => {
-    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
-    const reviewedText = 'No'
-    const satisfiedText = 'No'
-    const approvedText = 'No'
-    const commentBlock = ''
-    const currencyInfo = { code: currency, origin: 'Company' }
-    const html = `
-      <div style='font-family: Arial, sans-serif; color: #222; font-size: 12pt; max-width: 700px;'>
-        <h2 style='margin-bottom: 0;'>INVOICE</h2>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px;'><b>Invoice Number:</b></td><td style='padding:4px;'>${invoice.invoiceNumber || invoice.id}</td></tr>
-          <tr><td style='padding:4px;'><b>Status:</b></td><td style='padding:4px;'>${invoice.status ? invoice.status.toUpperCase() : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Issue Date:</b></td><td style='padding:4px;'>${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Period:</b></td><td style='padding:4px;'>${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Last Updated:</b></td><td style='padding:4px;'>${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Consultant Information</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px;'><b>Name:</b></td><td style='padding:4px;'>${invoice.user?.fullName || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Email:</b></td><td style='padding:4px;'>${invoice.user?.email || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Phone:</b></td><td style='padding:4px;'>${invoice.user?.phoneNumber || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Job Title:</b></td><td style='padding:4px;'>${invoice.user?.jobTitle || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Company:</b></td><td style='padding:4px;'>${invoice.user?.company?.name || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Address:</b></td><td style='padding:4px;'>${invoice.user?.address ? `${invoice.user.address.street}, ${invoice.user.address.city}, ${invoice.user.address.state}, ${invoice.user.address.country}` : '-'}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Invoice Items</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr style='background:#f5f5f5;'>
-            <th style='border:1px solid #bbb; padding:8px;'>Description</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Hours</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Rate</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Amount</th>
-          </tr>
-          <tr>
-            <td style='border:1px solid #bbb; padding:8px;'>Consulting Services<br><span style='font-size:10pt;color:#888;'>Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${invoice.totalHours || '-'}</td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-          </tr>
-        </table>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px; text-align:right;'><b>Subtotal:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-          <tr><td style='padding:4px; text-align:right;'><b>Tax:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} 0.00</td></tr>
-          <tr><td style='padding:4px; text-align:right;'><b>Total:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Review Status</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Reviewed:</b></td><td style='padding:4px; border:1px solid #bbb;'>${reviewedText}</td></tr>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Satisfied:</b></td><td style='padding:4px; border:1px solid #bbb;'>${satisfiedText}</td></tr>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Approved:</b></td><td style='padding:4px; border:1px solid #bbb;'>${approvedText}</td></tr>
-          ${commentBlock}
-        </table>
-        <div style='margin-top:24px; color:#888; font-size:10pt;'>
-          Thank you for your business!<br>
-          ${invoice.user?.email ? `For any questions regarding this invoice, please contact ${invoice.user.email}` : ''}
+  const handleRowDownloadPDF = async (invoice: any) => {
+    try {
+      const reviewedText = 'No'
+      const satisfiedText = 'No'
+      const approvedText = 'No'
+      const commentBlock = ''
+      const statusColor = getStatusColor(invoice.status)
+      const statusText = invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'
+
+      const html = `
+        <div class="bg-white p-8 max-w-4xl mx-auto">
+          <!-- Header -->
+          <div class="border-b-2 border-gray-300 pb-6 mb-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
+                <p class="text-lg text-gray-600">${invoice.invoiceNumber || invoice.id}</p>
+              </div>
+              <div class="text-right">
+                <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
+                  ${statusText}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Info -->
+          <div class="bg-primary text-white p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-1">${invoice.user?.company?.name || 'Company Name'}</h2>
+            <p class="text-blue-100 text-sm">${invoice.user?.company?.sector || 'Sector'}</p>
+          </div>
+
+          <!-- Invoice Details -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Invoice Details
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Issue Date:</span>
+                  <span class="font-medium">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Period:</span>
+                  <span class="font-medium">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Last Updated:</span>
+                  <span class="font-medium">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Consultant Information
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div>
+                  <span class="font-semibold text-gray-900">${invoice.user?.fullName || 'Consultant Name'}</span>
+                  <p class="text-gray-600 capitalize">${invoice.user?.jobTitle || 'Consultant'} Consultant</p>
+                </div>
+                <div class="flex items-center text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>${invoice.user?.email || 'email@example.com'}</span>
+                </div>
+                <div class="flex items-center text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                  </svg>
+                  <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Service Description -->
+          <div class="bg-blue-50 p-4 rounded-lg mb-6">
+            <h3 class="font-semibold text-gray-900 mb-2">Service Description</h3>
+            <p class="text-gray-700">${invoice.description || 'Consulting services for the specified period.'}</p>
+          </div>
+
+          <!-- Invoice Items -->
+          <div class="bg-white border border-gray-200 rounded-lg mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-900">Invoice Items</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Rate</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr>
+                    <td class="px-4 py-3">
+                      <span class="font-medium text-gray-900">Consulting Services</span>
+                      <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${currency} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-900">${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div class="bg-gray-50 p-4 rounded-lg mb-6">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between text-gray-600">
+                <span>Subtotal:</span>
+                <span>${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div class="flex justify-between text-gray-600">
+                <span>Tax:</span>
+                <span>${currency} 0.00</span>
+              </div>
+              <div class="border-t pt-2">
+                <div class="flex justify-between text-base font-bold text-gray-900">
+                  <span>Total:</span>
+                  <span>${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 text-xs text-gray-500 text-right">
+              Showing amounts in <span class="font-semibold">${currency}</span> (Company currency)
+            </div>
+          </div>
+
+          <!-- Payment Information -->
+          <div class="bg-gradient-to-r from-gray-900 to-blue-900 text-white p-4 rounded-lg mb-6">
+            <h3 class="font-semibold mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Payment Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              <div>
+                <span class="text-gray-300 text-xs">Bank Name</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.bankName || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Branch</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.branch || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Account Name</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.accountName || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Account Number</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</p>
+              </div>
+              <div class="md:col-span-2">
+                <span class="text-gray-300 text-xs">SWIFT Code</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review Status -->
+          <div class="bg-gray-50 p-4 rounded-lg mb-6">
+            <h3 class="font-semibold text-gray-900 mb-3">Review Status</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Reviewed:</span>
+                <span class="font-medium">${reviewedText}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Satisfied:</span>
+                <span class="font-medium">${satisfiedText}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Approved:</span>
+                <span class="font-medium">${approvedText}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="text-center text-gray-500 text-xs border-t pt-4">
+            <p>Thank you for your business!</p>
+            <p class="mt-1">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
+          </div>
         </div>
-      </div>
-    `
-    doc.html(html, {
-      x: 32,
-      y: 32,
-      width: 530,
-      windowWidth: 700,
-      callback: function (doc) {
-        doc.save(`Invoice_${invoice.invoiceNumber || invoice.id}.pdf`)
-      }
-    })
+      `
+      await generatePdf(html)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
+    }
   }
 
   // PDF download for all visible invoices
@@ -729,7 +925,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
         <Table>
           <TableHeader>
             <TableRow>
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: 7 }).map((_, i) => (
                 <TableHead key={i}>
                   <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
                 </TableHead>
@@ -739,7 +935,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
           <TableBody>
             {Array.from({ length: 5 }).map((_, rowIndex) => (
               <TableRow key={rowIndex}>
-                {Array.from({ length: 6 }).map((_, cellIndex) => (
+                {Array.from({ length: 7 }).map((_, cellIndex) => (
                   <TableCell key={cellIndex}>
                     <div className="h-4 w-16 bg-gray-200 rounded animate-pulse" />
                   </TableCell>
@@ -812,9 +1008,33 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
   return (
     <>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {selectedInvoices.size > 0 ? `${selectedInvoices.size} invoice(s) selected` : 'No invoices selected'}
+          </span>
+        </div>
+        {selectedInvoices.size > 0 && (
+          <Button
+            onClick={handleApproveAll}
+            variant="default"
+            size="sm"
+            className="bg-primary"
+          >
+            Approve All ({selectedInvoices.size})
+          </Button>
+        )}
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-12">
+              <Checkbox
+                checked={selectAll}
+                onCheckedChange={handleSelectAll}
+                aria-label="Select all invoices"
+              />
+            </TableHead>
             <TableHead
               className={`cursor-pointer select-none ${sortBy === "invoiceNumber" ? "text-primary font-semibold" : ""}`}
               onClick={() => handleSort("invoiceNumber")}
@@ -856,6 +1076,13 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
         <TableBody>
           {sortedInvoices.map((invoice) => (
             <TableRow key={invoice.id}>
+              <TableCell>
+                <Checkbox
+                  checked={selectedInvoices.has(invoice.id)}
+                  onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked === true)}
+                  aria-label={`Select invoice ${invoice.invoiceNumber || invoice.id}`}
+                />
+              </TableCell>
               <TableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</TableCell>
               <TableCell>{invoice.user?.fullName || "-"}</TableCell>
               <TableCell>{invoice.startDate && invoice.endDate ? `${format(new Date(invoice.startDate), "MMM yyyy")}` : "-"}</TableCell>
@@ -1008,77 +1235,222 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
     }
   };
   // PDF Generation (basic, organized, with inline HTML/CSS and table borders)
-  const handleDownloadPDF = () => {
-    const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' })
-    const reviewedText = reviewed ? 'Yes' : 'No'
-    const satisfiedText = satisfied ? 'Yes' : 'No'
-    const approvedText = approved ? 'Yes' : 'No'
-    // Use the first comment for PDF (or empty)
-    const firstComment = comments[0]?.content || ''
-    const commentBlock = firstComment
-      ? `<tr><td colspan='2' style='padding:8px; border:1px solid #bbb;'><b>Comment:</b> ${firstComment}</td></tr>`
-      : ''
-    const html = `
-      <div style='font-family: Arial, sans-serif; color: #222; font-size: 12pt; max-width: 700px;'>
-        <h2 style='margin-bottom: 0;'>INVOICE</h2>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px;'><b>Invoice Number:</b></td><td style='padding:4px;'>${invoice.invoiceNumber || invoice.id}</td></tr>
-          <tr><td style='padding:4px;'><b>Status:</b></td><td style='padding:4px;'>${invoice.status ? invoice.status.toUpperCase() : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Issue Date:</b></td><td style='padding:4px;'>${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Period:</b></td><td style='padding:4px;'>${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Last Updated:</b></td><td style='padding:4px;'>${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Consultant Information</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px;'><b>Name:</b></td><td style='padding:4px;'>${invoice.user?.fullName || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Email:</b></td><td style='padding:4px;'>${invoice.user?.email || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Phone:</b></td><td style='padding:4px;'>${invoice.user?.phoneNumber || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Job Title:</b></td><td style='padding:4px;'>${invoice.user?.jobTitle || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Company:</b></td><td style='padding:4px;'>${invoice.user?.company?.name || '-'}</td></tr>
-          <tr><td style='padding:4px;'><b>Address:</b></td><td style='padding:4px;'>${invoice.user?.address ? `${invoice.user.address.street}, ${invoice.user.address.city}, ${invoice.user.address.state}, ${invoice.user.address.country}` : '-'}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Invoice Items</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr style='background:#f5f5f5;'>
-            <th style='border:1px solid #bbb; padding:8px;'>Description</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Hours</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Rate</th>
-            <th style='border:1px solid #bbb; padding:8px;'>Amount</th>
-          </tr>
-          <tr>
-            <td style='border:1px solid #bbb; padding:8px;'>Consulting Services<br><span style='font-size:10pt;color:#888;'>Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span></td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${invoice.totalHours || '-'}</td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:center;'>${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td style='border:1px solid #bbb; padding:8px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-          </tr>
-        </table>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px; text-align:right;'><b>Subtotal:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-          <tr><td style='padding:4px; text-align:right;'><b>Tax:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} 0.00</td></tr>
-          <tr><td style='padding:4px; text-align:right;'><b>Total:</b></td><td style='padding:4px; text-align:right;'>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td></tr>
-        </table>
-        <h3 style='margin-bottom: 4px;'>Review Status</h3>
-        <table style='width:100%; border-collapse:collapse; margin-bottom:16px;'>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Reviewed:</b></td><td style='padding:4px; border:1px solid #bbb;'>${reviewedText}</td></tr>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Satisfied:</b></td><td style='padding:4px; border:1px solid #bbb;'>${satisfiedText}</td></tr>
-          <tr><td style='padding:4px; border:1px solid #bbb;'><b>Approved:</b></td><td style='padding:4px; border:1px solid #bbb;'>${approvedText}</td></tr>
-          ${commentBlock}
-        </table>
-        <div style='margin-top:24px; color:#888; font-size:10pt;'>
-          Thank you for your business!<br>
-          ${invoice.user?.email ? `For any questions regarding this invoice, please contact ${invoice.user.email}` : ''}
+  const handleDownloadPDF = async () => {
+    try {
+      const reviewedText = reviewed ? 'Yes' : 'No'
+      const satisfiedText = satisfied ? 'Yes' : 'No'
+      const approvedText = approved ? 'Yes' : 'No'
+      // Use the first comment for PDF (or empty)
+      const firstComment = comments[0]?.content || ''
+      const statusColor = getStatusColor(invoice.status)
+      const statusText = invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'
+
+      const html = `
+        <div class="bg-white p-8 max-w-4xl mx-auto">
+          <!-- Header -->
+          <div class="border-b-2 border-gray-300 pb-6 mb-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
+                <p class="text-lg text-gray-600">${invoice.invoiceNumber || invoice.id}</p>
+              </div>
+              <div class="text-right">
+                <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
+                  ${statusText}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Info -->
+          <div class="bg-primary text-white p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-1">${invoice.user?.company?.name || 'Company Name'}</h2>
+            <p class="text-blue-100 text-sm">${invoice.user?.company?.sector || 'Sector'}</p>
+          </div>
+
+          <!-- Invoice Details -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Invoice Details
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Issue Date:</span>
+                  <span class="font-medium">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Period:</span>
+                  <span class="font-medium">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">Last Updated:</span>
+                  <span class="font-medium">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg">
+              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                Consultant Information
+              </h3>
+              <div class="space-y-2 text-sm">
+                <div>
+                  <span class="font-semibold text-gray-900">${invoice.user?.fullName || 'Consultant Name'}</span>
+                  <p class="text-gray-600 capitalize">${invoice.user?.jobTitle || 'Consultant'} Consultant</p>
+                </div>
+                <div class="flex items-center text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                  </svg>
+                  <span>${invoice.user?.email || 'email@example.com'}</span>
+                </div>
+                <div class="flex items-center text-gray-600">
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                  </svg>
+                  <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Service Description -->
+          <div class="bg-blue-50 p-4 rounded-lg mb-6">
+            <h3 class="font-semibold text-gray-900 mb-2">Service Description</h3>
+            <p class="text-gray-700">${invoice.description || 'Consulting services for the specified period.'}</p>
+          </div>
+
+          <!-- Invoice Items -->
+          <div class="bg-white border border-gray-200 rounded-lg mb-6">
+            <div class="p-4 border-b border-gray-200">
+              <h3 class="font-semibold text-gray-900">Invoice Items</h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
+                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Rate</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr>
+                    <td class="px-4 py-3">
+                      <span class="font-medium text-gray-900">Consulting Services</span>
+                      <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-900">${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Total -->
+          <div class="bg-gray-50 p-4 rounded-lg mb-6">
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between text-gray-600">
+                <span>Subtotal:</span>
+                <span>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div class="flex justify-between text-gray-600">
+                <span>Tax:</span>
+                <span>${currencyInfo.code} 0.00</span>
+              </div>
+              <div class="border-t pt-2">
+                <div class="flex justify-between text-base font-bold text-gray-900">
+                  <span>Total:</span>
+                  <span>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+            <div class="mt-2 text-xs text-gray-500 text-right">
+              Showing amounts in <span class="font-semibold">${currencyInfo.code}</span> (${currencyInfo.origin} currency)
+            </div>
+          </div>
+
+          <!-- Payment Information -->
+          <div class="bg-gradient-to-r from-gray-900 to-blue-900 text-white p-4 rounded-lg mb-6">
+            <h3 class="font-semibold mb-3 flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Payment Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              <div>
+                <span class="text-gray-300 text-xs">Bank Name</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.bankName || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Branch</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.branch || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Account Name</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.accountName || 'N/A'}</p>
+              </div>
+              <div>
+                <span class="text-gray-300 text-xs">Account Number</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</p>
+              </div>
+              <div class="md:col-span-2">
+                <span class="text-gray-300 text-xs">SWIFT Code</span>
+                <p class="font-medium">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review Status -->
+          <div class="bg-gray-50 p-4 rounded-lg mb-6">
+            <h3 class="font-semibold text-gray-900 mb-3">Review Status</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Reviewed:</span>
+                <span class="font-medium">${reviewedText}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Satisfied:</span>
+                <span class="font-medium">${satisfiedText}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Approved:</span>
+                <span class="font-medium">${approvedText}</span>
+              </div>
+              ${firstComment ? `
+              <div class="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
+                <div class="text-sm">
+                  <span class="font-medium text-gray-900">Comment:</span>
+                  <p class="text-gray-700 mt-1">${firstComment}</p>
+                </div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="text-center text-gray-500 text-xs border-t pt-4">
+            <p>Thank you for your business!</p>
+            <p class="mt-1">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
+          </div>
         </div>
-      </div>
-    `
-    doc.html(html, {
-      x: 32,
-      y: 32,
-      width: 530,
-      windowWidth: 700,
-      callback: function (doc) {
-        doc.save(`Invoice_${invoice.invoiceNumber || invoice.id}.pdf`)
-      }
-    })
+      `
+      await generatePdf(html)
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
+    }
   }
 
   return (

@@ -600,9 +600,10 @@ export default function SettingsPage() {
         // currency: companyCurrency, // REMOVE currency from payload
       };
 
-      await updateCompany(payload, (JSON.parse(localStorage.getItem("user") ?? "") as { company: { id: number } }).company.id.toString());
+      const response = await updateCompany(payload, (JSON.parse(localStorage.getItem("user") ?? "") as { company: { id: number } }).company.id.toString());
       toast.success("Company updated successfully");
-      // Update session company info
+
+      // Update session company info with the response data
       const authData = getAuthData();
       if (authData) {
         const updatedUser = {
@@ -610,13 +611,18 @@ export default function SettingsPage() {
           company: {
             ...authData.user.company,
             name: companyName.trim(),
-            logo: logoData,
+            logo: response?.data?.logo || response?.logo || logoData, // Use response logo URL if available, fallback to logoData
             roundOff: enableFloatingPoint,
             // currency: companyCurrency, // not needed
           },
         };
         storeAuthData(authData.token, updatedUser);
         setUser(updatedUser);
+
+        // Update the local state to show the new logo URL
+        if (response?.data?.logo || response?.logo) {
+          setCompanyLogo(response.data?.logo || response.logo);
+        }
       }
       setCompanyLogoFile(null);
     } catch (error: any) {

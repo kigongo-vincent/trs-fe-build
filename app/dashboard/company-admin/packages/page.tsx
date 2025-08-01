@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Package } from "lucide-react"
+import { Package, AlertCircle, X, Clock, CheckCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
@@ -13,6 +13,7 @@ import { getAuthUser } from "@/services/auth"
 import { Input } from "@/components/ui/input"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { format } from "date-fns"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Type for a package (from API)
 type PackageType = {
@@ -43,7 +44,7 @@ export default function CompanyAdminPackagesPage() {
     const [pendingUpgrade, setPendingUpgrade] = useState<PackageType | null>(null)
     const [currentPlanExpiry, setCurrentPlanExpiry] = useState<Date | null>(null)
     const [latestLicenseKey, setLatestLicenseKey] = useState<LicenseKey | null>(null)
-    
+
     const [billingHistory, setBillingHistory] = useState<BillingTransaction[]>([])
     const [billingLoading, setBillingLoading] = useState(true)
     const [billingError, setBillingError] = useState<string | null>(null)
@@ -90,28 +91,52 @@ export default function CompanyAdminPackagesPage() {
                 })
                 const latest = companyLicenses[0] || null
                 setLatestLicenseKey(latest)
-                setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
-                // If the license has a package, use that as the current plan
-                if (latest && latest.package) {
-                    setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
-                }
 
-                // Fetch billing history
+                // Fetch billing history first to get expiry date from first transaction
                 setBillingLoading(true)
                 setBillingError(null)
                 try {
                     const billingRes = await fetchBillingHistory(companyId)
                     if (billingRes && Array.isArray(billingRes.data)) {
                         setBillingHistory(billingRes.data)
+
+                        // Get expiry date from the first transaction (oldest transaction)
+                        if (billingRes.data.length > 0) {
+                            // Sort by createdAt to get the first transaction
+                            const sortedTransactions = [...billingRes.data].sort((a, b) =>
+                                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                            )
+                            const firstTransaction = sortedTransactions[0]
+                            if (firstTransaction && firstTransaction.expiresAt) {
+                                setCurrentPlanExpiry(new Date(firstTransaction.expiresAt))
+                            } else {
+                                // Fallback to license key expiry date
+                                setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
+                            }
+                        } else {
+                            // No billing history, fallback to license key expiry date
+                            setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
+                        }
                     } else {
                         setBillingHistory([])
+                        // No billing history, fallback to license key expiry date
+                        setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
                     }
                 } catch (err: any) {
                     setBillingError("Failed to fetch billing history")
                     setBillingHistory([])
+                    // Error fetching billing history, fallback to license key expiry date
+                    setCurrentPlanExpiry(latest ? new Date(latest.expiryDate) : null)
                 } finally {
                     setBillingLoading(false)
                 }
+
+                // If the license has a package, use that as the current plan
+                if (latest && latest.package) {
+                    setSelectedPlan(res.data.find(pkg => pkg.id === latest.package.id) || null)
+                }
+
+
             } catch (err: any) {
                 console.error("Packages page error:", err)
                 setError("Failed to fetch packages or license keys")
@@ -165,7 +190,7 @@ export default function CompanyAdminPackagesPage() {
         return null
     }
 
-    
+
 
     const handleUpgradeClick = (pkg: PackageType) => {
         setPendingUpgrade(pkg)
@@ -197,9 +222,41 @@ export default function CompanyAdminPackagesPage() {
         setPendingUpgrade(null)
     }
 
-    
 
-    
+
+
+
+    // Helper function to check if package is expired
+    const isPackageExpired = (expiryDate: Date | null): boolean => {
+        if (!expiryDate) return false
+        return new Date() > expiryDate
+    }
+
+    // Helper function to get days until expiry
+    const getDaysUntilExpiry = (expiryDate: Date | null): number => {
+        if (!expiryDate) return 0
+        const now = new Date()
+        const diffTime = expiryDate.getTime() - now.getTime()
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    }
+
+    // Helper function to get expiry status
+    const getExpiryStatus = (expiryDate: Date | null) => {
+        if (!expiryDate) return { status: 'unknown', text: 'No expiry date', color: 'text-gray-500' }
+
+        const daysLeft = getDaysUntilExpiry(expiryDate)
+        const isExpired = isPackageExpired(expiryDate)
+
+        if (isExpired) {
+            return { status: 'expired', text: 'Package Expired', color: 'text-red-600' }
+        } else if (daysLeft <= 7) {
+            return { status: 'expiring', text: `Expires in ${daysLeft} days`, color: 'text-orange-600' }
+        } else if (daysLeft <= 30) {
+            return { status: 'warning', text: `Expires in ${daysLeft} days`, color: 'text-yellow-600' }
+        } else {
+            return { status: 'active', text: `Expires in ${daysLeft} days`, color: 'text-green-600' }
+        }
+    }
 
     // Remove usage/consumption display
 
@@ -273,13 +330,54 @@ export default function CompanyAdminPackagesPage() {
                 <div className="text-center text-red-500 py-8">{error}</div>
             ) : (
                 <>
+                    {/* Expiry Alert */}
+                    {currentPlanExpiry && (
+                        (() => {
+                            const expiryStatus = getExpiryStatus(currentPlanExpiry)
+                            if (expiryStatus.status === 'expired') {
+                                return (
+                                    <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+                                        <AlertDescription className="text-red-800 dark:text-red-200">
+                                            <strong>Package Expired:</strong> Your current package has expired. Please upgrade to continue using all features.
+                                        </AlertDescription>
+                                    </Alert>
+                                )
+                            } else if (expiryStatus.status === 'expiring') {
+                                return (
+                                    <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                                        <Clock className="h-4 w-4 text-orange-600" />
+                                        <AlertDescription className="text-orange-800 dark:text-orange-200">
+                                            <strong>Package Expiring Soon:</strong> Your package expires in {getDaysUntilExpiry(currentPlanExpiry)} days. Consider upgrading to avoid service interruption.
+                                        </AlertDescription>
+                                    </Alert>
+                                )
+                            } else if (expiryStatus.status === 'warning') {
+                                return (
+                                    <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                                        <Clock className="h-4 w-4 text-yellow-600" />
+                                        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                                            <strong>Package Expiring:</strong> Your package expires in {getDaysUntilExpiry(currentPlanExpiry)} days.
+                                        </AlertDescription>
+                                    </Alert>
+                                )
+                            }
+                            return null
+                        })()
+                    )}
+
                     {/* Current Plan Section */}
                     {selectedPlan && (
-                        <Card className={`border-2 border-primary/60 bg-primary/5  flex flex-col`}>
+                        <Card className={`border-2 ${currentPlanExpiry && isPackageExpired(currentPlanExpiry) ? 'border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950' : 'border-primary/60 bg-primary/5'} flex flex-col`}>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div className="flex-1">
                                     <CardTitle className="flex items-center gap-2">
-                                        <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">Current Plan</Badge>
+                                        <Badge variant="outline" className={
+                                            currentPlanExpiry && isPackageExpired(currentPlanExpiry)
+                                                ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800"
+                                                : "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                        }>
+                                            {currentPlanExpiry && isPackageExpired(currentPlanExpiry) ? 'Expired Plan' : 'Current Plan'}
+                                        </Badge>
                                         {selectedPlan.name}
                                     </CardTitle>
                                     <CardDescription className="mt-2">{selectedPlan.description}</CardDescription>
@@ -290,8 +388,24 @@ export default function CompanyAdminPackagesPage() {
                                                 <span className="font-mono break-all">{latestLicenseKey.key}</span>
                                             </div>
                                         )}
-                                        <div className="text-xs text-muted-foreground mt-2">
-                                            Expires: {currentPlanExpiry ? currentPlanExpiry.toLocaleDateString() : "-"} {currentPlanExpiry ? `(${Math.ceil((currentPlanExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left)` : ""}
+                                        <div className="text-xs mt-2">
+                                            {currentPlanExpiry ? (
+                                                (() => {
+                                                    const expiryStatus = getExpiryStatus(currentPlanExpiry)
+                                                    return (
+                                                        <div className={`flex items-center gap-1 ${expiryStatus.color}`}>
+                                                            {expiryStatus.status === 'expired' && <AlertCircle className="h-3 w-3" />}
+                                                            {expiryStatus.status === 'expiring' && <Clock className="h-3 w-3" />}
+                                                            {expiryStatus.status === 'warning' && <Clock className="h-3 w-3" />}
+                                                            {expiryStatus.status === 'active' && <CheckCircle className="h-3 w-3" />}
+                                                            <span className="font-medium">{expiryStatus.text}</span>
+                                                            <span className="text-muted-foreground">({currentPlanExpiry.toLocaleDateString()})</span>
+                                                        </div>
+                                                    )
+                                                })()
+                                            ) : (
+                                                <span className="text-muted-foreground">No expiry date available</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -311,7 +425,7 @@ export default function CompanyAdminPackagesPage() {
                         <h2 className="text-lg font-semibold mb-4">Available Packages</h2>
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {/* Custom Package Card */}
-                            
+
                             {/* Existing Packages */}
                             {packages.filter(pkg => {
                                 const name = pkg.name?.toLowerCase() || "";
