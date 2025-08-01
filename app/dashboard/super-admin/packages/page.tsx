@@ -471,16 +471,6 @@ export default function PackagesPage() {
           )}
         </TabsContent>
       </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Package Distribution</CardTitle>
-          <CardDescription>Active subscriptions by package type</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PackageDistributionChart packages={packages} loading={loading} />
-        </CardContent>
-      </Card>
     </div>
   )
 }
