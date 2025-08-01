@@ -53,7 +53,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                     </DialogHeader>
                     <DialogClose asChild>
                         <button
-                            className="ml-auto rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="ml-auto rounded-full p-2 hover:bg-muted "
                             aria-label="Close"
                         >
                             <span className="sr-only">Close</span>
@@ -147,12 +147,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                                                 return (
                                                     <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
                                                         <CardContent className="p-0">
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex items-center  gap-3 justify-between">
                                                                 <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                                                                    <Download className="h-4 w-4 text-muted-foreground" />
+                                                                    {/* <Download className="h-4 w-4 text-muted-foreground" /> */}
                                                                     <span className="truncate max-w-xs">{attachment.name}</span>
                                                                 </a>
-                                                                <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
+                                                                <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2 ">
                                                                     <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download file">
                                                                         <Download className="h-4 w-4" />
                                                                     </Button>
