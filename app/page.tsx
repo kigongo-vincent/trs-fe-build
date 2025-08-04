@@ -130,7 +130,7 @@ export default function Home() {
         {/* Right: Login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-8">
           <div className="w-full max-w-md">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-primary">Welcome back to TRS</h1>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">Welcome back to TRS</h1>
             <p className="text-gray-500 mb-8">Log in to manage your team and tasks efficiently.</p>
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
