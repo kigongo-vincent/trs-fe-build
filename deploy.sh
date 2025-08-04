@@ -14,8 +14,12 @@ if ! $BUILD_CMD; then
 fi
 echo -e "${GREEN}✅ Build succeeded. Proceeding with deployment.${NC}"
 
-# Interactive Branch Sync Script
-# Usage: ./sync-branches.sh "Your commit message"
+# Interactive Branch Sync Script with Merge Options
+# Usage: ./sync-branches.sh "Your commit message" [flag]
+# Flags:
+#   1 - Update master and sync to main only
+#   2 - Merge all branches on respective repos
+#   (no flag) - Just sync b1 with develop
 
 # Configuration
 PERSONAL_REPO_REMOTE="personal"  # Default name for personal repo remote
@@ -193,20 +197,321 @@ find_personal_remote() {
     return 1
 }
 
+# Function to set operation mode based on flag
+set_operation_mode() {
+    local flag="$1"
+    
+    case $flag in
+        1)
+            OPERATION_MODE="master_only"
+            echo -e "${GREEN}🎯 Mode: Update master and sync to main only${NC}"
+            ;;
+        2)
+            OPERATION_MODE="merge_all"
+            echo -e "${GREEN}🔀 Mode: Merge all branches on respective repos${NC}"
+            ;;
+        "")
+            OPERATION_MODE="sync_b1_only"
+            echo -e "${GREEN}📝 Mode: Just sync b1 with develop${NC}"
+            ;;
+        *)
+            echo -e "${RED}❌ Invalid flag: $flag${NC}"
+            echo -e "${YELLOW}Valid flags:${NC}"
+            echo -e "${CYAN}  1 - Update master and sync to main only${NC}"
+            echo -e "${CYAN}  2 - Merge all branches on respective repos${NC}"
+            echo -e "${CYAN}  (no flag) - Just sync b1 with develop${NC}"
+            exit 1
+            ;;
+    esac
+}
+
+# Function to execute sync b1 only workflow
+execute_sync_b1_only() {
+    echo -e "${BLUE}🚀 Executing: Sync b1 with develop only${NC}"
+    echo ""
+    
+    # Switch to b1 and commit changes
+    echo -e "${YELLOW}📝 Step 1: Switching to $WORK_BRANCH and committing changes...${NC}"
+    git checkout "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to checkout $WORK_BRANCH${NC}"
+        exit 1
+    fi
+
+    # Add all changes and commit
+    git add .
+    if git diff --staged --quiet; then
+        echo -e "${YELLOW}⚠️  No changes to commit on $WORK_BRANCH${NC}"
+    else
+        git commit -m "$COMMIT_MESSAGE"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}❌ Failed to commit changes${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✅ Changes committed to $WORK_BRANCH${NC}"
+    fi
+
+    # Push b1 to organization repo
+    echo -e "${YELLOW}📤 Step 2: Pushing $WORK_BRANCH to organization repo (origin)...${NC}"
+    git push origin "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push $WORK_BRANCH to origin${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
+
+    # Final Summary
+    echo ""
+    echo -e "${GREEN}🎉 B1 sync completed successfully!${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✅ Committed changes to $WORK_BRANCH${NC}"
+    echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Function to execute master only workflow
+execute_master_only() {
+    echo -e "${BLUE}🚀 Executing: Update master and sync to main only${NC}"
+    echo ""
+    
+    # Switch to master
+    echo -e "${YELLOW}🔄 Step 1: Switching to $MASTER_BRANCH...${NC}"
+    git checkout "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to checkout $MASTER_BRANCH${NC}"
+        exit 1
+    fi
+
+    # Pull latest changes from master
+    echo -e "${YELLOW}⬇️ Step 2: Pulling latest changes from $MASTER_BRANCH...${NC}"
+    git pull origin "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to pull latest $MASTER_BRANCH${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pulled latest $MASTER_BRANCH from origin${NC}"
+
+    # Push master to organization repo
+    echo -e "${YELLOW}📤 Step 3: Pushing $MASTER_BRANCH to organization repo (origin)...${NC}"
+    git push origin "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push $MASTER_BRANCH to origin${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to organization repo${NC}"
+
+    # Push master to personal repo's main branch
+    echo -e "${YELLOW}📤 Step 4: Pushing $MASTER_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $MAIN_BRANCH)...${NC}"
+    git push "$PERSONAL_REPO_REMOTE" "$MASTER_BRANCH:$MAIN_BRANCH" --force
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
+
+    # Return to b1 branch (working branch)
+    echo -e "${YELLOW}🔄 Step 5: Returning to working branch $WORK_BRANCH...${NC}"
+    git checkout "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to return to $WORK_BRANCH${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Returned to working branch $WORK_BRANCH${NC}"
+
+    # Final Summary
+    echo ""
+    echo -e "${GREEN}🎉 Master sync completed successfully!${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✅ Updated $MASTER_BRANCH from origin${NC}"
+    echo -e "${GREEN}✅ Synced $MASTER_BRANCH (org) → $MAIN_BRANCH (personal)${NC}"
+    echo -e "${GREEN}✅ Returned to working branch $WORK_BRANCH${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+
+# Function to execute merge all workflow
+execute_merge_all() {
+    echo -e "${BLUE}🚀 Executing: Merge all branches on respective repos${NC}"
+    echo ""
+    
+    # Switch to b1 and commit changes
+    echo -e "${YELLOW}📝 Step 1: Switching to $WORK_BRANCH and committing changes...${NC}"
+    git checkout "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to checkout $WORK_BRANCH${NC}"
+        exit 1
+    fi
+
+    # Add all changes and commit
+    git add .
+    if git diff --staged --quiet; then
+        echo -e "${YELLOW}⚠️  No changes to commit on $WORK_BRANCH${NC}"
+    else
+        git commit -m "$COMMIT_MESSAGE"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}❌ Failed to commit changes${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✅ Changes committed to $WORK_BRANCH${NC}"
+    fi
+
+    # Push b1 to organization repo
+    echo -e "${YELLOW}📤 Step 2: Pushing $WORK_BRANCH to organization repo (origin)...${NC}"
+    git push origin "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push $WORK_BRANCH to origin${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
+
+    # Push b1 to personal repo's develop branch
+    echo -e "${YELLOW}📤 Step 3: Pushing $WORK_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $DEVELOP_BRANCH)...${NC}"
+    git push "$PERSONAL_REPO_REMOTE" "$WORK_BRANCH:$DEVELOP_BRANCH" --force
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Pushed $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
+
+    # Perform organization repo merge
+    if ! merge_org_branches; then
+        echo -e "${RED}❌ Organization repo merge failed${NC}"
+        exit 1
+    fi
+
+    # Perform personal repo merge
+    if ! merge_personal_branches; then
+        echo -e "${RED}❌ Personal repo merge failed${NC}"
+        exit 1
+    fi
+
+    # Return to b1 branch
+    echo -e "${YELLOW}🔄 Final Step: Returning to $WORK_BRANCH...${NC}"
+    git checkout "$WORK_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to return to $WORK_BRANCH${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
+
+    # Final Summary
+    echo ""
+    echo -e "${GREEN}🎉 Merge all completed successfully!${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}✅ Committed changes to $WORK_BRANCH${NC}"
+    echo -e "${GREEN}✅ Synced $WORK_BRANCH (org) → $DEVELOP_BRANCH (personal)${NC}"
+    echo -e "${GREEN}✅ Merged $WORK_BRANCH → $MASTER_BRANCH in organization repo${NC}"
+    echo -e "${GREEN}✅ Merged $DEVELOP_BRANCH → $MAIN_BRANCH in personal repo${NC}"
+    echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "${CYAN}Branch Sync Summary:${NC}"
+    echo -e "${BLUE}Organization Repo (origin):${NC}"
+    echo -e "${GREEN}  • $WORK_BRANCH ← Latest changes${NC}"
+    echo -e "${GREEN}  • $MASTER_BRANCH ← Merged from $WORK_BRANCH${NC}"
+    echo -e "${BLUE}Personal Repo ($PERSONAL_REPO_REMOTE):${NC}"
+    echo -e "${GREEN}  • $DEVELOP_BRANCH ← Synced with org $WORK_BRANCH${NC}"
+    echo -e "${GREEN}  • $MAIN_BRANCH ← Merged from $DEVELOP_BRANCH${NC}"
+}
+merge_org_branches() {
+    echo -e "${YELLOW}🔀 Step: Merging ${WORK_BRANCH} → ${MASTER_BRANCH} in organization repo...${NC}"
+    
+    # Switch to master branch
+    git checkout "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to checkout ${MASTER_BRANCH}${NC}"
+        return 1
+    fi
+    
+    # Pull latest changes from master
+    git pull origin "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to pull latest ${MASTER_BRANCH}${NC}"
+        return 1
+    fi
+    
+    # Merge work branch into master
+    git merge "$WORK_BRANCH" --no-ff -m "Merge ${WORK_BRANCH} into ${MASTER_BRANCH}"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to merge ${WORK_BRANCH} into ${MASTER_BRANCH}${NC}"
+        echo -e "${YELLOW}⚠️  You may need to resolve conflicts manually${NC}"
+        return 1
+    fi
+    
+    # Push merged master to origin
+    git push origin "$MASTER_BRANCH"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push merged ${MASTER_BRANCH} to origin${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}✅ Successfully merged ${WORK_BRANCH} → ${MASTER_BRANCH} in organization repo${NC}"
+    return 0
+}
+
+# Function to perform merge in personal repo
+merge_personal_branches() {
+    echo -e "${YELLOW}🔀 Step: Merging ${DEVELOP_BRANCH} → ${MAIN_BRANCH} in personal repo...${NC}"
+    
+    # Fetch personal repo branches
+    git fetch "$PERSONAL_REPO_REMOTE"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to fetch from ${PERSONAL_REPO_REMOTE}${NC}"
+        return 1
+    fi
+    
+    # Create/checkout local tracking branch for personal main
+    git checkout -B "temp_${MAIN_BRANCH}" "$PERSONAL_REPO_REMOTE/$MAIN_BRANCH" 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to checkout ${PERSONAL_REPO_REMOTE}/${MAIN_BRANCH}${NC}"
+        return 1
+    fi
+    
+    # Merge develop into main
+    git merge "$PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH" --no-ff -m "Merge ${DEVELOP_BRANCH} into ${MAIN_BRANCH}"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to merge ${DEVELOP_BRANCH} into ${MAIN_BRANCH}${NC}"
+        echo -e "${YELLOW}⚠️  You may need to resolve conflicts manually${NC}"
+        return 1
+    fi
+    
+    # Push merged main to personal repo
+    git push "$PERSONAL_REPO_REMOTE" "temp_${MAIN_BRANCH}:${MAIN_BRANCH}"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Failed to push merged ${MAIN_BRANCH} to ${PERSONAL_REPO_REMOTE}${NC}"
+        return 1
+    fi
+    
+    # Clean up temporary branch
+    git checkout "$WORK_BRANCH"
+    git branch -D "temp_${MAIN_BRANCH}" 2>/dev/null
+    
+    echo -e "${GREEN}✅ Successfully merged ${DEVELOP_BRANCH} → ${MAIN_BRANCH} in personal repo${NC}"
+    return 0
+}
+
 # Check if commit message is provided
 if [ -z "$1" ]; then
     echo -e "${RED}❌ Error: Commit message is required${NC}"
-    echo -e "${YELLOW}Usage: $0 \"Your commit message\"${NC}"
+    echo -e "${YELLOW}Usage: $0 \"Your commit message\" [flag]${NC}"
+    echo -e "${YELLOW}Flags:${NC}"
+    echo -e "${CYAN}  1 - Update master and sync to main only${NC}"
+    echo -e "${CYAN}  2 - Merge all branches on respective repos${NC}"
+    echo -e "${CYAN}  (no flag) - Just sync b1 with develop${NC}"
     exit 1
 fi
 
 COMMIT_MESSAGE="$1"
+FLAG="$2"
 
 # Initial setup and checks
-echo -e "${BLUE}🚀 Interactive Git Branch Sync Script${NC}"
+echo -e "${BLUE}🚀 Interactive Git Branch Sync Script with Flag-based Operations${NC}"
 echo -e "${CYAN}Branch Sync Strategy:${NC}"
 echo -e "${GREEN}  • $WORK_BRANCH (org) ↔ $DEVELOP_BRANCH (personal)${NC}"
 echo -e "${GREEN}  • $MASTER_BRANCH (org) ↔ $MAIN_BRANCH (personal)${NC}"
+echo ""
+
+# Set operation mode based on flag
+set_operation_mode "$FLAG"
 echo ""
 
 # Check if we're in a git repository
@@ -232,42 +537,44 @@ else
     echo ""
 fi
 
-# Step 3: Check for other personal remotes or offer to add additional ones
-if ! find_personal_remote && ! check_default_repo_exists; then
-    echo -e "${YELLOW}⚠️  No personal repository remote found${NC}"
-    echo ""
-    echo -e "${YELLOW}Options:${NC}"
-    echo -e "${CYAN}n)${NC} Add new remote"
-    echo -e "${CYAN}c)${NC} Continue with existing remotes"
-    echo -e "${CYAN}q)${NC} Quit"
-    echo ""
-    echo -e "${YELLOW}Choose option:${NC} "
-    read -r choice
-    
-    case $choice in
-        n|N)
-            if ! setup_personal_remote; then
-                echo -e "${RED}❌ Failed to setup personal repository remote${NC}"
+# Step 4: Check for other personal remotes or offer to add additional ones (only if not sync_b1_only mode)
+if [ "$OPERATION_MODE" != "sync_b1_only" ]; then
+    if ! find_personal_remote && ! check_default_repo_exists; then
+        echo -e "${YELLOW}⚠️  No personal repository remote found${NC}"
+        echo ""
+        echo -e "${YELLOW}Options:${NC}"
+        echo -e "${CYAN}n)${NC} Add new remote"
+        echo -e "${CYAN}c)${NC} Continue with existing remotes"
+        echo -e "${CYAN}q)${NC} Quit"
+        echo ""
+        echo -e "${YELLOW}Choose option:${NC} "
+        read -r choice
+        
+        case $choice in
+            n|N)
+                if ! setup_personal_remote; then
+                    echo -e "${RED}❌ Failed to setup personal repository remote${NC}"
+                    exit 1
+                fi
+                echo ""
+                echo -e "${CYAN}📋 Updated remotes:${NC}"
+                display_remotes
+                echo ""
+                ;;
+            c|C)
+                echo -e "${YELLOW}⚠️ Continuing without additional personal remote${NC}"
+                echo ""
+                ;;
+            q|Q)
+                echo -e "${YELLOW}👋 Goodbye!${NC}"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}❌ Invalid option${NC}"
                 exit 1
-            fi
-            echo ""
-            echo -e "${CYAN}📋 Updated remotes:${NC}"
-            display_remotes
-            echo ""
-            ;;
-        c|C)
-            echo -e "${YELLOW}⚠️ Continuing without additional personal remote${NC}"
-            echo ""
-            ;;
-        q|Q)
-            echo -e "${YELLOW}👋 Goodbye!${NC}"
-            exit 0
-            ;;
-        *)
-            echo -e "${RED}❌ Invalid option${NC}"
-            exit 1
-            ;;
-    esac
+                ;;
+        esac
+    fi
 fi
 
 # Ensure b1 branch exists
@@ -282,104 +589,15 @@ echo ""
 CURRENT_BRANCH=$(git branch --show-current)
 echo -e "${YELLOW}Current branch: ${CURRENT_BRANCH}${NC}"
 
-# Step 4: Switch to b1 and commit changes
-echo -e "${YELLOW}📝 Step 1: Switching to $WORK_BRANCH and committing changes...${NC}"
-git checkout "$WORK_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to checkout $WORK_BRANCH${NC}"
-    exit 1
-fi
-
-# Add all changes and commit
-git add .
-if git diff --staged --quiet; then
-    echo -e "${YELLOW}⚠️  No changes to commit on $WORK_BRANCH${NC}"
-else
-    git commit -m "$COMMIT_MESSAGE"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to commit changes${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}✅ Changes committed to $WORK_BRANCH${NC}"
-fi
-
-# Step 5: Push b1 to organization repo
-echo -e "${YELLOW}📤 Step 2: Pushing $WORK_BRANCH to organization repo (origin)...${NC}"
-git push origin "$WORK_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to push $WORK_BRANCH to origin${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Pushed $WORK_BRANCH to organization repo${NC}"
-
-# Step 6: Push b1 to personal repo's develop branch
-echo -e "${YELLOW}📤 Step 3: Pushing $WORK_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $DEVELOP_BRANCH)...${NC}"
-git push "$PERSONAL_REPO_REMOTE" "$WORK_BRANCH:$DEVELOP_BRANCH" --force
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to push $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Pushed $WORK_BRANCH to $PERSONAL_REPO_REMOTE/$DEVELOP_BRANCH${NC}"
-
-# Step 7: Switch to master
-echo -e "${YELLOW}🔄 Step 4: Switching to $MASTER_BRANCH...${NC}"
-git checkout "$MASTER_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to checkout $MASTER_BRANCH${NC}"
-    exit 1
-fi
-
-# Pull latest changes from master first
-echo -e "${YELLOW}⬇️ Step 5: Pulling latest changes from $MASTER_BRANCH...${NC}"
-git pull origin "$MASTER_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to pull latest $MASTER_BRANCH${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Pulled latest $MASTER_BRANCH from origin${NC}"
-
-# Step 8: Push master to organization repo
-echo -e "${YELLOW}📤 Step 6: Pushing $MASTER_BRANCH to organization repo (origin)...${NC}"
-git push origin "$MASTER_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to push $MASTER_BRANCH to origin${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to organization repo${NC}"
-
-# Step 9: Push master to personal repo's main branch
-echo -e "${YELLOW}📤 Step 7: Pushing $MASTER_BRANCH to personal repo ($PERSONAL_REPO_REMOTE $MAIN_BRANCH)...${NC}"
-git push "$PERSONAL_REPO_REMOTE" "$MASTER_BRANCH:$MAIN_BRANCH" --force
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to push $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Pushed $MASTER_BRANCH to $PERSONAL_REPO_REMOTE/$MAIN_BRANCH${NC}"
-
-# Step 10: Return to b1 branch
-echo -e "${YELLOW}🔄 Step 8: Returning to $WORK_BRANCH...${NC}"
-git checkout "$WORK_BRANCH"
-if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Failed to return to $WORK_BRANCH${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
-
-# Final Summary
-echo ""
-echo -e "${GREEN}🎉 Branch sync completed successfully!${NC}"
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}✅ Committed changes to $WORK_BRANCH${NC}"
-echo -e "${GREEN}✅ Synced $WORK_BRANCH (org) → $DEVELOP_BRANCH (personal)${NC}"
-echo -e "${GREEN}✅ Synced $MASTER_BRANCH (org) → $MAIN_BRANCH (personal)${NC}"
-echo -e "${GREEN}✅ All branches pushed to respective repositories${NC}"
-echo -e "${GREEN}✅ Returned to $WORK_BRANCH${NC}"
-echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "${CYAN}Branch Sync Summary:${NC}"
-echo -e "${BLUE}Organization Repo (origin):${NC}"
-echo -e "${GREEN}  • $WORK_BRANCH ← Latest changes${NC}"
-echo -e "${GREEN}  • $MASTER_BRANCH ← Latest changes${NC}"
-echo -e "${BLUE}Personal Repo ($PERSONAL_REPO_REMOTE):${NC}"
-echo -e "${GREEN}  • $DEVELOP_BRANCH ← Synced with org $WORK_BRANCH${NC}"
-echo -e "${GREEN}  • $MAIN_BRANCH ← Synced with org $MASTER_BRANCH${NC}"
+# Execute workflow based on operation mode
+case $OPERATION_MODE in
+    "sync_b1_only")
+        execute_sync_b1_only
+        ;;
+    "master_only")
+        execute_master_only
+        ;;
+    "merge_all")
+        execute_merge_all
+        ;;
+esac
