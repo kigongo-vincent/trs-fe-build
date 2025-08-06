@@ -303,6 +303,11 @@ export default function AddConsultantPage() {
     getCurrencies(setLoadingCurrencies, setCurrencies)
   }, [])
 
+  const selectAllDays = (e: any) => {
+    e.preventDefault()
+    setFormData((prev) => ({ ...prev, daysToCome: daysOfWeek.map(day => day.toLowerCase()) }))
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2">
@@ -394,6 +399,7 @@ export default function AddConsultantPage() {
                     ))}
                   </div>
                 )}
+                <button onClick={selectAllDays} className="border border-primary text-primary text-sm px-2 rounded-l-full rounded-r-full hover:opacity-100 opacity-50 py-1">Select all days</button>
                 <p className="text-sm text-muted-foreground">Select the days the consultant is expected to come in.</p>
               </div>
             </div>

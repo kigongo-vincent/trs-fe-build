@@ -302,12 +302,7 @@ export default function CompanySignup() {
       {/* Roundoff Dialog */}
       <Dialog open={showRoundoffDialog} onOpenChange={setShowRoundoffDialog}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Round Off Figures?</DialogTitle>
-            <DialogDescription>
-              Would you like to round off figures in your company account? This can be changed later in settings.
-            </DialogDescription>
-          </DialogHeader>
+
           {/* Currency Dropdown moved here */}
           <div className="mb-4">
             <Label htmlFor="currency-modal" className="mb-1">Currency</Label>
@@ -341,6 +336,14 @@ export default function CompanySignup() {
               </SelectContent>
             </Select>
           </div>
+
+          <DialogHeader>
+            <DialogTitle>Round Off Figures?</DialogTitle>
+            <DialogDescription>
+              Would you like to round off figures in your company account? This can be changed later in settings.
+            </DialogDescription>
+          </DialogHeader>
+
           <DialogFooter>
             <Button onClick={() => handleRoundoffChoice(true)} disabled={isLoading || !formData.currency}>
               Yes

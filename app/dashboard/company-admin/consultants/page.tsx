@@ -87,6 +87,7 @@ export default function ConsultantsPage() {
   // Get company ID from auth data
   const authData = getAuthData();
   const companyId = authData?.user?.company?.id;
+  const companyCurrency = authData?.user?.company?.currency
 
   // Function to fetch tasks by date range from API
   const fetchTasksByDateRange = async (startDate: Date, endDate: Date) => {
@@ -1212,40 +1213,40 @@ export default function ConsultantsPage() {
                               <Label>IDs</Label>
                               <div className="space-y-2">
                                 {Array.isArray(selectedConsultant?.attachments) && selectedConsultant.attachments.length > 0 ? (
-  selectedConsultant.attachments.map((att: { url: string; name: string }, idx: number) => (
-    <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-      <div className="flex-shrink-0">
-        <FileText className="h-5 w-5 text-red-500" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
-      </div>
-      <a
-        href={att.url}
-        download={att.name}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
-          <FileText className="h-4 w-4" />
-          View
-        </Button>
-      </a>
-      <a
-        href={att.url}
-        download={att.name}
-        rel="noopener noreferrer"
-      >
-        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-          <Download className="h-4 w-4" />
-          Download
-        </Button>
-      </a>
-    </div>
-  ))
-) : (
-  <div className="text-muted-foreground text-sm">No attachments found.</div>
-)}
+                                  selectedConsultant.attachments.map((att: { url: string; name: string }, idx: number) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+                                      <div className="flex-shrink-0">
+                                        <FileText className="h-5 w-5 text-red-500" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
+                                      </div>
+                                      <a
+                                        href={att.url}
+                                        download={att.name}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                          <FileText className="h-4 w-4" />
+                                          View
+                                        </Button>
+                                      </a>
+                                      <a
+                                        href={att.url}
+                                        download={att.name}
+                                        rel="noopener noreferrer"
+                                      >
+                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
+                                          <Download className="h-4 w-4" />
+                                          Download
+                                        </Button>
+                                      </a>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-muted-foreground text-sm">No attachments found.</div>
+                                )}
                               </div>
                             </div>
                             {/* End IDs Section */}
@@ -1258,7 +1259,7 @@ export default function ConsultantsPage() {
                                       {(() => {
                                         let grossPay = (selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay;
                                         let currency = (selectedConsultant as any)?.currency;
-                                        if (!currency) currency = 'USD';
+                                        if (!currency) currency = companyCurrency;
                                         if (!grossPay || isNaN(Number(grossPay))) return '-';
                                         // Format with commas
                                         const formattedGrossPay = Number(grossPay).toLocaleString();
@@ -1268,7 +1269,7 @@ export default function ConsultantsPage() {
                                     <span className="text-xs text-muted-foreground mt-1">Monthly Gross Pay</span>
                                   </CardContent>
                                 </Card>
-                                <span className="text-xs text-muted-foreground block text-center mt-1">If no currency is set, USD is used by default.</span>
+                                <span className="text-xs text-muted-foreground block text-center mt-1">If no currency is set,the company currency is used by default.</span>
                               </div>
                             </div>
                             <div className="flex flex-col gap-2 mt-4">
