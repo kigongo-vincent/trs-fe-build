@@ -123,6 +123,7 @@ export default function InvoicesPage() {
 
   // Get boardMemberRole from session
   const authData = getAuthData();
+  const companyCurrency = authData?.user?.company?.currency
   const boardMemberRole = authData?.user?.boardMemberRole || null;
   const roleName = authData?.user?.role?.name || null;
 
@@ -322,7 +323,7 @@ export default function InvoicesPage() {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">{item.label === "Total Amount" ? `${item.currency || "USD"} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
+                <div className="text-2xl font-bold text-primary">{item.label === "Total Amount" ? `${companyCurrency} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
                 <p className="text-xs text-muted-foreground">
                   {item.label === "Total Invoices" && ""}
                   {item.label === "Paid Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Paid Invoices" ? "0% of total invoices" : null}
@@ -352,7 +353,7 @@ export default function InvoicesPage() {
               <div className="h-[300px] bg-gray-100 rounded animate-pulse" />
             </div>
           ) : (
-            <MonthlyInvoiceChart data={monthlyInvoiceData} />
+            <MonthlyInvoiceChart data={monthlyInvoiceData?.map(prev => ({ ...prev, currency: companyCurrency }))} />
           )}
         </CardContent>
       </Card>
@@ -449,7 +450,7 @@ export default function InvoicesPage() {
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
-          <InvoiceTable ref={invoiceTableRef} currency={currency} searchTerm={searchTerm} filterParams={filterParams} boardMemberRole={boardMemberRole} roleName={roleName} />
+          <InvoiceTable ref={invoiceTableRef} currency={companyCurrency} searchTerm={searchTerm} filterParams={filterParams} boardMemberRole={boardMemberRole} roleName={roleName} />
         </CardContent>
       </Card>
     </div>
@@ -753,7 +754,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                       <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
                     </td>
                     <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${currency} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${currency} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900">${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
@@ -1145,9 +1146,8 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
   // Company logo logic
   const companyLogo = invoice.user?.company?.logo || 'https://www.tekjuice.co.uk/assets/images/logos.svg'
   const getCurrencyOrigin = () => {
-    if (invoice.user?.currency) return { code: invoice.user.currency, origin: `Consultant` }
-    if (currency) return { code: currency, origin: `Company` }
-    return { code: 'USD', origin: 'Default' }
+    let companyCurrency = getAuthData().user.company.currency
+    return { code: companyCurrency || 'USD', origin: 'Company' }
   }
   const formatCurrency = (amount: any, code = 'USD') => {
     // Always show as 'CODE amount', e.g., 'USD 1,000.00', no symbol
@@ -1349,7 +1349,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
                       <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
                     </td>
                     <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${(invoice.user?.grossPay || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900">${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
