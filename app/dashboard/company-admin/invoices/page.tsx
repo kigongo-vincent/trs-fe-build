@@ -754,8 +754,8 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                       <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
                     </td>
                     <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${currency} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-3 text-right font-medium text-gray-900">${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${invoice.user.currency} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-right font-medium text-gray-900">${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -767,21 +767,21 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
             <div class="space-y-2 text-sm">
               <div class="flex justify-between text-gray-600">
                 <span>Subtotal:</span>
-                <span>${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div class="flex justify-between text-gray-600">
                 <span>Tax:</span>
-                <span>${currency} 0.00</span>
+                <span>${invoice.user.currency} 0.00</span>
               </div>
               <div class="border-t pt-2">
                 <div class="flex justify-between text-base font-bold text-gray-900">
                   <span>Total:</span>
-                  <span>${currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
             <div class="mt-2 text-xs text-gray-500 text-right">
-              Showing amounts in <span class="font-semibold">${currency}</span> (Company currency)
+              Showing amounts in <span class="font-semibold">${invoice.user.currency}</span> (User currency)
             </div>
           </div>
 
@@ -1089,7 +1089,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
               <TableCell>{invoice.startDate && invoice.endDate ? `${format(new Date(invoice.startDate), "MMM yyyy")}` : "-"}</TableCell>
               <TableCell>
                 {invoice.amount != null && !isNaN(Number(invoice.amount))
-                  ? `${currency} ${Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ? `${invoice.user.currency} ${Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : "N/A"}
               </TableCell>
               <TableCell>
@@ -1146,8 +1146,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
   // Company logo logic
   const companyLogo = invoice.user?.company?.logo || 'https://www.tekjuice.co.uk/assets/images/logos.svg'
   const getCurrencyOrigin = () => {
-    let companyCurrency = getAuthData().user.company.currency
-    return { code: companyCurrency || 'USD', origin: 'Company' }
+    return { code: invoice.user.currency || 'USD', origin: 'User' }
   }
   const formatCurrency = (amount: any, code = 'USD') => {
     // Always show as 'CODE amount', e.g., 'USD 1,000.00', no symbol
@@ -1371,7 +1370,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
               <div class="border-t pt-2">
                 <div class="flex justify-between text-base font-bold text-gray-900">
                   <span>Total:</span>
-                  <span>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>

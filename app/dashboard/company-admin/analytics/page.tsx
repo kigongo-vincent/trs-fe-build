@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
             <TabsList>
               <TabsTrigger value="hours">Hours Logged</TabsTrigger>
               <TabsTrigger value="departments">Departments</TabsTrigger>
-              <TabsTrigger value="employees">Employees</TabsTrigger>
+              <TabsTrigger value="employees">Consultants</TabsTrigger>
             </TabsList>
             {/* <div className="flex items-center gap-2">
               <Select defaultValue="month">
@@ -128,11 +128,11 @@ export default function AnalyticsPage() {
           <TabsContent value="employees" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Employee Performance</CardTitle>
+                <CardTitle>Consultant Performance</CardTitle>
                 <CardDescription>Top performing employees by hours logged</CardDescription>
               </CardHeader>
               <CardContent>
-                <EmployeePerformanceChart data={topConsultants?.map(prev => ({ ...prev, hours: (prev.hours / 160).toFixed(2) }))} xAxisLabel="Employee" yAxisLabel="Hours" isLoading={isLoadingTopConsultants} />
+                <EmployeePerformanceChart data={topConsultants?.map(prev => ({ ...prev, hours: (prev.hours / 160).toFixed(2) }))} xAxisLabel="Consultant" yAxisLabel="Hours" isLoading={isLoadingTopConsultants} />
               </CardContent>
             </Card>
           </TabsContent>
