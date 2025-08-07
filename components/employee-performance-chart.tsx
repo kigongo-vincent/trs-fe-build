@@ -19,7 +19,7 @@ type EmployeePerformanceChartProps = {
   isLoading?: boolean;
 };
 
-export function EmployeePerformanceChart({ data = defaultData, xAxisLabel = 'Employee', yAxisLabel = 'Hours Logged', isLoading = false }: EmployeePerformanceChartProps) {
+export function EmployeePerformanceChart({ data = defaultData, xAxisLabel = 'Consultant', yAxisLabel = 'Hours Logged', isLoading = false }: EmployeePerformanceChartProps) {
   if (isLoading) {
     return (
       <div className="space-y-3">
