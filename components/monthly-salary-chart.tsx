@@ -2,6 +2,8 @@
 
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { getAuthData } from "@/services/auth"
+
 
 interface MonthlySalaryChartProps {
   data: Array<{
@@ -23,9 +25,11 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
 
   const xKey = "month"
 
+  const userCurrency = getAuthData()?.user?.currency
+
   return (
     <div className="w-full">
-      <div className="text-sm font-medium text-muted-foreground mb-2">USD</div>
+      <div className="text-sm font-medium text-muted-foreground mb-2">{userCurrency}</div>
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={chartData}>
           <XAxis

@@ -103,7 +103,7 @@ export default function AddConsultantPage() {
         }
 
         const companyId = authData.user.company.id
-        console.log(":: companyId ::", companyId)
+      
         const response = await getRequest<DepartmentsResponse>(`/departments/company/${companyId}`)
         setDepartments(response.data)
       } catch (err: any) {

@@ -84,22 +84,22 @@ export function Confetti() {
         const triggerConfetti = () => {
             // Check if user is authenticated
             if (!isAuthenticated()) {
-                console.log("User not authenticated, skipping birthday celebration")
+               
                 return
             }
 
             // Get user data
             const user = getAuthUser()
-            console.log("User data:", user) // Debug log
+           
 
             if (!user) {
-                console.log("No user data found, skipping birthday celebration")
+           
                 return
             }
 
             // Check if birthday celebration was already shown today
             if (hasBirthdayBeenCelebratedToday(user.id)) {
-                console.log("Birthday celebration already shown today for this user, skipping")
+       
                 return
             }
 
@@ -107,11 +107,10 @@ export function Confetti() {
             const today = new Date()
             const userBirthday = user.dateOfBirth ? parseBirthdayDate(user.dateOfBirth) : null
 
-            console.log("User birthday string:", user.dateOfBirth)
-            console.log("Parsed birthday date:", userBirthday)
+        
 
             if (!userBirthday) {
-                console.log("No birthday data found for user, skipping birthday celebration")
+               
                 return
             }
 
@@ -119,16 +118,14 @@ export function Confetti() {
             const isBirthday = today.getMonth() === userBirthday.getMonth() &&
                 today.getDate() === userBirthday.getDate()
 
-            console.log("Today's date:", today.toDateString())
-            console.log("User's birthday:", userBirthday.toDateString())
-            console.log("Is birthday today?", isBirthday)
+       
 
             if (!isBirthday) {
-                console.log("Today is not user's birthday, skipping birthday celebration")
+                
                 return
             }
 
-            console.log("🎉 It's the user's birthday! Triggering celebration!")
+           
 
             // Mark that we've celebrated this user's birthday today
             markBirthdayAsCelebratedToday(user.id)

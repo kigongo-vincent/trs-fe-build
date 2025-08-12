@@ -84,7 +84,6 @@ export async function postRequest<T>(
 
 export async function putRequest<T>(route: string, data: any): Promise<T> {
   try {
-    console.log("[putRequest] route:", route, "data:", data);
     const authData = getAuthData();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

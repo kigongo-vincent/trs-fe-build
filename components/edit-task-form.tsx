@@ -112,9 +112,8 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
                 attachments,
                 urls,
             }
-            console.log('EditTaskForm payload:', payload)
+
             const res = await updateTask(task.id, payload)
-            console.log('EditTaskForm response:', res)
             toast.success("Task updated successfully")
             onUpdated()
             onClose()
