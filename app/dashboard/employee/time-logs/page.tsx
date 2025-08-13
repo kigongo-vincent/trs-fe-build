@@ -798,14 +798,14 @@ export default function TimeLogsPage() {
       </div>
 
       {/* Filters Row */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="overflow-auto max-w-[90vw] flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-row items-center gap-2">
           <div className="flex items-center gap-2">
             <label htmlFor="start-date" className="text-sm text-muted-foreground">Start:</label>
             <Input
               id="start-date"
               type="date"
-              className="h-9 w-[140px]"
+              className="h-9 min-w-max"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
             />
@@ -813,7 +813,7 @@ export default function TimeLogsPage() {
             <Input
               id="end-date"
               type="date"
-              className="h-9 w-[140px]"
+              className="h-9 w-min-max"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
             />
@@ -874,7 +874,7 @@ export default function TimeLogsPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>
@@ -929,7 +929,7 @@ export default function TimeLogsPage() {
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className=" overflow-auto max-w-[90vw]">
           {loading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -951,7 +951,7 @@ export default function TimeLogsPage() {
               </p>
             </div>
           ) : (
-            <Table>
+            <Table className="">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
@@ -977,7 +977,7 @@ export default function TimeLogsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{log.project}</Badge>
+                        <Badge variant="outline" className="min-w-max">{log.project}</Badge>
                       </TableCell>
                       <TableCell>{formatDurationString(log.duration)}</TableCell>
                       <TableCell>

@@ -595,12 +595,12 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      <Card>
+      <Card >
         <CardHeader>
           <CardTitle>Invoice History</CardTitle>
           <CardDescription>View and download your past invoices</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className=" overflow-auto max-w-[90vw] m-aut0">
           <Table>
             <TableHeader>
               <TableRow>

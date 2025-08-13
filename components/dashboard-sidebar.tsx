@@ -85,14 +85,11 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     <>
       <div className="flex h-14 items-center border-b px-4">
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <div className="flex items-center justify-center w-6 h-6 rounded bg-primary">
-            <span className="text-xs font-bold text-white">TRS</span>
-          </div>
           <span className="text-lg">Dashboard</span>
         </Link>
         <Button variant="ghost" size="icon" className="ml-auto md:hidden" onClick={() => setOpen(false)}>
-          <X className="h-5 w-5" />
-          <span className="sr-only">Close sidebar</span>
+          {/* <X className="h-5 w-5" /> */}
+          {/* <span className="sr-only">Close sidebar</span> */}
         </Button>
       </div>
       <ScrollArea className="flex-1 px-2 py-4">
