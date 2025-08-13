@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getAuthUser } from "@/services/auth"
+import { getAuthData, getAuthUser } from "@/services/auth"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { useSearchParams } from "next/navigation"
@@ -15,6 +15,8 @@ export default function ProfilePage() {
     const [isClient, setIsClient] = useState(false)
     const searchParams = useSearchParams();
     const section = searchParams?.get('section') || 'personal';
+    const userRole = getAuthData()?.user?.role?.name
+
 
     useEffect(() => {
         setIsClient(true)
@@ -67,7 +69,7 @@ export default function ProfilePage() {
 
     const getUserInitials = () => {
         if (!user?.fullName) return "U"
-        return user.fullName.split(" ").map((n) => n[0]).join("")
+        return user.fullName.split(" ").map((n: any) => n[0]).join("")
     }
 
     const weekdayMap = {
@@ -99,14 +101,11 @@ export default function ProfilePage() {
                             </AvatarFallback>
                         </Avatar>
                         <div className="text-center w-full">
+
                             <div className="text-2xl font-bold mb-1">{user.fullName || "-"}</div>
                             <div className="text-muted-foreground mb-1">{user.jobTitle || "-"}</div>
-                            <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground mb-1">
-                                <span>Employee ID: {user.employeeId || "-"}</span>
-                                <span>Department: {user.departmentId || "-"}</span>
-                            </div>
-                            <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground mb-2">
-                                <span>Email: {user.email || "-"}</span>
+                            <div className=" gap-2 text-sm text-muted-foreground mb-2">
+                                <span>Email: {user.email || "-"}</span> <br />
                                 <span>Phone: {user.phoneNumber || "-"}</span>
                             </div>
                             {/* <Button variant="outline" size="sm">Edit Profile</Button> */}
@@ -114,7 +113,7 @@ export default function ProfilePage() {
                     </CardContent>
                 </Card>
                 {/* Address Card */}
-                <Card className="w-full">
+                {userRole == "Consultancy" && <Card className="w-full">
                     <CardHeader><CardTitle>Address</CardTitle></CardHeader>
                     <CardContent className="space-y-2 w-full">
                         <div><Label>Street</Label><div className="text-muted-foreground">{user.address?.street || "-"}</div></div>
@@ -123,10 +122,10 @@ export default function ProfilePage() {
                         <div><Label>Country</Label><div className="text-muted-foreground">{user.address?.country || "-"}</div></div>
                         <div><Label>Postal Code</Label><div className="text-muted-foreground">{user.address?.postalCode || "-"}</div></div>
                     </CardContent>
-                </Card>
+                </Card>}
             </div>
             {/* Info Grid: Bio, Compensation, Office Days */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
+           {userRole == "Consultancy" &&  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
                 {/* Bio Card */}
                 <Card className="w-full">
                     <CardHeader><CardTitle>Bio</CardTitle></CardHeader>
@@ -148,7 +147,7 @@ export default function ProfilePage() {
                         <div><Label>Days</Label><div className="text-muted-foreground">{Array.isArray(user.officeDays) && user.officeDays.length > 0 ? user.officeDays.map((d) => weekdayMap[d] || d).join(", ") : "-"}</div></div>
                     </CardContent>
                 </Card>
-            </div>
+            </div>}
         </>
     );
     // Only Next of Kin and Bank Details remain as separate sections
