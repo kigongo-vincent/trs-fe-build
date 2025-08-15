@@ -129,7 +129,6 @@ export default function NewTimeLogPage() {
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
         urls: urlAttachments.length > 0 ? urlAttachments : undefined,
       };
-      console.log("payload", payload);
       const response = await postRequest("/consultants/time-logs", payload);
       if ((response as { status: number }).status === 201) {
         toast.success("Time log created successfully!");

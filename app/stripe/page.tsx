@@ -137,7 +137,6 @@ async function verifySession(session_id: string, planId?: string): Promise<{ sta
         url += `?planId=${encodeURIComponent(planId)}`;
     }
     const res = await getRequest<{ status: number; message: string; data: StripeSessionData }>(url)
-    console.log("Stripe session response:", res)
     return res
 }
 

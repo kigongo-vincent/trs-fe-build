@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
     return (
         <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
             {/* Split layout */}
-            <div className="flex w-[80vw] min-h-[80vh] bg-white dark:bg-card rounded-2xl shadow-lg shadow-gray-100 dark:shadow-gray-900 overflow-hidden relative z-10">
+            <div className="flex sm:w-[80vw] w-[93vw] sm:min-h-[80vh] bg-white dark:bg-card rounded-2xl shadow-lg shadow-gray-100 dark:shadow-gray-900 overflow-hidden relative z-10">
                 {/* Left: Image + logo */}
                 <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 relative">
                     <Image

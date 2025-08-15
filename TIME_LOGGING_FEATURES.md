@@ -111,15 +111,7 @@ Users can now add external links to their time logs:
 The system includes enhanced API support for file uploads:
 
 ```tsx
-// Upload with progress tracking
-const uploadResponse = await uploadFile(file, (progress) => {
-  console.log(`Upload progress: ${progress.percentage}%`);
-});
 
-// Multiple file upload
-const responses = await uploadMultipleFiles(files, (fileIndex, progress) => {
-  console.log(`File ${fileIndex}: ${progress.percentage}%`);
-});
 ```
 
 ### Styling

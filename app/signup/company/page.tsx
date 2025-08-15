@@ -151,7 +151,7 @@ export default function CompanySignup() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 bg-card">
       {/* Split layout */}
-      <div className="flex w-[90vw] min-h-[80vh] bg-card rounded-2xl shadow-lg shadow-gray-100 dark:shadow-gray-900 overflow-hidden relative z-10">
+      <div className="flex sm:w-[90vw] sm:min-h-[80vh] w-[93vw] bg-card rounded-2xl shadow-lg shadow-gray-100  dark:shadow-gray-900 overflow-hidden relative z-10">
         {/* Left: Image + testimonial */}
         <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 dark:bg-black/60 relative">
           <Image
@@ -176,7 +176,7 @@ export default function CompanySignup() {
         </div>
         {/* Right: Signup form */}
         <div className="flex-1 flex  max-h-[80vh] overflow-auto flex-col justify-center items-center">
-          <div className="w-full px-[6rem]  overflow-auto h-full py-[3rem]">
+          <div className="w-full px-[2rem] sm:px-[6rem]  overflow-auto h-full py-[3rem]">
             <h1 className="text-2xl md:text-3xl font-bold mb-2 text-primary">Create Company Account</h1>
             <p className="text-muted-foreground mb-8">Enter your company and admin details to get started.</p>
             <form onSubmit={handleSubmit} className="space-y-6">

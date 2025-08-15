@@ -13,7 +13,7 @@ import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
-import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction } from "@/services/api"
+import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction, postRequest } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
@@ -422,9 +422,9 @@ export default function InvoicesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="approved">approved</SelectItem>
+                <SelectItem value="pending">pending</SelectItem>
+                <SelectItem value="processing">processing</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -600,12 +600,23 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     }
   }
 
-  const handleApproveAll = () => {
+  const [loading2, setLoading2] = useState(false)
+
+  const handleApproveAll = async () => {
     const selectedIds = Array.from(selectedInvoices)
-    console.log('Selected invoice IDs for approval:', selectedIds)
-    alert(`Approving ${selectedIds.length} invoices with IDs: ${selectedIds.join(', ')}`)
-    // Here you would typically make an API call to approve the invoices
-    // For now, we just log the IDs and show an alert
+    setLoading2(true)
+    try {
+
+      const data = await postRequest(`/company/invoices/approve/${authData.user.company.id}`, { invoiceIds: selectedIds })
+      if (data) {
+        fetchInvoicesWithRetry(1)
+      }
+    } catch (err) {
+      console.warn(err)
+    } finally {
+
+      setLoading2(false)
+    }
   }
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
@@ -1022,7 +1033,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
             size="sm"
             className="bg-primary"
           >
-            Approve All ({selectedInvoices.size})
+            {loading2 ? "Updating..." : "Approve All"} ({selectedInvoices.size})
           </Button>
         )}
       </div>
@@ -1078,11 +1089,11 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
           {sortedInvoices.map((invoice) => (
             <TableRow key={invoice.id}>
               <TableCell>
-                <Checkbox
+                {invoice.status != "approved" && <Checkbox
                   checked={selectedInvoices.has(invoice.id)}
                   onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked === true)}
                   aria-label={`Select invoice ${invoice.invoiceNumber || invoice.id}`}
-                />
+                />}
               </TableCell>
               <TableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</TableCell>
               <TableCell>{invoice.user?.fullName || "-"}</TableCell>
@@ -1096,7 +1107,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                 <Badge
                   variant="outline"
                   className={
-                    invoice.status === "paid"
+                    invoice.status === "approved"
                       ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
                       : invoice.status === "pending"
                         ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"

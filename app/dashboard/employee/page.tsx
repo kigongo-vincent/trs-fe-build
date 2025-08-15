@@ -106,11 +106,7 @@ export default function EmployeeDashboard() {
 
   // Debug output
   if (typeof window !== 'undefined') {
-    console.log('hoursMonthCount:', hoursMonthCount);
-    console.log('hoursLastMonthCount:', hoursLastMonthCount);
-    console.log('hoursTwoMonthsAgoCount:', hoursTwoMonthsAgoCount);
-    console.log('hoursMonthPercentage:', hoursMonthPercentage);
-    console.log('hoursLastMonthPercentage:', hoursLastMonthPercentage);
+
   }
 
   if (loading) {

@@ -28,9 +28,7 @@ export default function TimeLogDemoPage() {
     const [plainTextContent, setPlainTextContent] = useState("")
 
     const handleSubmit = () => {
-        console.log("Rich Text Content:", richTextContent)
-        console.log("Plain Text Content:", plainTextContent)
-        console.log("Attachments:", attachments)
+   
     }
 
     return (

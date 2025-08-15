@@ -49,6 +49,8 @@ export default function InvoicesPage() {
   const [userSession, setUserSession] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
+
+
   // Get user session data
   useEffect(() => {
     const authData = getAuthData()
@@ -57,7 +59,8 @@ export default function InvoicesPage() {
     }
   }, [])
 
-  const currency = userSession?.company?.currency || 'USD'
+
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'processing':
@@ -167,9 +170,14 @@ export default function InvoicesPage() {
     return true
   })
 
+  const userCurrency = getAuthData()?.user?.currency
+  const currency = userCurrency
+
+
   // Helper to get currency code (default to USD)
   function getCurrencyCode(currency?: string) {
-    return currency ? currency.toUpperCase() : 'USD';
+
+    return userCurrency;
   }
 
   // Generate PDF for a single invoice
@@ -535,7 +543,7 @@ export default function InvoicesPage() {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {item.amount !== null
-                    ? `${Number(item.amount).toFixed(2)} ${getCurrencyCode(item.currency)}`
+                    ? `${getCurrencyCode(item.currency)} ${Number(item.amount).toFixed(2)}`
                     : '--'}
                 </div>
               </CardContent>
@@ -587,12 +595,12 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      <Card>
+      <Card >
         <CardHeader>
           <CardTitle>Invoice History</CardTitle>
           <CardDescription>View and download your past invoices</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className=" overflow-auto max-w-[90vw] m-aut0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -627,7 +635,7 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>{invoice.totalHours}</TableCell>
                     <TableCell>
-                      {Number(invoice.amount).toFixed(2)} {getCurrencyCode(invoice.currency)}
+                      {getCurrencyCode(invoice.currency)} {Number(invoice.amount).toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <Badge

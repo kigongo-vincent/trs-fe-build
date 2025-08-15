@@ -342,7 +342,7 @@ export default function CompletedTasksPage() {
             <span className="sr-only md:not-sr-only md:ml-2">Search</span>
           </Button>
         </div>
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-row max-w-[90vw] overflow-auto m-auto items-center gap-2">
           <div className="flex flex-col gap-1">
             <label htmlFor="start-date" className="text-xs font-medium">Start Date</label>
             <input
@@ -404,14 +404,14 @@ export default function CompletedTasksPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="max-w-[90vw] sm:max-w-full  sm:m-0 m-auto">
         <CardHeader>
           <CardTitle>Time Logs</CardTitle>
           <CardDescription>
             Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="">
           {isTimeLogsLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
@@ -429,7 +429,7 @@ export default function CompletedTasksPage() {
               <p className="text-muted-foreground">No time logs found for the selected criteria.</p>
             </div>
           ) : (
-            <Table>
+            <Table className="">
               <TableHeader>
                 <TableRow>
                   <TableHead>Task</TableHead>
@@ -450,7 +450,7 @@ export default function CompletedTasksPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{log.project}</Badge>
+                      <Badge variant="outline" className="min-w-max">{log.project}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
