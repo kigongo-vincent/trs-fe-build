@@ -475,7 +475,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.totalHours ? summaryData.totalHours / 60 : 0}</div>
+                <div className="text-2xl font-bold text-primary">{summaryData?.totalHours ? (summaryData.totalHours / 60)?.toFixed(2) : 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData?.totalHours === 1 ? "hour" : "hours"} logged
                 </p>

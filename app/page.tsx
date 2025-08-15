@@ -43,7 +43,7 @@ export default function Home() {
         router.replace("/dashboard/department-head");
       } else {
         // fallback to default dashboard
-        router.replace("/dashboard");
+        router.replace("/dashboard/profile?section=personal");
       }
     }
   }, [router])

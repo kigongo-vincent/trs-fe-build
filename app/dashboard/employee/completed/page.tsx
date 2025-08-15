@@ -404,7 +404,7 @@ export default function CompletedTasksPage() {
         </div>
       </div>
 
-      <Card className="max-w-[90vw] m-auto">
+      <Card className="max-w-[90vw] sm:max-w-full  sm:m-0 m-auto">
         <CardHeader>
           <CardTitle>Time Logs</CardTitle>
           <CardDescription>
