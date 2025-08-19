@@ -1,4 +1,4 @@
-import { getAuthData } from "./auth";
+import { clearAuth, getAuthData } from "./auth";
 
 // Define the PackagesApiResponse interface locally
 export interface PackagesApiResponse {
@@ -7,7 +7,7 @@ export interface PackagesApiResponse {
   data: any[];
 }
 
-export const BASE_URL = "https://trs-api.tekjuice.xyz/api";
+export const BASE_URL = "https://api.tektasks.com/api";
 export const IMAGE_BASE_URL = "https://trs-api.tekjuice.xyz/";
 
 export interface UploadProgressEvent {
@@ -239,6 +239,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
   if (response.status === 403) {
+    // calll the logoout func
+    clearAuth();
     window.location.href = "/";
     throw new Error("Access denied. Redirecting to home.");
   }
