@@ -1,4 +1,4 @@
-import { getAuthData } from "./auth";
+import { clearAuth, getAuthData } from "./auth";
 
 // Define the PackagesApiResponse interface locally
 export interface PackagesApiResponse {
@@ -239,6 +239,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
   if (response.status === 403) {
+    // calll the logoout func
+    clearAuth();
     window.location.href = "/";
     throw new Error("Access denied. Redirecting to home.");
   }
