@@ -1,4 +1,5 @@
 import { postRequest, getRequest, putRequest } from "./api";
+import { getAuthUser } from "./auth";
 
 interface CreateConsultantPayload {
   fullName: string;
@@ -192,21 +193,20 @@ export const createConsultant = async (
   return postRequest<CreateConsultantResponse>("/auth/signup", payload);
 };
 
-export const getAllConsultants = async (
-  companyId: string
-): Promise<ConsultantsResponse> => {
+export const getAllConsultants = async (): Promise<ConsultantsResponse> => {
+  const companyId = getAuthUser()?.company?.id;
   return getRequest<ConsultantsResponse>(
     `/company/consultants/all/${companyId}`
   );
 };
 
-export const getConsultantsSummary = async (
-  companyId: string
-): Promise<DepartmentSummaryResponse> => {
-  return getRequest<DepartmentSummaryResponse>(
-    `/company/consultants/summary/${companyId}`
-  );
-};
+export const getConsultantsSummary =
+  async (): Promise<DepartmentSummaryResponse> => {
+    const companyId = getAuthUser()?.company?.id;
+    return getRequest<DepartmentSummaryResponse>(
+      `/company/consultants/summary/${companyId}`
+    );
+  };
 
 export const getConsultantDashboard = async (
   consultantId: string
@@ -217,10 +217,10 @@ export const getConsultantDashboard = async (
 };
 
 export const updateConsultantStatus = async (
-  companyId: string,
   consultantId: string,
   status: "active" | "inactive" | "on-leave"
 ): Promise<any> => {
+  const companyId = getAuthUser()?.company?.id;
   return putRequest(`/company/consultants/${companyId}/${consultantId}`, {
     status,
   });

@@ -18,6 +18,7 @@ export default function ProfilePage() {
     const userRole = getAuthData()?.user?.role?.name
 
 
+
     useEffect(() => {
         setIsClient(true)
         setUser(getAuthUser())
@@ -125,7 +126,7 @@ export default function ProfilePage() {
                 </Card>}
             </div>
             {/* Info Grid: Bio, Compensation, Office Days */}
-           {userRole == "Consultancy" &&  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
+            {userRole == "Consultancy" && <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mb-8">
                 {/* Bio Card */}
                 <Card className="w-full">
                     <CardHeader><CardTitle>Bio</CardTitle></CardHeader>
@@ -137,7 +138,7 @@ export default function ProfilePage() {
                 <Card className="w-full">
                     <CardHeader><CardTitle>Compensation</CardTitle></CardHeader>
                     <CardContent className="space-y-2 w-full">
-                        <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `$${user.grossPay}` : "-"}</div></div>
+                        <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `${user?.currency} ${user.grossPay}` : "-"}</div></div>
                     </CardContent>
                 </Card>
                 {/* Office Days Card */}
