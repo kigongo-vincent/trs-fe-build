@@ -73,7 +73,7 @@ export default function TimeLogsPage() {
         startDate,
         endDate,
         status: statusFilter,
-        project: projectFilter
+        projectId: projectFilter !== "all" ? projectFilter : undefined
       }
       const data = await fetchEmployeeTimeLogsWithFilters(filters)
       setTimeLogs(data)
@@ -84,6 +84,40 @@ export default function TimeLogsPage() {
       setIsFiltering(false)
     }
   }
+
+  // Fetch time logs when projectFilter changes
+  useEffect(() => {
+    if (projectFilter === "all") {
+      (async () => {
+        setLoading(true)
+        setError(null)
+        try {
+          const data = await fetchEmployeeTimeLogs()
+          setTimeLogs(data)
+        } catch (err) {
+          setError("Failed to load time logs. Please try again.")
+        } finally {
+          setLoading(false)
+        }
+      })()
+    } else {
+      (async () => {
+        setLoading(true)
+        setError(null)
+        try {
+          const filters = {
+            projectId: projectFilter
+          }
+          const data = await fetchEmployeeTimeLogsWithFilters(filters)
+          setTimeLogs(data)
+        } catch (err) {
+          setError("Failed to load time logs. Please try again.")
+        } finally {
+          setLoading(false)
+        }
+      })()
+    }
+  }, [projectFilter])
 
   // Fetch time logs data
   useEffect(() => {
@@ -189,9 +223,10 @@ export default function TimeLogsPage() {
 
   // Get unique projects for filter - this will be populated from API
   const uniqueProjects = useMemo(() => {
-    const projects = [...new Set(timeLogs.map((log) => log.project))]
-    return projects.filter(Boolean)
-  }, [timeLogs])
+    return projects && Array.isArray(projects)
+      ? projects.filter((p) => p && p.id)
+      : []
+  }, [projects])
 
   // No client-side filtering needed - all filtering is now handled by the API
   const filteredTimeLogs = timeLogs
@@ -818,16 +853,6 @@ export default function TimeLogsPage() {
               onChange={e => setEndDate(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Project" />
@@ -835,8 +860,10 @@ export default function TimeLogsPage() {
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
               {uniqueProjects.map((project) => (
-                <SelectItem key={project} value={project}>
-                  {project}
+                <SelectItem key={project.id} value={project.id}>
+                  <div>
+                    <div className="font-semibold">{project.name}</div>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1093,7 +1120,12 @@ export default function TimeLogsPage() {
                     </SelectItem>
                   ) : (
                     projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
+                      <SelectItem key={project.id} value={project.id}>
+                        <div>
+                          <div className="font-semibold">{project.name}</div>
+                          <div className="text-xs text-muted-foreground">ID: {project.id}</div>
+                        </div>
+                      </SelectItem>
                     ))
                   )}
                 </SelectContent>

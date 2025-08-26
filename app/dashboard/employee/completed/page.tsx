@@ -33,6 +33,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   fetchTaskCompletionData,
   fetchEmployeeTimeLogsByRange,
+  fetchEmployeeTimeLogsWithFilters,
   getTrendIndicator,
   formatDurationString,
   formatDate,
@@ -51,12 +52,14 @@ export default function CompletedTasksPage() {
   const [completionData, setCompletionData] = useState<TaskCompletionData | null>(null)
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
   const [filteredTimeLogs, setFilteredTimeLogs] = useState<TimeLog[]>([])
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isTimeLogsLoading, setIsTimeLogsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [projectFilter, setProjectFilter] = useState("all")
+  const [projectLoading, setProjectLoading] = useState(false)
 
   // Date range state
   const defaultRange = getDefaultDateRange()
@@ -104,32 +107,32 @@ export default function CompletedTasksPage() {
     loadTimeLogs()
   }, [dateRange])
 
-  // Filter time logs based on search and filters
+  // Search handler to fetch from server
+  const handleSearch = async () => {
+    setIsSearchLoading(true)
+    setError(null)
+    try {
+      const startDate = formatDateForAPI(dateRange.from)
+      const endDate = formatDateForAPI(dateRange.to)
+      const logs = await fetchEmployeeTimeLogsWithFilters({
+        search: searchTerm,
+        startDate,
+        endDate,
+        status: statusFilter,
+        project: projectFilter,
+      })
+      setFilteredTimeLogs(logs)
+    } catch (err) {
+      setError("Failed to search time logs. Please try again.")
+    } finally {
+      setIsSearchLoading(false)
+    }
+  }
+
+  // Initial load: set filteredTimeLogs to all timeLogs
   useEffect(() => {
-    let filtered = timeLogs
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (log) =>
-          log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          log.project.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((log) => log.status === statusFilter)
-    }
-
-    // Project filter
-    if (projectFilter !== "all") {
-      filtered = filtered.filter((log) => log.project === projectFilter)
-    }
-
-    setFilteredTimeLogs(filtered)
-  }, [timeLogs, searchTerm, statusFilter, projectFilter])
+    setFilteredTimeLogs(timeLogs)
+  }, [timeLogs])
 
   const handleViewTask = (task: TimeLog) => {
     setSelectedTask(task)
@@ -192,8 +195,10 @@ export default function CompletedTasksPage() {
     }
   }
 
-  // Get unique projects for filter
-  const uniqueProjects = Array.from(new Set(timeLogs.map((log) => log.project)))
+  // Get unique projects for filter (id and name)
+  const uniqueProjects = Array.from(
+    new Map(timeLogs.map((log) => [log.projectId, { id: log.projectId, name: log.project }])).values()
+  )
 
   if (error) {
     return (
@@ -337,8 +342,18 @@ export default function CompletedTasksPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-2 lg:px-3"
+            onClick={handleSearch}
+            disabled={isSearchLoading}
+          >
+            {isSearchLoading ? (
+              <span className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent rounded-full border-primary" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
             <span className="sr-only md:not-sr-only md:ml-2">Search</span>
           </Button>
         </div>
@@ -371,35 +386,49 @@ export default function CompletedTasksPage() {
               min={dateRange.from.toISOString().slice(0, 10)}
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="status-select" className="text-xs font-medium">Status</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger id="status-select" className="h-9 w-[120px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
           <div className="flex flex-col gap-1">
             <label htmlFor="project-select" className="text-xs font-medium">Project</label>
-            <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <Select
+              value={projectFilter}
+              onValueChange={async (id) => {
+                setProjectFilter(id)
+                setProjectLoading(true)
+                setError(null)
+                try {
+                  let logs
+                  const startDate = formatDateForAPI(dateRange.from)
+                  const endDate = formatDateForAPI(dateRange.to)
+                  if (id === "all") {
+                    logs = await fetchEmployeeTimeLogsByRange(startDate, endDate)
+                  } else {
+                    logs = await fetchEmployeeTimeLogsWithFilters({
+                      project: id,
+                      startDate,
+                      endDate,
+                    })
+                  }
+                  setFilteredTimeLogs(logs)
+                } catch (err) {
+                  setError("Failed to filter by project. Please try again.")
+                } finally {
+                  setProjectLoading(false)
+                }
+              }}
+            >
               <SelectTrigger id="project-select" className="h-9 w-[160px]">
                 <SelectValue placeholder="Project" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Projects</SelectItem>
-                {uniqueProjects.map((project, index) => (
-                  <SelectItem key={index} value={project}>
-                    {project}
+                {uniqueProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
           </div>
         </div>
       </div>
@@ -412,7 +441,7 @@ export default function CompletedTasksPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="">
-          {isTimeLogsLoading ? (
+          {(isTimeLogsLoading || isSearchLoading || projectLoading) ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center space-x-4">

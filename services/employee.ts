@@ -238,7 +238,7 @@ export async function fetchEmployeeTimeLogsWithFilters(filters: {
   startDate?: string;
   endDate?: string;
   status?: string;
-  project?: string;
+  projectId?: string;
 }): Promise<TimeLog[]> {
   try {
     let url = "/consultants/time-logs/";
@@ -256,8 +256,8 @@ export async function fetchEmployeeTimeLogsWithFilters(filters: {
     if (filters.status && filters.status !== "all") {
       params.append("status", filters.status);
     }
-    if (filters.project && filters.project !== "all") {
-      params.append("project", filters.project);
+    if (filters.projectId && filters.projectId !== "all") {
+      params.append("projectId", filters.projectId);
     }
 
     if (params.toString()) {
