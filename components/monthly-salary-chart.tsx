@@ -13,19 +13,23 @@ interface MonthlySalaryChartProps {
   }>
 }
 
+const user = getAuthData()
+const currency = user?.company?.currency
+
 export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
   // Use the last 8 months from the API data
   const last8Months = data.slice(-8)
+  const userCurrency = getAuthData()?.user?.currency
+
 
   const chartData = last8Months.map((item) => ({
     month: item.label,
     amount: item.amount,
-    currency: item.currency || "USD"
+    currency: userCurrency
   }))
 
   const xKey = "month"
 
-  const userCurrency = getAuthData()?.user?.currency
 
   return (
     <div className="w-full">
@@ -49,7 +53,7 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
           <Tooltip
             formatter={(_value: number, _name: string, props: any) => {
               const currency = props.payload && props.payload.currency ? props.payload.currency.toUpperCase() : 'USD';
-              return [`${props.value} ${currency}`, 'Amount'];
+              return [` ${currency} ${props.value}`, 'Amount'];
             }}
             cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
           />

@@ -27,6 +27,7 @@ import {
   updateConsultantStatus,
   getConsultantLogsByRange,
 } from "@/services/consultants"
+import { fetchConsultants as fetchConsultantsApi } from "@/services/api"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
 import { getAuthData, getUserRole } from "@/services/auth"
@@ -36,6 +37,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { X } from "lucide-react"
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { BASE_URL } from "@/services/api"
 
 export default function ConsultantsPage() {
   // All useState hooks
@@ -43,10 +45,50 @@ export default function ConsultantsPage() {
   const [departmentSummary, setDepartmentSummary] = useState<DepartmentSummary[]>([])
   const [filteredConsultants, setFilteredConsultants] = useState<Consultant[]>([])
   const [loading, setLoading] = useState(true)
+  const [listLoading, setListLoading] = useState(false)
   const [chartLoading, setChartLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  // Fetch consultants with filters/search using generic API service
+  const fetchConsultants = async () => {
+    setListLoading(true);
+    try {
+      const params: Record<string, any> = {};
+      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (departmentFilter !== "all") params.departmentId = departmentFilter;
+      if (statusFilter !== "all") params.status = statusFilter;
+      const result = await fetchConsultantsApi(params);
+      if (result.status !== 200) throw new Error(result.message || "Failed to fetch consultants");
+      setFilteredConsultants(result.data || []);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to fetch consultants");
+      setFilteredConsultants([]);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  // Reset filters and reload consultants
+  const handleResetConsultants = async () => {
+    setSearchQuery("");
+    setDepartmentFilter("all");
+    setStatusFilter("all");
+    setListLoading(true);
+    try {
+      const consultantsResponse = await getAllConsultants();
+      if (consultantsResponse.status === 200) {
+        setFilteredConsultants(consultantsResponse.data);
+      } else {
+        setFilteredConsultants([]);
+      }
+    } catch (err) {
+      toast.error("Failed to reload consultants");
+      setFilteredConsultants([]);
+    } finally {
+      setListLoading(false);
+    }
+  };
   const [isConsultantModalOpen, setIsConsultantModalOpen] = useState(false)
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null)
   const [dashboardData, setDashboardData] = useState<ConsultantDashboardData | null>(null)
@@ -126,14 +168,10 @@ export default function ConsultantsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (!companyId) {
-          console.error("Company ID not found in auth data")
-          return
-        }
         // Fetch both consultants and department summary in parallel
         const [consultantsResponse, summaryResponse] = await Promise.all([
-          getAllConsultants(companyId),
-          getConsultantsSummary(companyId),
+          getAllConsultants(),
+          getConsultantsSummary(),
         ])
         if (consultantsResponse.status === 200) {
           setConsultants(consultantsResponse.data)
@@ -150,7 +188,7 @@ export default function ConsultantsPage() {
       }
     }
     fetchData()
-  }, [companyId])
+  }, [])
 
   // Fetch logs by range only when confirmed date range or selectedConsultant changes
   useEffect(() => {
@@ -354,10 +392,9 @@ export default function ConsultantsPage() {
     else if (statusAction === 'on-leave') newStatus = 'on-leave'
     setStatusLoading(true)
     try {
-      if (!companyId) throw new Error('Company ID not found')
-      await updateConsultantStatus(companyId, statusTargetConsultant.id, newStatus)
+      await updateConsultantStatus(statusTargetConsultant.id, newStatus)
       // Refetch consultants after status change
-      const consultantsResponse = await getAllConsultants(companyId)
+      const consultantsResponse = await getAllConsultants();
       if (consultantsResponse.status === 200) {
         setConsultants(consultantsResponse.data)
         setFilteredConsultants(consultantsResponse.data)
@@ -486,43 +523,60 @@ export default function ConsultantsPage() {
       </Card>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex items-center h-12 w-[260px] border border-gray-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-100">
-          <span className="absolute left-3 text-gray-400">
-            <SearchIcon className="h-6 w-6" />
-          </span>
-          <Input
-            type="text"
-            placeholder="Search consultants..."
-            className="pl-12 h-12 w-full border-none bg-transparent text-lg placeholder:text-gray-400 focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex items-center space-x-2">
+          <div className="relative flex items-center h-12 border border-gray-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-100">
+            <span className="absolute left-3 text-gray-400">
+              <SearchIcon className="h-6 w-6" />
+            </span>
+            <Input
+              type="text"
+              placeholder="Search consultants..."
+              className="pl-12 h-12 w-full border-none bg-transparent text-lg placeholder:text-gray-400 focus:outline-none"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={listLoading}
+            />
+          </div>
+          <Button className="mr-1" onClick={fetchConsultants} disabled={listLoading}>
+            {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
+            Search
+          </Button>
         </div>
-        <div className="flex flex-row items-center gap-2">
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept.toLowerCase()}>
-                  {dept}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="on-leave">On Leave</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center space-x-2">
+          <div className="flex flex-row items-center gap-2">
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled={listLoading}>
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept} value={dept.toLowerCase()}>
+                    {dept}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter} disabled={listLoading}>
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="on-leave">On Leave</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={fetchConsultants} disabled={listLoading}>
+            {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
+            Filter
+          </Button>
+          <Button variant="outline" onClick={handleResetConsultants} disabled={listLoading}>
+            {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></span> : null}
+            Reset
+          </Button>
         </div>
       </div>
 
@@ -532,7 +586,7 @@ export default function ConsultantsPage() {
           <CardDescription>Manage your company consultants</CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
+          {(loading || listLoading) ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center space-x-4">
@@ -1361,27 +1415,25 @@ export default function ConsultantsPage() {
                 setIsEditModalOpen(false);
                 setEditConsultant(null);
                 // Refetch consultants and department summary after update
-                if (companyId) {
-                  setLoading(true);
-                  setChartLoading(true);
-                  try {
-                    const [consultantsResponse, summaryResponse] = await Promise.all([
-                      getAllConsultants(companyId),
-                      getConsultantsSummary(companyId),
-                    ]);
-                    if (consultantsResponse.status === 200) {
-                      setConsultants(consultantsResponse.data);
-                      setFilteredConsultants(consultantsResponse.data);
-                    }
-                    if (summaryResponse.status === 200) {
-                      setDepartmentSummary(summaryResponse.data);
-                    }
-                  } catch (error) {
-                    console.error("Failed to refetch data after consultant update:", error);
-                  } finally {
-                    setLoading(false);
-                    setChartLoading(false);
+                setLoading(true);
+                setChartLoading(true);
+                try {
+                  const [consultantsResponse, summaryResponse] = await Promise.all([
+                    getAllConsultants(),
+                    getConsultantsSummary(),
+                  ]);
+                  if (consultantsResponse.status === 200) {
+                    setConsultants(consultantsResponse.data);
+                    setFilteredConsultants(consultantsResponse.data);
                   }
+                  if (summaryResponse.status === 200) {
+                    setDepartmentSummary(summaryResponse.data);
+                  }
+                } catch (error) {
+                  console.error("Failed to refetch data after consultant update:", error);
+                } finally {
+                  setLoading(false);
+                  setChartLoading(false);
                 }
               }} />
             )}

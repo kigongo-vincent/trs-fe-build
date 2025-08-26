@@ -1,4 +1,4 @@
-import { clearAuth, getAuthData } from "./auth";
+import { clearAuth, getAuthData, getAuthUser } from "./auth";
 
 // Define the PackagesApiResponse interface locally
 export interface PackagesApiResponse {
@@ -325,6 +325,18 @@ export async function fetchCompanies(): Promise<any> {
 
 export async function fetchCompanyById(id: string): Promise<any> {
   return getRequest(`/super-admin/companies/${id}`);
+}
+// Fetch consultants with optional query params (search, filter, pagination)
+export async function fetchConsultants(
+  params?: Record<string, any>
+): Promise<any> {
+  const companyId = getAuthUser()?.company?.id;
+  let query = "";
+  if (params && Object.keys(params).length > 0) {
+    const searchParams = new URLSearchParams(params).toString();
+    query = `?${searchParams}`;
+  }
+  return getRequest(`/company/consultants/all/${companyId}${query}`);
 }
 
 // Type for a single license key
