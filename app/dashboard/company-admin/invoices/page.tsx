@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import React from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -127,6 +128,15 @@ export default function InvoicesPage() {
   const boardMemberRole = authData?.user?.boardMemberRole || null;
   const roleName = authData?.user?.role?.name || null;
 
+  // Hard-coded totals by currency for Total Amount card
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD")
+  const hardcodedTotals: Record<string, number> = {
+    USD: 125000.5,
+    EUR: 114200.25,
+    GBP: 98210.75,
+    NGN: 187500000,
+  }
+
   const fetchSummaryWithRetry = async (retryAttempt = 0) => {
     setLoading(true)
     setError(null)
@@ -192,7 +202,7 @@ export default function InvoicesPage() {
         const authData = getAuthData()
         const companyId = authData?.user?.company?.id
         if (!companyId) throw new Error("Company ID not found")
-        const res = await getCompanyPaidInvoicesByMonth(companyId)
+        const res: any = await getCompanyPaidInvoicesByMonth(companyId)
         // If API doesn't return currency, fallback to summary currency
         const chartCurrency = currency || "USD"
         // Normalize data to match chart props
@@ -268,6 +278,10 @@ export default function InvoicesPage() {
           <InvoiceActions onDownloadAll={handleTopDownloadPDF} />
         </div>
       </div>
+      {/* Bottom selected currency renderer */}
+      <div className="text-xs text-muted-foreground">
+        Showing totals in <span className="font-semibold">{selectedCurrency}</span>: {selectedCurrency} {Number(hardcodedTotals[selectedCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {loading ? (
@@ -317,21 +331,48 @@ export default function InvoicesPage() {
           </div>
         ) : summary ? (
           summary.map((item, i) => (
-            <Card key={item.label}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">{item.label === "Total Amount" ? `${companyCurrency} ${Number(item.value).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  {item.label === "Total Invoices" && ""}
-                  {item.label === "Paid Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Paid Invoices" ? "0% of total invoices" : null}
-                  {item.label === "Pending Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Pending Invoices" ? "0% of total invoices" : null}
-                  {item.label === "Total Amount" && "For current fiscal year"}
-                </p>
-              </CardContent>
-            </Card>
+            item.label === "Total Amount" ? (
+              <Card key={item.label}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-2 -mx-1">
+                    <Tabs value={selectedCurrency} onValueChange={(v) => setSelectedCurrency(v)}>
+                      <div className="overflow-x-auto scrollbar-thin-x">
+                        <TabsList className="min-w-max">
+                          {Object.keys(hardcodedTotals).map((code) => (
+                            <TabsTrigger key={code} value={code} className="px-2 sm:px-3">
+                              {code}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </div>
+                    </Tabs>
+                  </div>
+                  <div className="text-2xl font-bold text-primary">
+                    {selectedCurrency} {Number(hardcodedTotals[selectedCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">For current fiscal year</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card key={item.label}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{item.value}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {item.label === "Total Invoices" && ""}
+                    {item.label === "Paid Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Paid Invoices" ? "0% of total invoices" : null}
+                    {item.label === "Pending Invoices" && summary[0]?.value > 0 ? `${Math.round((item.value / summary[0].value) * 100)}% of total invoices` : item.label === "Pending Invoices" ? "0% of total invoices" : null}
+                  </p>
+                </CardContent>
+              </Card>
+            )
           ))
         ) : null}
       </div>
@@ -353,7 +394,26 @@ export default function InvoicesPage() {
               <div className="h-[300px] bg-gray-100 rounded animate-pulse" />
             </div>
           ) : (
-            <MonthlyInvoiceChart data={monthlyInvoiceData?.map(prev => ({ ...prev, currency: companyCurrency }))} />
+            <MonthlyInvoiceChart
+              data={monthlyInvoiceData?.map(prev => ({ ...prev, currency: selectedCurrency }))}
+              multiSeries={{
+                currencies: ["USD", "UGX", "GBP"],
+                data: [
+                  { month: "January", USD: 3200, UGX: 12500000 },
+                  { month: "February", USD: 2800, UGX: 11000000, GBP: 1800 },
+                  { month: "March", USD: 3600, UGX: 14000000 },
+                  { month: "April", USD: 4100, UGX: 15000000, GBP: 2100 },
+                  { month: "May", USD: 3000, UGX: 12000000 },
+                  { month: "June", USD: 4500, UGX: 16000000, GBP: 2300 },
+                  { month: "July", USD: 3800, UGX: 14200000 },
+                  { month: "August", USD: 2900, UGX: 11800000, GBP: 1750 },
+                  { month: "September", USD: 4200, UGX: 15500000 },
+                  { month: "October", USD: 4700, UGX: 17000000, GBP: 2450 },
+                  { month: "November", USD: 3900, UGX: 14500000 },
+                  { month: "December", USD: 4400, UGX: 16800000, GBP: 2350 },
+                ],
+              }}
+            />
           )}
         </CardContent>
       </Card>

@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -174,4 +172,24 @@
 
 .ProseMirror .text-purple-500 {
   color: #8b5cf6;
+}
+
+/* Slim horizontal scrollbar utility */
+.scrollbar-thin-x {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
+}
+.scrollbar-thin-x::-webkit-scrollbar {
+  height: 0px;
+}
+.scrollbar-thin-x::-webkit-scrollbar-track {
+  background: transparent;
+  height: 1px;
+}
+.scrollbar-thin-x::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 9999px;
+}
+.scrollbar-thin-x:hover::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.6);
 }
