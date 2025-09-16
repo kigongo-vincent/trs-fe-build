@@ -383,9 +383,9 @@ export default function CompanyAdminPackagesPage() {
                                         </Badge>
                                         {company.package.name}
                                     </CardTitle>
-                                  
+
                                     <div className="mt-4">
-                                        
+
                                         <div className="text-xs mt-2">
                                             {currentPlanExpiry ? (
                                                 (() => {
@@ -446,12 +446,12 @@ export default function CompanyAdminPackagesPage() {
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-2 ml-4">
-                                        {(!selectedPlan || pkg.id !== selectedPlan.id) && (
+                                        {(!selectedPlan || pkg.id !== company.package.id) && (
                                             <Button variant="default" onClick={() => handleUpgradeClick(pkg)}>
                                                 Upgrade
                                             </Button>
                                         )}
-                                        {selectedPlan && pkg.id === selectedPlan.id && (
+                                        {selectedPlan && pkg.id === company.package.id && (
                                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">Current</Badge>
                                         )}
                                     </div>
