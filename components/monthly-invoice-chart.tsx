@@ -44,14 +44,24 @@ export function MonthlyInvoiceChart({ data, multiSeries }: MonthlyInvoiceChartPr
   const alphas = Array.from({ length: seriesCount }, (_, i) => Math.max(0.06, Math.pow(0.7, i)))
   const defaultColors = alphas.map(a => `rgba(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]}, ${a})`)
 
+  // Multi-series: we'll always render both left and right axes to avoid id mismatches
+  const hasRightAxis = true
+  const hasLeftAxis = true
+
   return (
     <div className="w-full" style={{ minHeight: "50vh", height: "50vh" }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={multiSeries ? multiSeries.data : filledData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
-          <YAxis yAxisId="left" />
-          <YAxis yAxisId="right" orientation="right" />
+          {multiSeries ? (
+            <>
+              <YAxis yAxisId="left" />
+              <YAxis yAxisId="right" orientation="right" />
+            </>
+          ) : (
+            <YAxis />
+          )}
           <Tooltip />
           {multiSeries && <Legend />}
           {multiSeries

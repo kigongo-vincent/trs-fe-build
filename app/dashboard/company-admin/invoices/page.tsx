@@ -13,6 +13,7 @@ import { MonthlyInvoiceChart } from "@/components/monthly-invoice-chart"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
+import { useMemo } from "react"
 import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction, postRequest } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
@@ -128,15 +129,10 @@ export default function InvoicesPage() {
   const boardMemberRole = authData?.user?.boardMemberRole || null;
   const roleName = authData?.user?.role?.name || null;
 
-  // Hard-coded totals by currency for Total Amount card
+  // Selected currency for the Total Amount card
   const [selectedCurrency, setSelectedCurrency] = useState<string>("USD")
-  const hardcodedTotals: Record<string, number> = {
-    USD: 125000.5,
-    EUR: 114200.25,
-    GBP: 98210.75,
-    NGN: 187500000,
-  }
 
+  // Compute totals per currency from paid-by-month multi-series
   const fetchSummaryWithRetry = async (retryAttempt = 0) => {
     setLoading(true)
     setError(null)
@@ -193,6 +189,47 @@ export default function InvoicesPage() {
   const [monthlyInvoiceData, setMonthlyInvoiceData] = useState<Array<{ month: string, totalAmount: number, currency: string }>>([])
   const [monthlyChartLoading, setMonthlyChartLoading] = useState(true)
   const [monthlyChartError, setMonthlyChartError] = useState<string | null>(null)
+  const [monthlyMultiSeries, setMonthlyMultiSeries] = useState<{
+    currencies: string[]
+    data: Array<{ month: string;[currency: string]: number | string }>
+  } | null>(null)
+  // Derive display currency to ensure UI reflects active selection
+  const displayCurrency = useMemo(() => {
+    const available = monthlyMultiSeries?.currencies || []
+    if (available.length === 0) return selectedCurrency || companyCurrency || "USD"
+    return available.includes(selectedCurrency) ? selectedCurrency : available[0]
+  }, [selectedCurrency, monthlyMultiSeries, companyCurrency])
+
+  // Compute totals per currency from paid-by-month multi-series
+  const computedCurrencyTotals: Record<string, number> = useMemo(() => {
+    if (!monthlyMultiSeries || !Array.isArray(monthlyMultiSeries.data)) return {}
+    const totals: Record<string, number> = {}
+    const codes = monthlyMultiSeries.currencies || []
+    // Initialize totals
+    codes.forEach(code => { totals[code] = 0 })
+    // Sum values per currency across months
+    monthlyMultiSeries.data.forEach((row) => {
+      codes.forEach((code) => {
+        const value = Number(row[code] as number)
+        totals[code] = (totals[code] || 0) + (isNaN(value) ? 0 : value)
+      })
+    })
+    return totals
+  }, [monthlyMultiSeries])
+
+  // Align selected currency to available currencies from API
+  useEffect(() => {
+    if (monthlyMultiSeries && monthlyMultiSeries.currencies?.length) {
+      setSelectedCurrency((prev) => {
+        const available = monthlyMultiSeries.currencies
+        // If current selection is missing, fallback to first available currency
+        if (!prev || !available.includes(prev)) {
+          return available[0]
+        }
+        return prev
+      })
+    }
+  }, [monthlyMultiSeries])
 
   useEffect(() => {
     const fetchMonthlyChart = async () => {
@@ -203,25 +240,37 @@ export default function InvoicesPage() {
         const companyId = authData?.user?.company?.id
         if (!companyId) throw new Error("Company ID not found")
         const res: any = await getCompanyPaidInvoicesByMonth(companyId)
-        // If API doesn't return currency, fallback to summary currency
-        const chartCurrency = currency || "USD"
-        // Normalize data to match chart props
+        // Normalize data to match multi-series chart props
         const months = [
           "January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"
         ]
-        // API likely returns months as "Jan 2025", so we need to map to chart months
-        const apiData = Array.isArray(res.data) ? res.data : []
-        const normalized = months.map((month) => {
-          // Try to find a matching month from API (partial match, e.g., "Jan" in "Jan 2025")
-          const apiMonth = apiData.find((item: any) => item.month.toLowerCase().startsWith(month.slice(0, 3).toLowerCase()))
-          return {
-            month,
-            totalAmount: apiMonth ? apiMonth.totalAmount : 0,
-            currency: chartCurrency,
-          }
+
+        const api = res?.data || {}
+        const currencies: string[] = Array.isArray(api?.currencies) ? api.currencies : []
+        const apiData: any[] = Array.isArray(api?.data) ? api.data : []
+
+        // Build filled multi-series data for all 12 months with zeros for missing entries
+        const filledMulti = months.map((month) => {
+          const match = apiData.find((item: any) => item?.month === month)
+          const row: { month: string;[key: string]: number | string } = { month }
+          currencies.forEach((code) => {
+            const value = match && typeof match[code] !== 'undefined' ? Number(match[code]) : 0
+            row[code] = isNaN(value) ? 0 : value
+          })
+          return row
         })
-        setMonthlyInvoiceData(normalized)
+
+        setMonthlyMultiSeries({ currencies, data: filledMulti })
+
+        // Also keep single-series fallback aligned to the first currency if needed
+        const primaryCurrency = currencies[0] || currency || "USD"
+        const singleSeries = months.map((month) => {
+          const match = apiData.find((item: any) => item?.month === month)
+          const amount = match && primaryCurrency in (match || {}) ? Number(match[primaryCurrency]) : 0
+          return { month, totalAmount: isNaN(amount) ? 0 : amount, currency: primaryCurrency }
+        })
+        setMonthlyInvoiceData(singleSeries)
       } catch (err: any) {
         setMonthlyChartError(err.message || "Failed to fetch chart data")
       } finally {
@@ -280,7 +329,7 @@ export default function InvoicesPage() {
       </div>
       {/* Bottom selected currency renderer */}
       <div className="text-xs text-muted-foreground">
-        Showing totals in <span className="font-semibold">{selectedCurrency}</span>: {selectedCurrency} {Number(hardcodedTotals[selectedCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        Showing totals in <span className="font-semibold">{displayCurrency}</span>: {displayCurrency} {Number(computedCurrencyTotals[displayCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -339,10 +388,10 @@ export default function InvoicesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="mb-2 -mx-1">
-                    <Tabs value={selectedCurrency} onValueChange={(v) => setSelectedCurrency(v)}>
+                    <Tabs value={displayCurrency} onValueChange={(v) => setSelectedCurrency(v)}>
                       <div className="overflow-x-auto scrollbar-thin-x">
                         <TabsList className="min-w-max">
-                          {Object.keys(hardcodedTotals).map((code) => (
+                          {(monthlyMultiSeries?.currencies || []).map((code) => (
                             <TabsTrigger key={code} value={code} className="px-2 sm:px-3">
                               {code}
                             </TabsTrigger>
@@ -352,7 +401,7 @@ export default function InvoicesPage() {
                     </Tabs>
                   </div>
                   <div className="text-2xl font-bold text-primary">
-                    {selectedCurrency} {Number(hardcodedTotals[selectedCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {displayCurrency} {Number(computedCurrencyTotals[displayCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                   <p className="text-xs text-muted-foreground">For current fiscal year</p>
                 </CardContent>
@@ -396,23 +445,7 @@ export default function InvoicesPage() {
           ) : (
             <MonthlyInvoiceChart
               data={monthlyInvoiceData?.map(prev => ({ ...prev, currency: selectedCurrency }))}
-              multiSeries={{
-                currencies: ["USD", "UGX", "GBP"],
-                data: [
-                  { month: "January", USD: 3200, UGX: 12500000 },
-                  { month: "February", USD: 2800, UGX: 11000000, GBP: 1800 },
-                  { month: "March", USD: 3600, UGX: 14000000 },
-                  { month: "April", USD: 4100, UGX: 15000000, GBP: 2100 },
-                  { month: "May", USD: 3000, UGX: 12000000 },
-                  { month: "June", USD: 4500, UGX: 16000000, GBP: 2300 },
-                  { month: "July", USD: 3800, UGX: 14200000 },
-                  { month: "August", USD: 2900, UGX: 11800000, GBP: 1750 },
-                  { month: "September", USD: 4200, UGX: 15500000 },
-                  { month: "October", USD: 4700, UGX: 17000000, GBP: 2450 },
-                  { month: "November", USD: 3900, UGX: 14500000 },
-                  { month: "December", USD: 4400, UGX: 16800000, GBP: 2350 },
-                ],
-              }}
+              multiSeries={monthlyMultiSeries || undefined}
             />
           )}
         </CardContent>
