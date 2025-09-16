@@ -328,10 +328,7 @@ export default function ProjectsPage() {
             value={searchQuery}
             onChange={handleSearch}
           />
-          <Button variant="outline" size="sm" className="h-9 px-2 lg:px-3">
-            <Search className="h-4 w-4" />
-            <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-          </Button>
+         
         </div>
         <div className="flex flex-row items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>

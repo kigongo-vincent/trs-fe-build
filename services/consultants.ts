@@ -236,12 +236,22 @@ export async function fetchConsultantInvoiceSummary(): Promise<
   return result.data;
 }
 
-export async function fetchConsultantInvoices(): Promise<
-  ConsultantInvoiceListItem[]
-> {
-  const result: ConsultantInvoiceListResponse = await getRequest(
-    "/invoices/consultant/list"
-  );
+export async function fetchConsultantInvoices(
+  query?: string | undefined,
+  status?: "pending" | "paid" | "processing" | "all"
+): Promise<ConsultantInvoiceListItem[]> {
+  let url = "/invoices/consultant/list";
+
+  if (query && query?.length > 0) {
+    url += `?search=${query}`;
+  }
+
+  if (status && status.length > 0) {
+    if (status != "all") {
+      url += `?status=${status}`;
+    }
+  }
+  const result: ConsultantInvoiceListResponse = await getRequest(url);
   return result.data;
 }
 

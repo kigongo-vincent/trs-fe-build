@@ -41,7 +41,7 @@ export default function InvoicesPage() {
   const [monthlySummaryData, setMonthlySummaryData] = useState<ConsultantMonthlySummaryItem[]>([])
   const [invoices, setInvoices] = useState<ConsultantInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "processing" | "all">("all")
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [isInvoicesLoading, setIsInvoicesLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -84,25 +84,40 @@ export default function InvoicesPage() {
 
 
 
+  const fetchInvoices = async (searchQuery?: string, status?: "pending" | "paid" | "processing" | "all") => {
+    try {
+      const invoicesResult = await fetchConsultantInvoices(searchQuery, status);
+      setInvoices(Array.isArray(invoicesResult) ? invoicesResult : []);
+      return invoicesResult;
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      setInvoices([]);
+      return [];
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [summaryResult, monthlySummaryResult, invoicesResult] = await Promise.all([
+        setIsLoading(true);
+        const [summaryResult, monthlySummaryResult] = await Promise.all([
           fetchConsultantInvoiceSummary(),
-          fetchConsultantMonthlySummary(),
-          fetchConsultantInvoices()
-        ])
-        setSummaryData(Array.isArray(summaryResult) ? summaryResult : [])
-        setMonthlySummaryData(Array.isArray(monthlySummaryResult) ? monthlySummaryResult : [])
-        setInvoices(Array.isArray(invoicesResult) ? invoicesResult : [])
+          fetchConsultantMonthlySummary()
+        ]);
+        
+        setSummaryData(Array.isArray(summaryResult) ? summaryResult : []);
+        setMonthlySummaryData(Array.isArray(monthlySummaryResult) ? monthlySummaryResult : []);
+        
+        // Initial fetch of invoices with current filters
+        await fetchInvoices(searchQuery, statusFilter);
       } catch (error) {
-        console.error("Error fetching data:", error)
+        console.error("Error fetching data:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchData()
+    fetchData();
   }, [])
 
   const SummaryCardSkeleton = () => (
@@ -151,24 +166,8 @@ export default function InvoicesPage() {
     }
   }
 
-  // Filter invoices by status and search query
-  const filteredInvoices = invoices.filter((inv) => {
-    // Filter by status
-    if (statusFilter !== 'all' && inv.status !== statusFilter) return false
-
-    // Filter by search query (invoice number or period)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      const invoiceNumber = inv.invoiceNumber?.toLowerCase() || ''
-      const period = format(new Date(inv.startDate), 'MMM yyyy').toLowerCase()
-
-      if (!invoiceNumber.includes(query) && !period.includes(query)) {
-        return false
-      }
-    }
-
-    return true
-  })
+  // Use the invoices directly from the API as they are already filtered
+  const filteredInvoices = [...invoices];
 
   const userCurrency = getAuthData()?.user?.currency
   const currency = userCurrency
@@ -178,6 +177,32 @@ export default function InvoicesPage() {
   function getCurrencyCode(currency?: string) {
 
     return userCurrency;
+  }
+
+  async function handleSearch() {
+    setIsInvoicesLoading(true);
+    try {
+      await fetchInvoices(searchQuery, statusFilter);
+    } catch (error) {
+      console.error("Error searching invoices:", error);
+      toast.error("Failed to search invoices");
+    } finally {
+      setIsInvoicesLoading(false);
+    }
+  }
+
+  async function handleFilter(value: "pending" | "paid" | "processing" | "all") {
+    setIsInvoicesLoading(true);
+    try {
+      setStatusFilter(value);
+      await fetchInvoices(searchQuery, value);
+      setInvoices(invoices)
+    } catch (error) {
+      console.log(error)
+    }
+    finally {
+      setIsInvoicesLoading(false)
+    }
   }
 
   // Generate PDF for a single invoice
@@ -573,11 +598,19 @@ export default function InvoicesPage() {
             placeholder="Search invoices..."
             className="h-9"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value) }}
           />
+
+          {/* search btn  */}
+          <Button onClick={handleSearch}>
+            Search
+          </Button>
         </div>
+
         <div className="flex flex-row items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(value: "pending" | "paid" | "processing" | "all") => {
+            handleFilter(value)
+          }}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -588,10 +621,6 @@ export default function InvoicesPage() {
               <SelectItem value="processing">Processing</SelectItem>
             </SelectContent>
           </Select>
-          {/* <Button variant="outline" size="sm" className="h-9">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button> */}
         </div>
       </div>
 

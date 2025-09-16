@@ -16,6 +16,7 @@ import {
   X,
   Receipt,
   User,
+  LayoutList,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -433,7 +434,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   className="flex items-center justify-between py-2 cursor-pointer"
                   onClick={() => toggleGroup("consultant")}
                 >
-                  <h3 className="text-sm font-medium">Tasks</h3>
+                  <div className="flex items-center gap-2">
+                    <LayoutList size={15}/>
+                    <h3 className="text-sm font-medium">Tasks</h3>
+                  </div>
                   <ChevronDown
                     className={cn(
                       "h-4 w-4 text-muted-foreground transition-transform",
