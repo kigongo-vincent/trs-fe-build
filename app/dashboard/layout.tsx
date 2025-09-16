@@ -27,14 +27,14 @@ export default function DashboardLayout({
   const [planName, setPlanName] = useState<string>("")
   const [showPlanAlert, setShowPlanAlert] = useState(true)
   const [loaded, setLoaded] = useState(false)
-  const router = useRouter()
-  useEffect(() => {
+
+  const loadDefaults = async () => {
     if (typeof window !== "undefined") {
       setUserRole(getUserRole())
       // Plan name: only use user.company.package.name from getAuthUser(), else default to Trial
       let foundPlan = "Trial"
       try {
-        const user = getAuthUser()
+        const user = await getAuthUser()
         if (user && user.company && user.company.package && user.company.package.name) {
           foundPlan = user.company.package.name
         }
@@ -45,6 +45,11 @@ export default function DashboardLayout({
       setShowPlanAlert(dismissed !== "true")
       setLoaded(true)
     }
+  }
+
+  const router = useRouter()
+  useEffect(() => {
+    loadDefaults()
   }, [router])
 
   // Handler for dismissing the alert
@@ -65,7 +70,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40  bg-primary text-white">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="  flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2 md:gap-4">
             <Button variant="outline" size="icon" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <Menu className="h-5 w-5" />

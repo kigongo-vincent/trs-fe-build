@@ -49,6 +49,9 @@ export default function CompanyAdminPackagesPage() {
     const [billingLoading, setBillingLoading] = useState(true)
     const [billingError, setBillingError] = useState<string | null>(null)
 
+    const user = getAuthUser()
+    const company = user?.company
+
     useEffect(() => {
         async function loadData() {
             setLoading(true)
@@ -378,16 +381,11 @@ export default function CompanyAdminPackagesPage() {
                                         }>
                                             {currentPlanExpiry && isPackageExpired(currentPlanExpiry) ? 'Expired Plan' : 'Current Plan'}
                                         </Badge>
-                                        {selectedPlan.name}
+                                        {company.package.name}
                                     </CardTitle>
-                                    <CardDescription className="mt-2">{selectedPlan.description}</CardDescription>
+                                  
                                     <div className="mt-4">
-                                        {latestLicenseKey && (
-                                            <div className="flex items-center gap-2 text-xs mb-1">
-                                                <span className="font-semibold">License Key:</span>
-                                                <span className="font-mono break-all">{latestLicenseKey.key}</span>
-                                            </div>
-                                        )}
+                                        
                                         <div className="text-xs mt-2">
                                             {currentPlanExpiry ? (
                                                 (() => {
@@ -410,8 +408,8 @@ export default function CompanyAdminPackagesPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <span className="text-2xl font-bold">{selectedPlan.price === 0 ? "Free" : `$${selectedPlan.price}/${selectedPlan.durationType === "yearly" ? "yr" : "mo"}`}</span>
-                                    <Badge variant="outline" className="capitalize">{selectedPlan.durationType}</Badge>
+                                    <span className="text-2xl font-bold">{selectedPlan.price === 0 ? "Free" : `$${company.package.price}/${company.package.durationType === "yearly" ? "yr" : "mo"}`}</span>
+                                    <Badge variant="outline" className="capitalize">{company.package.durationType}</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col justify-end">
