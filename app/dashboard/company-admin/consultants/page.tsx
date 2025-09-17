@@ -97,7 +97,9 @@ export default function ConsultantsPage() {
   // Define getDefaultDates and initialize start/end before useState hooks
   const getDefaultDates = () => {
     const today = new Date();
-    const end = today.toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const end = tomorrow.toISOString().split('T')[0];
     const startDateObj = new Date(today);
     startDateObj.setDate(today.getDate() - 30);
     const start = startDateObj.toISOString().split('T')[0];
@@ -115,16 +117,13 @@ export default function ConsultantsPage() {
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editConsultant, setEditConsultant] = useState<Consultant | null>(null)
-  const [modalSection, setModalSection] = useState<'overview' | 'recent' | 'logs' | 'personal' | 'nextOfKin' | 'bank'>('personal')
+  const [modalSection, setModalSection] = useState<'overview' | 'logs' | 'personal' | 'nextOfKin' | 'bank'>('personal')
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [statusTargetConsultant, setStatusTargetConsultant] = useState<Consultant | null>(null)
   const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | 'on-leave' | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
-  // State for recent activity logs
-  const [recentLogs, setRecentLogs] = useState<any[]>([]);
-  const [recentLogsLoading, setRecentLogsLoading] = useState(false);
-  const [recentLogsError, setRecentLogsError] = useState<string | null>(null);
+  // Removed recent activity logs state
 
   // Get company ID from auth data
   const authData = getAuthData();
@@ -141,20 +140,22 @@ export default function ConsultantsPage() {
     try {
       // Format dates for API
       const startDateStr = startDate.toISOString().split('T')[0]
-      const endDateStr = endDate.toISOString().split('T')[0]
+      // Ensure end date is tomorrow if user selects today as end
+      let endDateStr = endDate.toISOString().split('T')[0]
+      const todayStr = new Date().toISOString().split('T')[0]
+      if (endDateStr === todayStr) {
+        const tmr = new Date()
+        tmr.setDate(tmr.getDate() + 1)
+        endDateStr = tmr.toISOString().split('T')[0]
+      }
 
       // Fetch logs from API
       const res = await fetch(`/company/consultants/logs/${selectedConsultant.id}?startDate=${startDateStr}&endDate=${endDateStr}`)
       if (!res.ok) throw new Error('Failed to fetch logs')
       const result = await res.json()
       if (result.status !== 200) throw new Error(result.message || 'Failed to fetch logs')
-      // Map durations to minutes (duration is string in hours, e.g. "9.00")
-      const filtered = (result.data || []).map((log: any) => ({
-        ...log,
-        // duration in minutes (parseFloat hours * 60)
-        duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
-      }))
-      setFilteredTasks(filtered)
+      // Logs already come as minutes; no conversion needed
+      setFilteredTasks(result.data || [])
     } catch (error: any) {
       console.error("Error fetching time logs by date range:", error)
       setTasksError(error?.message || "Failed to load time logs for the selected date range")
@@ -195,14 +196,17 @@ export default function ConsultantsPage() {
     if (!selectedConsultant || modalSection !== 'logs') return;
     setTasksLoading(true);
     setTasksError(null);
-    getConsultantLogsByRange(selectedConsultant.id, confirmedStartDate, confirmedEndDate)
+    // Normalize end date: if today, use tomorrow
+    const todayStr = new Date().toISOString().split('T')[0];
+    let normalizedEnd = confirmedEndDate;
+    if (confirmedEndDate === todayStr) {
+      const tmr = new Date();
+      tmr.setDate(tmr.getDate() + 1);
+      normalizedEnd = tmr.toISOString().split('T')[0];
+    }
+    getConsultantLogsByRange(selectedConsultant.id, confirmedStartDate, normalizedEnd)
       .then(result => {
-        // Map durations to minutes (duration is string in hours, e.g. "9.00")
-        const filtered = (result.data || []).map((log: any) => ({
-          ...log,
-          duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
-        }));
-        setFilteredTasks(filtered);
+        setFilteredTasks(result.data || []);
       })
       .catch(error => {
         setTasksError(error?.message || 'Failed to load time logs for the selected date range');
@@ -219,13 +223,17 @@ export default function ConsultantsPage() {
     }
   }, [modalSection, confirmedStartDate, confirmedEndDate]);
 
-  // Set current date for both start and end (for Today quick action)
+  // Set current date for start and tomorrow for end (for Today quick action)
   const setCurrentDate = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setPendingStartDate(today);
-    setPendingEndDate(today);
-    setConfirmedStartDate(today);
-    setConfirmedEndDate(today);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    setPendingStartDate(todayStr);
+    setPendingEndDate(tomorrowStr);
+    setConfirmedStartDate(todayStr);
+    setConfirmedEndDate(tomorrowStr);
   };
 
   useEffect(() => {
@@ -242,34 +250,7 @@ export default function ConsultantsPage() {
     return d;
   }
 
-  // Fetch recent activity logs for current week when modalSection === 'recent' and selectedConsultant changes
-  useEffect(() => {
-    if (!selectedConsultant || modalSection !== 'recent') return;
-    setRecentLogsLoading(true);
-    setRecentLogsError(null);
-    const today = new Date();
-    const startOfWeek = getStartOfWeek(today);
-    const start = startOfWeek.toISOString().split('T')[0];
-    const end = today.toISOString().split('T')[0];
-    getConsultantLogsByRange(selectedConsultant.id, start, end)
-      .then(result => {
-        // Map durations to minutes (duration is string in hours, e.g. "9.00")
-        const filtered = (result.data || []).map((log: any) => ({
-          ...log,
-          duration: log.duration ? String(Math.round(parseFloat(log.duration) * 60)) : '0',
-        })).filter((log: any) => {
-          // Only include logs whose createdAt is within this week
-          const logDate = new Date(log.createdAt);
-          return logDate >= startOfWeek && logDate <= today;
-        });
-        setRecentLogs(filtered);
-      })
-      .catch(error => {
-        setRecentLogsError(error?.message || 'Failed to load recent activity logs');
-        setRecentLogs([]);
-      })
-      .finally(() => setRecentLogsLoading(false));
-  }, [selectedConsultant, modalSection]);
+  // Removed recent activity effect
 
   // Only now, after all hooks, do the early return
   if (userRole === null) {
@@ -746,7 +727,6 @@ export default function ConsultantsPage() {
                 {/* Sidebar Navigation */}
                 <div className="w-56 min-w-[180px] border-r bg-muted/30 flex flex-col py-8 gap-2 text-base">
                   <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'recent' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('recent')}>Recent Activity</button>
                   <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
                   <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
                   <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
@@ -874,115 +854,7 @@ export default function ConsultantsPage() {
                       </Card>
                     </div>
                   )}
-                  {modalSection === 'recent' && (
-                    <div className="flex flex-col gap-8">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-primary">Recent Activity</CardTitle>
-                          <CardDescription>Latest time logs and tasks (This week)</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          {recentLogsLoading ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Task Title</TableHead>
-                                  <TableHead>Description</TableHead>
-                                  <TableHead>Project</TableHead>
-                                  <TableHead>Created Date</TableHead>
-                                  <TableHead>Updated Date</TableHead>
-                                  <TableHead>Duration</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {[...Array(5)].map((_, i) => (
-                                  <TableRow key={i}>
-                                    {[...Array(7)].map((_, j) => (
-                                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                                    ))}
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          ) : recentLogsError ? (
-                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                              <Clock className="h-10 w-10 mb-3 opacity-40" />
-                              <div className="text-lg font-semibold mb-1">{recentLogsError}</div>
-                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
-                            </div>
-                          ) : recentLogs.length > 0 ? (
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Task Title</TableHead>
-                                  <TableHead>Description</TableHead>
-                                  <TableHead>Project</TableHead>
-                                  <TableHead>Created Date</TableHead>
-                                  <TableHead>Updated Date</TableHead>
-                                  <TableHead>Duration</TableHead>
-                                  <TableHead>Status</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {recentLogs.map((log) => (
-                                  <TableRow key={log.id}>
-                                    <TableCell className="font-medium">{log.title}</TableCell>
-                                    <TableCell>
-                                      <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
-                                        <span dangerouslySetInnerHTML={{ __html: log.description || '' }} />
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant="outline">{log.project}</Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : '-'}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        {log.updatedAt ? new Date(log.updatedAt).toLocaleDateString() : '-'}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
-                                        {formatDurationString(log.duration)}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          log.status === "active"
-                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                                            : log.status === "completed"
-                                              ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800"
-                                              : "bg-gray-50 text-gray-700 border-gray-200"
-                                        }
-                                      >
-                                        {log.status}
-                                      </Badge>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                              <Clock className="h-10 w-10 mb-3 opacity-40" />
-                              <div className="text-lg font-semibold mb-1">No recent activity</div>
-                              <div className="text-sm">This consultant hasn't logged any recent work yet. Check back soon!</div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
+                  {/* Recent Activity section removed */}
                   {modalSection === 'logs' && (
                     <div className="flex flex-col gap-8">
                       <Card>
@@ -1266,8 +1138,8 @@ export default function ConsultantsPage() {
                             <div className="flex flex-col gap-2 mt-4">
                               <Label>IDs</Label>
                               <div className="space-y-2">
-                                {Array.isArray(selectedConsultant?.attachments) && selectedConsultant.attachments.length > 0 ? (
-                                  selectedConsultant.attachments.map((att: { url: string; name: string }, idx: number) => (
+                                {Array.isArray((selectedConsultant as any)?.attachments) && (selectedConsultant as any).attachments.length > 0 ? (
+                                  (selectedConsultant as any).attachments.map((att: { url: string; name: string }, idx: number) => (
                                     <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
                                       <div className="flex-shrink-0">
                                         <FileText className="h-5 w-5 text-red-500" />

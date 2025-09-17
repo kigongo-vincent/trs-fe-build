@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { User as UserIcon } from "lucide-react"
+import { formatCurrency } from "@/lib/utils"
 
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null)
@@ -138,7 +139,7 @@ export default function ProfilePage() {
                 <Card className="w-full">
                     <CardHeader><CardTitle>Compensation</CardTitle></CardHeader>
                     <CardContent className="space-y-2 w-full">
-                        <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `${user?.currency} ${user.grossPay}` : "-"}</div></div>
+                        <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}</div></div>
                     </CardContent>
                 </Card>
                 {/* Office Days Card */}

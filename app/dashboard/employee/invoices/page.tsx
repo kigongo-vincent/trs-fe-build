@@ -104,10 +104,10 @@ export default function InvoicesPage() {
           fetchConsultantInvoiceSummary(),
           fetchConsultantMonthlySummary()
         ]);
-        
+
         setSummaryData(Array.isArray(summaryResult) ? summaryResult : []);
         setMonthlySummaryData(Array.isArray(monthlySummaryResult) ? monthlySummaryResult : []);
-        
+
         // Initial fetch of invoices with current filters
         await fetchInvoices(searchQuery, statusFilter);
       } catch (error) {
@@ -568,7 +568,7 @@ export default function InvoicesPage() {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {item.amount !== null
-                    ? `${getCurrencyCode(item.currency)} ${Number(item.amount).toFixed(2)}`
+                    ? `${formatCurrency(Number(item.amount).toFixed(2), getCurrencyCode(item.currency))}`
                     : '--'}
                 </div>
               </CardContent>
@@ -664,7 +664,7 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>{invoice.totalHours}</TableCell>
                     <TableCell>
-                      {getCurrencyCode(invoice.currency)} {Number(invoice.amount).toFixed(2)}
+                      {formatCurrency(Number(invoice.amount).toFixed(2), getCurrencyCode(invoice.currency))}
                     </TableCell>
                     <TableCell>
                       <Badge
