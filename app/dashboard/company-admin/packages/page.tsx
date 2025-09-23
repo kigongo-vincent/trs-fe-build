@@ -105,11 +105,8 @@ export default function CompanyAdminPackagesPage() {
 
                         // Get expiry date from the first transaction (oldest transaction)
                         if (billingRes.data.length > 0) {
-                            // Sort by createdAt to get the first transaction
-                            const sortedTransactions = [...billingRes.data].sort((a, b) =>
-                                new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                            )
-                            const firstTransaction = sortedTransactions[0]
+
+                            const firstTransaction = billingRes.data[0]
                             if (firstTransaction && firstTransaction.expiresAt) {
                                 setCurrentPlanExpiry(new Date(firstTransaction.expiresAt))
                             } else {
