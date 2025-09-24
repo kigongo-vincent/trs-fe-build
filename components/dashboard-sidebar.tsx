@@ -17,6 +17,7 @@ import {
   Receipt,
   User,
   LayoutList,
+  MessageSquare,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -168,6 +169,16 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     >
                       <Receipt className="h-4 w-4" />
                       <span>Invoices</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/super-admin/quotes"
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                        isActive("/dashboard/super-admin/quotes") && "bg-primary/10 text-primary font-semibold",
+                      )}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Quotes Settings</span>
                     </Link>
                   </div>
                 )}
@@ -435,7 +446,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   onClick={() => toggleGroup("consultant")}
                 >
                   <div className="flex items-center gap-2">
-                    <LayoutList size={15}/>
+                    <LayoutList size={15} />
                     <h3 className="text-sm font-medium">Tasks</h3>
                   </div>
                   <ChevronDown
