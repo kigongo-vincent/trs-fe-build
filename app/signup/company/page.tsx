@@ -303,39 +303,7 @@ export default function CompanySignup() {
       <Dialog open={showRoundoffDialog} onOpenChange={setShowRoundoffDialog}>
         <DialogContent>
 
-          {/* Currency Dropdown moved here */}
-          <div className="mb-4">
-            <Label htmlFor="currency-modal" className="mb-1">Currency</Label>
-            <Select
-              value={selectedCurrency}
-              onValueChange={(value) => {
-                setFormData((prev) => ({ ...prev, currency: value }))
-                setSelectedCurrency(value)
-              }}
-            >
-              <SelectTrigger id="currency-modal" className="w-full rounded-md border border-input bg-background dark:bg-[#181c32] text-base ">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {
-                  loadingCurrencies
-                    ?
-                    <span>Fetching currencies...</span>
-                    :
-                    currencies.length == 0
-                      ?
-                      <span>No currencies found</span>
-                      :
-                      currencies.map((c, i) => <SelectItem key={i} value={c.code}>
-                        <div className="flex items-center space-x-3">
-                          {c.code != "USD" ? <img src={c.logo} className="h-5 w-5" alt="" /> : <p className="text-2xl">🇱🇷</p>} <span>{c.code}</span>
-                        </div>
-                      </SelectItem>)
-                }
-
-              </SelectContent>
-            </Select>
-          </div>
+        
 
           <DialogHeader>
             <DialogTitle>Round Off Figures?</DialogTitle>

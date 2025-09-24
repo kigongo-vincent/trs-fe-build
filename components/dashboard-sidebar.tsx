@@ -298,7 +298,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                         )}
                       >
                         <Users className="h-4 w-4" />
-                        <span>Board Members</span>
+                        <span>Evaluators</span>
                       </Link>
                     )}
                     <Link

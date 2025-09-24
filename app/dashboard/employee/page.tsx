@@ -202,7 +202,7 @@ export default function EmployeeDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursTodayCount)}h</div>
+            <div className="text-2xl  text-primary">{formatHoursCount(hoursTodayCount)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getPercentageIcon(hoursTodayPercentage)}
               <span className={getPercentageColor(hoursTodayPercentage)}>
@@ -219,7 +219,7 @@ export default function EmployeeDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(dashboardData.hoursWeek.count)}h</div>
+            <div className="text-2xl  text-primary">{formatHoursCount(dashboardData.hoursWeek.count)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getPercentageIcon(dashboardData.hoursWeek.percentage)}
               <span className={getPercentageColor(dashboardData.hoursWeek.percentage)}>
@@ -236,7 +236,7 @@ export default function EmployeeDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursMonthCount)}h</div>
+            <div className="text-2xl  text-primary">{formatHoursCount(hoursMonthCount)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getPercentageIcon(hoursMonthPercentage)}
               <span className={getPercentageColor(hoursMonthPercentage)}>
@@ -253,7 +253,7 @@ export default function EmployeeDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{formatHoursCount(hoursLastMonthCount)}h</div>
+            <div className="text-2xl  text-primary">{formatHoursCount(hoursLastMonthCount)}h</div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getPercentageIcon(hoursLastMonthPercentage)}
               <span className={getPercentageColor(hoursLastMonthPercentage)}>
@@ -274,7 +274,7 @@ export default function EmployeeDashboard() {
         <TabsContent value="today" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Tasks</CardTitle>
+              <CardTitle >Today's Tasks</CardTitle>
               <CardDescription>Tasks logged for today</CardDescription>
             </CardHeader>
             <CardContent>

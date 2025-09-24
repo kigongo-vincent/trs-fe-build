@@ -378,7 +378,7 @@ export default function CompanyAdminPackagesPage() {
                                         }>
                                             {currentPlanExpiry && isPackageExpired(currentPlanExpiry) ? 'Expired Plan' : 'Current Plan'}
                                         </Badge>
-                                        {company.package.name}
+                                        {company?.package?.name}
                                     </CardTitle>
 
                                     <div className="mt-4">
@@ -405,8 +405,8 @@ export default function CompanyAdminPackagesPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                    <span className="text-2xl font-bold">{selectedPlan.price === 0 ? "Free" : `$${company.package.price}/${company.package.durationType === "yearly" ? "yr" : "mo"}`}</span>
-                                    <Badge variant="outline" className="capitalize">{company.package.durationType}</Badge>
+                                    <span className="text-2xl font-bold">{selectedPlan.price === 0 ? "Free" : `$${company?.package?.price}/${company?.package?.durationType === "yearly" ? "yr" : "mo"}`}</span>
+                                    <Badge variant="outline" className="capitalize">{company?.package?.durationType}</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col justify-end">
@@ -443,12 +443,12 @@ export default function CompanyAdminPackagesPage() {
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-2 ml-4">
-                                        {(!selectedPlan || pkg.id !== company.package.id) && (
+                                        {(!selectedPlan || pkg.id !== company?.package?.id) && (
                                             <Button variant="default" onClick={() => handleUpgradeClick(pkg)}>
-                                                Upgrade
+                                                Pay
                                             </Button>
                                         )}
-                                        {selectedPlan && pkg.id === company.package.id && (
+                                        {selectedPlan && pkg.id === company?.package?.id && (
                                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">Current</Badge>
                                         )}
                                     </div>
@@ -468,7 +468,7 @@ export default function CompanyAdminPackagesPage() {
                             </DialogHeader>
                             <div className="flex justify-end gap-2 mt-4">
                                 <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>Cancel</Button>
-                                <Button variant="default" onClick={confirmUpgrade}>Upgrade</Button>
+                                <Button variant="default" onClick={confirmUpgrade}>Proceed to payment</Button>
                             </div>
                         </DialogContent>
                     </Dialog>
