@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -687,7 +687,10 @@ export default function TimeLogsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+
+        <p className="text-2xl">Time Logs</p>
+
         <div className="flex items-center gap-2">
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
@@ -700,7 +703,7 @@ export default function TimeLogsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours Today</CardTitle>
+            <CardTitle className="text-sm ">Hours Today</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -711,7 +714,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryStats.hoursToday.toFixed(1)}</div>
+                <div className="text-2xl text-primary">{summaryStats.hoursToday.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 8 hours ({Math.round((summaryStats.hoursToday / 8) * 100)}%)
                 </p>
@@ -721,7 +724,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
+            <CardTitle className="text-sm ">Hours This Week</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -732,7 +735,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryStats.hoursWeek.toFixed(1)}</div>
+                <div className="text-2xl text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 40 hours ({Math.round((summaryStats.hoursWeek / 40) * 100)}%)
                 </p>
@@ -742,7 +745,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours This Month</CardTitle>
+            <CardTitle className="text-sm ">Hours This Month</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -753,7 +756,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryStats.hoursMonth.toFixed(1)}</div>
+                <div className="text-2xl text-primary">{summaryStats.hoursMonth.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 160 hours ({Math.round((summaryStats.hoursMonth / 160) * 100)}%)
                 </p>
@@ -763,7 +766,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Billable Hours</CardTitle>
+            <CardTitle className="text-sm ">Billable Hours</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -774,7 +777,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{summaryStats.billableHours.toFixed(1)}</div>
+                <div className="text-2xl text-primary">{summaryStats.billableHours.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">{Math.round(summaryStats.billableRate)}% billable rate</p>
               </>
             )}
@@ -783,7 +786,32 @@ export default function TimeLogsPage() {
       </div>
 
       {/* Search Row */}
-      <div className="flex items-center gap-2">
+      <div className="p-2 my-3 shadow gap-3 rounded flex items-center w-full">
+        <Search size={17} className="opacity-40 ml-4" />
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleApplyFilters()
+            }
+          }}
+          placeholder="What are you looking for..." type="text" className="bg-none flex-1 text-sm outline-none border-none" />
+        <Button>
+          {isFiltering ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+            </>
+          ) : (
+            <>
+              <Search className="h-4 w-4" />
+              <span className="sr-only md:not-sr-only md:ml-2">Search</span>
+            </>
+          )}
+        </Button>
+      </div>
+      {/* <div className="flex items-center gap-2">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <div className="relative flex-1">
             <Input
@@ -810,6 +838,7 @@ export default function TimeLogsPage() {
               </Button>
             )}
           </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -830,25 +859,29 @@ export default function TimeLogsPage() {
             )}
           </Button>
         </div>
-      </div>
+      </div> */}
 
       {/* Filters Row */}
       <div className="overflow-auto max-w-[90vw] flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-row items-center rounded bg-gray-100/50 p-4 gap-2">
           <div className="flex items-center gap-2">
-            <label htmlFor="start-date" className="text-sm text-muted-foreground">Start:</label>
+
             <Input
               id="start-date"
               type="date"
-              className="h-9 min-w-max"
+              className="h-9 min-w-max bg-transparent"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
             />
-            <label htmlFor="end-date" className="text-sm text-muted-foreground">End:</label>
+
+            <div className="flex items-center">
+              <MoveRight size={15} className="opacity-40" />
+            </div>
+
             <Input
               id="end-date"
               type="date"
-              className="h-9 w-min-max"
+              className="h-9 w-min-max bg-transparent"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
             />
@@ -869,11 +902,11 @@ export default function TimeLogsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center bg-gray-100/50 p-4 rounded gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-9 bg-transparent"
             onClick={handleApplyFilters}
             disabled={isFiltering}
           >
@@ -892,7 +925,7 @@ export default function TimeLogsPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-9 bg-transparent"
             onClick={handleResetFilters}
             disabled={isFiltering}
           >

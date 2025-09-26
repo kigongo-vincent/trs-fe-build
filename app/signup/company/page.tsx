@@ -303,7 +303,7 @@ export default function CompanySignup() {
       <Dialog open={showRoundoffDialog} onOpenChange={setShowRoundoffDialog}>
         <DialogContent>
 
-        
+
 
           <DialogHeader>
             <DialogTitle>Round Off Figures?</DialogTitle>

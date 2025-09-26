@@ -43,7 +43,12 @@ export function UserGrowthChart() {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Line type="monotone" dataKey="users" stroke="#82ca9d" activeDot={{ r: 8 }} />
+        <Line
+          type="monotone"
+          dataKey="users"
+          stroke={`hsl(var(--chart-2))`}
+          activeDot={{ r: 6, stroke: `hsl(var(--ring))`, strokeWidth: 2 }}
+        />
       </LineChart>
     </ResponsiveContainer>
   )

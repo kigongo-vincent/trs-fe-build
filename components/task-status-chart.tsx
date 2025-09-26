@@ -25,7 +25,7 @@ export function TaskStatusChart({ activeTasks, draftTasks }: TaskStatusChartProp
     { name: "Draft", value: draftTasks },
   ].filter((item) => item.value > 0) // Only show segments with data
 
-  const COLORS = [GRAPH_PRIMARY_COLOR, "#f59e0b"] // Primary for Active, Yellow for Draft
+  const COLORS = [GRAPH_PRIMARY_COLOR, `hsl(var(--chart-2))`]
 
   return (
     <ResponsiveContainer width="100%" height={300}>

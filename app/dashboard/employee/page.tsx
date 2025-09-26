@@ -16,7 +16,7 @@ import {
   formatHoursCount,
 } from "@/services/employee"
 import { useRouter } from "next/navigation"
-import { getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
+import { getAuthUser, getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
 
 export default function EmployeeDashboard() {
   const [showAdd, setShowAdd] = useState(true)
@@ -25,6 +25,11 @@ export default function EmployeeDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  const bgs = [
+    "https://static.vecteezy.com/system/resources/previews/011/171/103/large_2x/white-and-orange-modern-background-free-vector.jpg",
+
+  ]
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -68,13 +73,13 @@ export default function EmployeeDashboard() {
   const getPercentageIcon = (percentage: number) => {
     if (percentage > 0) return <TrendingUp className="h-4 w-4 text-green-600" />
     if (percentage < 0) return <TrendingDown className="h-4 w-4 text-red-600" />
-    return <Minus className="h-4 w-4 text-gray-400" />
+    return <Minus className="h-4 w-4 " />
   }
 
   const getPercentageColor = (percentage: number) => {
     if (percentage > 0) return "text-green-600"
     if (percentage < 0) return "text-red-600"
-    return "text-gray-400"
+    return ""
   }
 
   // Helper to calculate percentage increase if not provided
@@ -108,6 +113,8 @@ export default function EmployeeDashboard() {
   if (typeof window !== 'undefined') {
 
   }
+
+
 
   if (loading) {
     return (
@@ -152,7 +159,7 @@ export default function EmployeeDashboard() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">My Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">Hello</h1>
           <Button asChild>
             <Link href="/dashboard/employee/time-logs/new">
               <Plus className="mr-2 h-4 w-4" /> Log Time
@@ -178,14 +185,15 @@ export default function EmployeeDashboard() {
 
   const yesterdayLogs = dashboardData.recentLogs.filter((log) => new Date(log.date).toDateString() === yesterday)
 
+  const user = getAuthUser()
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">My Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gradient">Hello, {user.fullName}</h1>
         <div className="flex items-center gap-2">
           {
-            showAdd ? <Button asChild>
+            showAdd ? <Button asChild className="gradient">
               <Link href="/dashboard/employee/time-logs/new">
                 <Plus className="mr-2 h-4 w-4" /> Log Time
               </Link>
@@ -196,14 +204,14 @@ export default function EmployeeDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-none bg-[url(https://static.vecteezy.com/system/resources/previews/011/171/103/large_2x/white-and-orange-modern-background-free-vector.jpg)] bg-right bg-cover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hours Today</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-white" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl  text-primary">{formatHoursCount(hoursTodayCount)}h</div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center backdrop-blur-sm p-4 bg-white/30 rounded gap-1 text-xs">
               {getPercentageIcon(hoursTodayPercentage)}
               <span className={getPercentageColor(hoursTodayPercentage)}>
                 {hoursTodayPercentage > 0 ? "+" : ""}
@@ -213,31 +221,33 @@ export default function EmployeeDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl  text-primary">{formatHoursCount(dashboardData.hoursWeek.count)}h</div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {getPercentageIcon(dashboardData.hoursWeek.percentage)}
-              <span className={getPercentageColor(dashboardData.hoursWeek.percentage)}>
-                {dashboardData.hoursWeek.percentage > 0 ? "+" : ""}
-                {dashboardData.hoursWeek.percentage}% from last week
-              </span>
-            </div>
-          </CardContent>
+        <Card className="flex items-center p-4 justify-center bg-[url(https://static.vecteezy.com/system/resources/previews/011/171/105/large_2x/white-background-with-orange-geometric-free-vector.jpg)] bg-cover border-0">
+          <div className="bg-white/70 backdrop-blur-sm rounded w-full">
+            <CardHeader className="flex flex-row items-center  justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className=" mx-4 p-4 ">
+              <div className="text-2xl  text-primary">{formatHoursCount(dashboardData.hoursWeek.count)}h</div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                {getPercentageIcon(dashboardData.hoursWeek.percentage)}
+                <span className={getPercentageColor(dashboardData.hoursWeek.percentage)}>
+                  {dashboardData.hoursWeek.percentage > 0 ? "+" : ""}
+                  {dashboardData.hoursWeek.percentage}% from last week
+                </span>
+              </div>
+            </CardContent>
+          </div>
         </Card>
 
-        <Card>
+        <Card className="text-white bg-[url(https://static.vecteezy.com/system/resources/previews/005/181/853/large_2x/minimal-orange-background-gradient-abstract-creative-scratch-digital-background-free-vector.jpg)] bg-bottom bg-cover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Hours This Month</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm text-white font-medium">Hours This Month</CardTitle>
+            <Clock className="h-4 w-4 " />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl  text-primary">{formatHoursCount(hoursMonthCount)}h</div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="text-2xl  ">{formatHoursCount(hoursMonthCount)}h</div>
+            <div className="flex items-center gap-1 text-xs d">
               {getPercentageIcon(hoursMonthPercentage)}
               <span className={getPercentageColor(hoursMonthPercentage)}>
                 {hoursMonthPercentage > 0 ? "+" : ""}
@@ -247,7 +257,7 @@ export default function EmployeeDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className=" bg-center border-0 bg-cover bg-[url(https://static.vecteezy.com/system/resources/previews/046/849/177/non_2x/3d-white-abstract-background-overlap-layer-on-bright-space-with-cutout-shape-effect-decoration-modern-graphic-design-element-circles-style-concept-for-web-banner-flyer-card-or-brochure-cover-vector.jpg)]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hours Last Month</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
@@ -274,7 +284,7 @@ export default function EmployeeDashboard() {
         <TabsContent value="today" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle >Today's Tasks</CardTitle>
+              <CardTitle className="text-gradient">Today's Tasks</CardTitle>
               <CardDescription>Tasks logged for today</CardDescription>
             </CardHeader>
             <CardContent>
@@ -315,7 +325,7 @@ export default function EmployeeDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Hours Overview</CardTitle>
+              <CardTitle className="text-gradient">Hours Overview</CardTitle>
               <CardDescription>Your logged hours over the week</CardDescription>
             </CardHeader>
             <CardContent className="pl-2">

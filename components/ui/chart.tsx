@@ -1,22 +1,26 @@
-export const Line = () => null
-export const LineChart = () => null
-export const CartesianGrid = () => null
-export const ResponsiveContainer = () => null
-export const Tooltip = () => null
-export const XAxis = () => null
-export const YAxis = () => null
-export const Legend = () => null
-export const Bar = () => null
-export const BarChart = () => null
-export const Pie = () => null
-export const PieChart = () => null
-export const Cell = () => null
-export const Area = () => null
-export const AreaChart = () => null
-export const Sankey = () => null
-export const RadarChart = () => null
-export const PolarGrid = () => null
-export const PolarAngleAxis = () => null
-export const PolarRadiusAxis = () => null
-export const Radar = () => null
-export const ReferenceLine = () => null
+import type { FC, PropsWithChildren } from "react"
+
+type AnyProps = PropsWithChildren<Record<string, unknown>>
+
+export const Line: FC<AnyProps> = () => null
+export const LineChart: FC<AnyProps> = () => null
+export const CartesianGrid: FC<AnyProps> = () => null
+export const ResponsiveContainer: FC<AnyProps> = () => null
+export const Tooltip: FC<AnyProps> = () => null
+export const XAxis: FC<AnyProps> = () => null
+export const YAxis: FC<AnyProps> = () => null
+export const Legend: FC<AnyProps> = () => null
+export const Bar: FC<AnyProps> = () => null
+export const BarChart: FC<AnyProps> = () => null
+export const Pie: FC<AnyProps> = () => null
+export const PieChart: FC<AnyProps> = () => null
+export const Cell: FC<AnyProps> = () => null
+export const Area: FC<AnyProps> = () => null
+export const AreaChart: FC<AnyProps> = () => null
+export const Sankey: FC<AnyProps> = () => null
+export const RadarChart: FC<AnyProps> = () => null
+export const PolarGrid: FC<AnyProps> = () => null
+export const PolarAngleAxis: FC<AnyProps> = () => null
+export const PolarRadiusAxis: FC<AnyProps> = () => null
+export const Radar: FC<AnyProps> = () => null
+export const ReferenceLine: FC<AnyProps> = () => null

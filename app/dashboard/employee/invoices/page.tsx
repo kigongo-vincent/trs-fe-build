@@ -721,7 +721,7 @@ export default function InvoicesPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="bg-white dark:bg-neutral-800 border-none">
+                  <Card className="bg-card text-card-foreground border-none">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base font-semibold flex items-center text-primary"><Calendar className="w-4 h-4 mr-2 text-primary" />Invoice Details</CardTitle>
                     </CardHeader>
@@ -731,7 +731,7 @@ export default function InvoicesPage() {
                       <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Last Updated:</span><span className="font-medium">{formatDate(selectedInvoice?.updatedAt || '')}</span></div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-white dark:bg-neutral-800 border-none">
+                  <Card className="bg-card text-card-foreground border-none">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base font-semibold flex items-center text-primary"><Building2 className="w-4 h-4 mr-2 text-primary" />Consultant Information</CardTitle>
                     </CardHeader>
@@ -751,7 +751,7 @@ export default function InvoicesPage() {
                   <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Invoice Items</CardTitle></CardHeader>
                   <CardContent className="p-0">
                     <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-neutral-800">
+                      <thead className="bg-muted">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white">Description</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Hours</th>
@@ -770,7 +770,7 @@ export default function InvoicesPage() {
                     </table>
                   </CardContent>
                 </Card>
-                <Card className="bg-white dark:bg-neutral-800 border-none">
+                <Card className="bg-card text-card-foreground border-none">
                   <CardContent className="p-4">
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between text-gray-600 dark:text-gray-300"><span>Subtotal:</span><span>{formatCurrency(selectedInvoice?.amount, currency)}</span></div>
@@ -782,7 +782,7 @@ export default function InvoicesPage() {
                     <div className="mt-2 text-xs text-muted-foreground text-right">Showing amounts in <span className="font-semibold">{currency}</span> (Company currency)</div>
                   </CardContent>
                 </Card>
-                <Card className="bg-white dark:from-neutral-900 dark:to-blue-950 border-none">
+                <Card className="bg-card text-card-foreground border-none">
                   <CardHeader className="pb-2"><CardTitle className="text-base font-semibold flex items-center text-primary"><Info className="w-4 h-4 mr-2 text-primary" />Payment Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div><span className="text-xs text-gray-600 dark:text-gray-300">Bank Name</span><span className="block font-medium">{userSession?.bankDetails?.bankName}</span></div>

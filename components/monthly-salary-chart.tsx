@@ -38,13 +38,13 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
         <BarChart data={chartData}>
           <XAxis
             dataKey={xKey}
-            stroke="#888888"
+            stroke={`hsl(var(--muted-foreground))`}
             fontSize={12}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#888888"
+            stroke={`hsl(var(--muted-foreground))`}
             fontSize={12}
             tickLine={false}
             axisLine={false}
@@ -55,7 +55,7 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
               const currency = props.payload && props.payload.currency ? props.payload.currency.toUpperCase() : 'USD';
               return [` ${currency} ${props.value}`, 'Amount'];
             }}
-            cursor={{ fill: 'rgba(0, 0, 0, 0.1)' }}
+            cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
           />
           <Bar
             dataKey="amount"
