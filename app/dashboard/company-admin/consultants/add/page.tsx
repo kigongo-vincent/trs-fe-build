@@ -320,12 +320,12 @@ export default function AddConsultantPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Add New Consultant</h1>
+        <h1 className=" font-medium tracking-tight ">Add New Consultant</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Consultant Information</CardTitle>
+          <CardTitle className="text-gradient text-xl">Consultant Information</CardTitle>
           <CardDescription>
             Add a new consultant to your company. They will receive an email with instructions to set up their account.
           </CardDescription>
@@ -389,7 +389,7 @@ export default function AddConsultantPage() {
                 <Label>Days to Come <span className="text-red-500">*</span></Label>
                 <div className="px-2 py-1 flex flex-wrap items-center h-10 min-h-[40px] bg-transparent border border-[#e3e6ed] rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2" onClick={() => daysInputRef.current?.focus()} tabIndex={0}>
                   {formData.daysToCome.map((day) => (
-                    <span key={day} className="flex items-center gap-2 rounded-md bg-[#f5f7fa] dark:bg-[#23272f] px-3 py-0 h-8 mr-2 text-[#181c32] dark:text-[#f5f7fa] text-sm shadow-none border-none font-normal">
+                    <span key={day} className="flex items-center gap-2 rounded-md bg-pale dark:bg-[#23272f] px-3 py-0 h-8 mr-2 text-[#181c32] dark:text-[#f5f7fa] text-sm shadow-none border-none font-normal">
                       {day}
                       <button type="button" className="ml-1 text-lg text-[#181c32] dark:text-[#f5f7fa] hover:text-red-500 focus:outline-none bg-transparent border-none p-0 cursor-pointer font-normal" aria-label={`Remove ${day}`} onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.filter((d) => d !== day) })) }}>×</button>
                     </span>
@@ -433,7 +433,7 @@ export default function AddConsultantPage() {
               <h2 className="text-lg font-semibold mb-2">Compensation</h2>
               <div className="flex w-full gap-2">
                 <Select value={formData.currency} onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}>
-                  <SelectTrigger className="w-28 min-w-[5.5rem] rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none">
+                  <SelectTrigger className="w-28 min-w-[5.5rem] rounded-md border border-input bg-transparent">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -455,7 +455,7 @@ export default function AddConsultantPage() {
 
                   </SelectContent>
                 </Select>
-                <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
+                <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input  text-base " />
               </div>
               <p className="text-sm text-muted-foreground">Enter the consultant's salary and select the currency.</p>
             </div>

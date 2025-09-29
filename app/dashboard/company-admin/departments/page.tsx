@@ -145,7 +145,7 @@ export default function DepartmentsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-medium tracking-tight text-gradient">Departments</h1>
+        <h1 className="text-xl font-medium tracking-tight ">Departments</h1>
         <div className="flex items-center gap-2">
           {userRole !== "Board Member" && (
             <Button asChild>
@@ -192,7 +192,7 @@ export default function DepartmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-gradient text-xl font-medium">Department Distribution</CardTitle>
+          <CardTitle className=" text-xl font-medium">Department Distribution</CardTitle>
           <CardDescription>Employee distribution across departments</CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,7 +212,7 @@ export default function DepartmentsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <div className="text-xl font-medium text-gradient">
+            <div className="text-xl font-medium ">
               All Departments
             </div>
 
@@ -277,12 +277,15 @@ export default function DepartmentsPage() {
                       {userRole !== "Board Member" && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" asChild>
+                            <Button 
+                            className="hover:bg-gray-200/50"
+                            variant="ghost" size="icon" asChild>
                               <Link href={`/dashboard/company-admin/departments/edit/${department.id}?name=${encodeURIComponent(department.name)}&head=${encodeURIComponent(department.head?.fullName || "")}&description=${encodeURIComponent(department.description || '')}`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button
+                              className="hover:bg-gray-200/50"
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteClick(department)}

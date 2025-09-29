@@ -56,7 +56,7 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
             borderRadius: "6px",
           }}
         />
-        <Bar dataKey="progress" fill={GRAPH_PRIMARY_COLOR} radius={[0, 4, 4, 0]} name="Progress" />
+        <Bar dataKey="progress" fill="rgb(200,200,200)" radius={[0, 4, 4, 0]} name="Progress" />
       </BarChart>
     </ResponsiveContainer>
   )

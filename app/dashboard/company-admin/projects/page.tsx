@@ -184,7 +184,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Projects</h1>
+        <h1 className="text-xl font-medium tracking-tight ">Projects</h1>
         <div className="flex items-center gap-2">
           {userRole !== "Board Member" && (
             <Button onClick={handleNewProject}>
@@ -213,7 +213,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl text-primary font-bold">{projectSummary?.totalProjects || 0}</div>
+                <div className="text-2xl text-gradient font-medium">{projectSummary?.totalProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">All company projects</p>
               </>
             )}
@@ -229,7 +229,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl text-primary font-bold">{projectSummary?.activeProjects || 0}</div>
+                <div className="text-2xl text-gradient font-medium">{projectSummary?.activeProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.activeProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -249,7 +249,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl text-primary font-bold">{projectSummary?.completedProjects || 0}</div>
+                <div className="text-2xl text-gradient font-medium">{projectSummary?.completedProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.completedProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -269,7 +269,7 @@ export default function ProjectsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl text-primary font-bold">{projectSummary?.onHoldProjects || 0}</div>
+                <div className="text-2xl text-gradient font-medium">{projectSummary?.onHoldProjects || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {projectSummary && projectSummary.totalProjects > 0
                     ? `${Math.round((projectSummary.onHoldProjects / projectSummary.totalProjects) * 100)}% of total projects`
@@ -284,7 +284,7 @@ export default function ProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-primary">Project Status</CardTitle>
+            <CardTitle className="text-xl ">Project Status</CardTitle>
             <CardDescription>Distribution of projects by status</CardDescription>
           </CardHeader>
           <CardContent>
@@ -304,7 +304,7 @@ export default function ProjectsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-primary">Project Timeline</CardTitle>
+            <CardTitle className="text-xl">Project Timeline</CardTitle>
             <CardDescription>Projects by completion percentage</CardDescription>
           </CardHeader>
           <CardContent>
