@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,13 @@ interface EditConsultantFormProps {
 const PhoneInput = dynamic(() => import("react-phone-input-2"), { ssr: false })
 
 export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consultant, onClose, onUpdated }) => {
+
+    const [totalWorkingHours, setTotalWorkingHours] = useState(0)
+    useLayoutEffect(() => {
+        setTotalWorkingHours(consultant?.totalHoursPerMonth ?? 0)
+    }, [])
+
+
     const [formData, setFormData] = useState({
         fullName: consultant.fullName || consultant.full_name || "",
         email: consultant.email || "",
@@ -198,6 +205,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 phoneNumber: formData.phoneNumber.trim(),
                 currency: formData.currency,
                 departmentId: formData.departmentId,
+                totalWorkingHours: totalWorkingHours,
                 // snake_case fields
                 job_title: formData.jobTitle,
                 gross_pay: formData.grossPay,
@@ -254,10 +262,10 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
     }, [])
 
     return (
-        <div className="flex flex-col gap-6">
-            <Card>
+        <div className="flex flex-col overflow-hidden gap-6">
+            <Card className="mb-8">
                 <CardHeader>
-                    <CardTitle>Edit Consultant Information</CardTitle>
+                    <CardTitle className="text-xl text-gradient">Edit Consultant Information</CardTitle>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-6">
@@ -318,7 +326,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                                 <Label>Days to Come <span className="text-red-500">*</span></Label>
                                 <div className="px-2 py-1 flex flex-wrap items-center h-10 min-h-[40px] bg-transparent border border-[#e3e6ed] rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2" onClick={() => daysInputRef.current?.focus()} tabIndex={0}>
                                     {formData.daysToCome.map((day) => (
-                                        <span key={day} className="flex items-center gap-2 rounded-md bg-[#f5f7fa] dark:bg-[#23272f] px-3 py-0 h-8 mr-2 text-[#181c32] dark:text-[#f5f7fa] text-sm shadow-none border-none font-normal">
+                                        <span key={day} className="flex items-center gap-2 rounded-md bg-pale dark:bg-[#23272f] px-3 py-0 h-8 mr-2 text-[#181c32] dark:text-[#f5f7fa] text-sm shadow-none border-none font-normal">
                                             {day}
                                             <button type="button" className="ml-1 text-lg text-[#181c32] dark:text-[#f5f7fa] hover:text-red-500 focus:outline-none bg-transparent border-none p-0 cursor-pointer font-normal" aria-label={`Remove ${day}`} onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.filter((d) => d !== day) })) }}>×</button>
                                         </span>
@@ -326,13 +334,21 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                                     <input ref={daysInputRef} className="flex-1 min-w-[80px] h-8 border-none outline-none bg-transparent py-0 px-2 text-base" placeholder={formData.daysToCome.length === 0 ? "Type or select days..." : ""} value={daysInput} onChange={(e) => { setDaysInput(e.target.value); setDaysDropdownOpen(true); }} onFocus={() => setDaysDropdownOpen(true)} onBlur={() => setTimeout(() => setDaysDropdownOpen(false), 100)} onKeyDown={(e) => { if (e.key === "Backspace" && daysInput === "" && formData.daysToCome.length > 0) { setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.slice(0, -1) })); } if ((e.key === "Enter" || e.key === ",") && daysInput.trim()) { e.preventDefault(); const val = daysInput.trim(); if (daysOfWeek.includes(val) && !formData.daysToCome.includes(val)) { setFormData((prev) => ({ ...prev, daysToCome: [...prev.daysToCome, val] })); setDaysInput(""); setDaysDropdownOpen(false); } } }} list="days-suggestions" />
                                 </div>
                                 {daysDropdownOpen && daysOfWeek.filter((day) => day.toLowerCase().includes(daysInput.toLowerCase()) && !formData.daysToCome.includes(day)).length > 0 && (
-                                    <div className="border border-input rounded-md mt-1 bg-background shadow-lg absolute z-10 w-[260px]">
+                                    <div className=" rounded-md mt-1 bg-white  absolute z-10 w-[260px]">
                                         {daysOfWeek.filter((day) => day.toLowerCase().includes(daysInput.toLowerCase()) && !formData.daysToCome.includes(day)).map((day) => (
-                                            <div key={day} className="px-3 py-2 cursor-pointer hover:bg-accent" onMouseDown={() => { setFormData((prev) => ({ ...prev, daysToCome: [...prev.daysToCome, day] })); setDaysInput(""); setDaysDropdownOpen(false); }}>{day}</div>
+                                            <div key={day} className="px-3 py-2 cursor-pointer hover:bg-gray-100/50" onMouseDown={() => { setFormData((prev) => ({ ...prev, daysToCome: [...prev.daysToCome, day] })); setDaysInput(""); setDaysDropdownOpen(false); }}>{day}</div>
                                         ))}
                                     </div>
                                 )}
                                 <p className="text-sm text-muted-foreground">Select the days the consultant is expected to come in.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Total Working Hours<span className="text-red-500">*</span></Label>
+                                <div className="flex items-center gap-2">
+                                    <Input id="addressCity" name="addressCity" placeholder="E.g 120" value={totalWorkingHours} onChange={(e) => setTotalWorkingHours(+e.target.value)} required />
+
+                                </div>
+                                <p className="text-sm text-muted-foreground">Specify the number of hours a consultant is supposed to work for in a month (defualt is 160HRS)</p>
                             </div>
                         </div>
 
@@ -353,7 +369,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                             <h2 className="text-lg font-semibold mb-2">Compensation</h2>
                             <div className="flex w-full gap-2">
                                 <Select value={formData.currency} onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}>
-                                    <SelectTrigger className="w-28 min-w-[5.5rem] rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                    <SelectTrigger className="w-28 min-w-[5.5rem] rounded-md   bg-transparent dark:bg-[#181c32] text-base ">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -375,7 +391,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
 
                                     </SelectContent>
                                 </Select>
-                                <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input bg-background dark:bg-[#181c32] text-base focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
+                                <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input" />
                             </div>
                             <p className="text-sm text-muted-foreground">Enter the consultant's salary and select the currency.</p>
                         </div>

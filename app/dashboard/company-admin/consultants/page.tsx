@@ -400,7 +400,7 @@ export default function ConsultantsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Consultants</h1>
+        <h1 className="text-xl font-medium tracking-tight ">Consultants</h1>
         <div className="flex items-center gap-2">
           {userRole !== "Board Member" && (
             <Button asChild>
@@ -489,7 +489,7 @@ export default function ConsultantsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary">Consultants by Department</CardTitle>
+          <CardTitle className="text-xl">Consultants by Department</CardTitle>
           <CardDescription>Distribution of consultants across departments</CardDescription>
         </CardHeader>
         <CardContent>
@@ -503,9 +503,9 @@ export default function ConsultantsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex  p-4 rounded bg-paper flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center space-x-2">
-          <div className="relative flex items-center h-12 border border-gray-200 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-100">
+          <div className="relative flex items-center h-12 border border-gray-200 rounded-lg  focus-within:ring-2 focus-within:ring-blue-100">
             <span className="absolute left-3 text-gray-400">
               <SearchIcon className="h-6 w-6" />
             </span>
@@ -520,7 +520,7 @@ export default function ConsultantsPage() {
           </div>
           <Button className="mr-1" onClick={fetchConsultants} disabled={listLoading}>
             {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
-            Search
+            <Search />
           </Button>
         </div>
         <div className="flex items-center space-x-2">
@@ -660,15 +660,15 @@ export default function ConsultantsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewConsultant(consultant)}>
+                            <Button className="hover:bg-gray-200/50" variant="ghost" size="icon" onClick={() => handleViewConsultant(consultant)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                             {userRole !== "Board Member" && (
                               <>
-                                <Button variant="ghost" size="icon" onClick={() => handleEditConsultant(consultant)}>
+                                <Button className="hover:bg-gray-200/50" variant="ghost" size="icon" onClick={() => handleEditConsultant(consultant)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button
+                                <Button className="hover:bg-gray-200/50"
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleStatusDialog(consultant, consultant.status === 'active' ? 'deactivate' : 'activate')}
@@ -702,12 +702,12 @@ export default function ConsultantsPage() {
             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
             {/* Fullscreen Modal Content */}
             <div
-              className="relative w-screen h-screen bg-background flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
+              className="relative w-screen h-screen bg-pale flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
               style={{ maxWidth: '100vw', maxHeight: '100vh' }}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
+              <div className="sticky top-0 z-10 flex items-center justify-between bg-paper border-b px-8 py-4">
                 <DialogHeader className="flex flex-row items-center gap-4 w-full">
-                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                  <DialogTitle className="flex items-center gap-2  font-nomal text-base">
                     {/* <User className="h-6 w-6" /> */}
                     {selectedConsultant?.fullName || "Consultant"}
                   </DialogTitle>
@@ -725,27 +725,27 @@ export default function ConsultantsPage() {
               {/* Sidebar + Main Content Layout */}
               <div className="flex flex-1 w-full h-[calc(100vh-80px)] px-0">
                 {/* Sidebar Navigation */}
-                <div className="w-56 min-w-[180px] border-r bg-muted/30 flex flex-col py-8 gap-2 text-base">
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('bank')}>Bank Details</button>
+                <div className="w-56 min-w-[180px]  bg-paper flex flex-col py-8 gap-2 text-base">
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
+                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('bank')}>Bank Details</button>
                 </div>
                 {/* Main Content - only this is scrollable */}
-                <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full pb-0">
+                <div className="flex-1 py-8 md:py-12 bg-pale px-8 overflow-y-auto h-full pb-0">
                   {modalSection === 'overview' && (
                     <div className="flex flex-col gap-8">
                       {/* Hours Overview */}
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-primary">Hours Overview</CardTitle>
+                          <CardTitle className="text-xl font-medium">Hours Overview</CardTitle>
                           <CardDescription>Time tracked across different periods</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
                             {/* Today */}
-                            <Card>
+                            <Card className="bg-pale">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Today</CardTitle>
                                 {todayTrend && (
@@ -758,14 +758,14 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-primary">
+                                <div className="text-2xl font-normal text-gradient">
                                   {formatMinutesToHours(dashboardData?.hoursToday.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursToday.count || 0} minutes</p>
                               </CardContent>
                             </Card>
                             {/* This Week */}
-                            <Card>
+                            <Card className="bg-pale">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">This Week</CardTitle>
                                 {weekTrend && (
@@ -778,14 +778,14 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-primary">
+                                <div className="text-2xl font-normal text-gradient">
                                   {formatMinutesToHours(dashboardData?.hoursWeek.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursWeek.count || 0} minutes</p>
                               </CardContent>
                             </Card>
                             {/* This Month */}
-                            <Card>
+                            <Card className="bg-pale">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">This Month</CardTitle>
                                 {monthTrend && (
@@ -798,14 +798,14 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-primary">
+                                <div className="text-2xl font-normal text-gradient">
                                   {formatMinutesToHours(dashboardData?.hoursMonth.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursMonth.count || 0} minutes</p>
                               </CardContent>
                             </Card>
                             {/* Last Month */}
-                            <Card>
+                            <Card className="bg-pale">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Last Month</CardTitle>
                                 {lastMonthTrend && (
@@ -818,7 +818,7 @@ export default function ConsultantsPage() {
                                 )}
                               </CardHeader>
                               <CardContent>
-                                <div className="text-2xl font-bold text-primary">
+                                <div className="text-2xl font-normal text-gradient">
                                   {formatMinutesToHours(dashboardData?.hoursLastMonth?.count || 0)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">{dashboardData?.hoursLastMonth?.count || 0} minutes</p>
@@ -861,7 +861,7 @@ export default function ConsultantsPage() {
                         <CardHeader>
                           <div className="flex items-center justify-between">
                             <div>
-                              <CardTitle className="text-primary">Time Logs by Date Range</CardTitle>
+                              <CardTitle className="text-xl font-medium">Time Logs by Date Range</CardTitle>
                               <CardDescription>View time logs within a specific time period</CardDescription>
                             </div>
                             <div className="flex items-center gap-4">
@@ -966,14 +966,14 @@ export default function ConsultantsPage() {
                               <Card className="mb-6">
                                 <CardContent className="pt-6">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="text-center p-4 rounded-lg bg-muted/50">
+                                    <div className="text-center p-4 rounded-lg bg-pale">
                                       <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                                       <p className="text-2xl font-bold">
                                         {totalHours}h {remainingMinutes > 0 ? `${remainingMinutes}m` : ''}
                                       </p>
                                       <p className="text-sm text-muted-foreground">Total Hours</p>
                                     </div>
-                                    <div className="text-center p-4 rounded-lg bg-muted/50">
+                                    <div className="text-center p-4 rounded-lg bg-pale">
                                       <div className="h-8 w-8 mx-auto mb-2 text-muted-foreground flex items-center justify-center">
                                         <span className="text-xl">📊</span>
                                       </div>
@@ -1085,7 +1085,7 @@ export default function ConsultantsPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 flex flex-col gap-2">
-                            <h2 className="text-2xl font-bold">{selectedConsultant?.fullName || '-'}</h2>
+                            <h2 className="text-2xl text-gradient font-medium">{selectedConsultant?.fullName || '-'}</h2>
                             <div className="flex flex-wrap gap-2 items-center">
                               <Badge>{selectedConsultant?.department?.name || "-"}</Badge>
                               <span className="text-base text-muted-foreground">{selectedConsultant?.jobTitle || selectedConsultant?.role?.name || "-"}</span>
@@ -1097,7 +1097,7 @@ export default function ConsultantsPage() {
                               </div>
                               <div><div className="text-muted-foreground text-sm flex items-center space-x-2">
                                 <PhoneIcon size={14} className="mr-2" />
-                                +{(selectedConsultant as any)?.phoneNumber || '-'}</div></div>
+                                {(selectedConsultant as any)?.phoneNumber || '-'}</div></div>
 
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
@@ -1208,7 +1208,7 @@ export default function ConsultantsPage() {
                                   else if ((selectedConsultant as any)?.officeDays) days = (selectedConsultant as any).officeDays;
                                   if (!days || days.length === 0) return <span className="text-muted-foreground">-</span>;
                                   return days.map((day: string, idx: number) => (
-                                    <Card key={idx} className="px-3 py-1 bg-muted/50 shadow-none text-sm font-medium rounded-full">
+                                    <Card key={idx} className="px-3 py-1 border shadow-none text-sm font-medium rounded-full">
                                       <CardContent className="p-0 flex items-center justify-center">{day}</CardContent>
                                     </Card>
                                   ));
@@ -1224,7 +1224,7 @@ export default function ConsultantsPage() {
                     <div className="flex flex-col gap-8">
                       <Card className="w-full">
                         <CardHeader>
-                          <CardTitle className="text-primary">Next of Kin</CardTitle>
+                          <CardTitle className="text-xl font-medium">Next of Kin</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1241,7 +1241,7 @@ export default function ConsultantsPage() {
                     <div className="flex flex-col gap-8">
                       <Card className="w-full">
                         <CardHeader>
-                          <CardTitle className="text-primary">Bank Details</CardTitle>
+                          <CardTitle className="text-xl font-medium">Bank Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 pt-6 pb-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1264,12 +1264,12 @@ export default function ConsultantsPage() {
 
       {/* Consultant Edit Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={handleCloseEditModal}>
-        <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
+        <DialogContent className="inset-0 w-screen h-screen max-w-none max-h-none p-0 m-0 bg-pale !rounded-none border-0 overflow-y-auto flex flex-col" style={{ fontFamily: 'Poppins, sans-serif', fontSize: '13.5px' }}>
           <DialogTitle><VisuallyHidden>Edit Consultant</VisuallyHidden></DialogTitle>
-          <div className="sticky top-0 left-0 w-full bg-background border-b shadow z-20 px-8 py-6 flex items-center justify-between">
+          <div className="sticky top-0 left-0 w-full bg-paper shadow z-20 px-8 py-6 flex items-center justify-between">
             <div className="flex items-center gap-2 text-2xl font-semibold">
               <Edit className="h-5 w-5" />
-              Edit Consultant
+              {/* Edit Consultant */}
             </div>
             <DialogClose asChild>
               <button
@@ -1281,7 +1281,7 @@ export default function ConsultantsPage() {
               </button>
             </DialogClose>
           </div>
-          <div className="flex-1 overflow-auto px-8 py-6 pb-0">
+          <div className="flex-1  px-8 py-6 pb-0">
             {editConsultant && (
               <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={async () => {
                 setIsEditModalOpen(false);

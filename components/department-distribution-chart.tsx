@@ -87,7 +87,7 @@ export function DepartmentDistributionChart({ departments }: DepartmentDistribut
             fontSize={12}
           />
           <YAxis />
-          <Tooltip content={<CustomTooltip />} />
+          {/* <Tooltip content={<CustomTooltip />} /> */}
           <Bar dataKey="employees" fill="orange" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
