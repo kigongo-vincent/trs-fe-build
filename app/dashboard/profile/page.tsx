@@ -6,10 +6,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getAuthData, getAuthUser } from "@/services/auth"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Contact, Mail, Map, MapPin, Pen, Phone, User as UserIcon } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { useRouter } from "next/router"
 
 export default function ProfilePage() {
     const [user, setUser] = useState<any>(null)
@@ -17,8 +19,6 @@ export default function ProfilePage() {
     const searchParams = useSearchParams();
     const section = searchParams?.get('section') || 'personal';
     const userRole = getAuthData()?.user?.role?.name
-
-
 
     useEffect(() => {
         setIsClient(true)
@@ -158,7 +158,8 @@ export default function ProfilePage() {
 
             <div className="bg-center relative  bg-[url(https://images.pexels.com/photos/2824173/pexels-photo-2824173.jpeg)] bg-cover rounded relative   min-h-[20vh] md:min-h-[25vh]">
 
-                <Button className="absolute right-4 bottom-4"><Pen size={15} /> edit your profile</Button>
+                <Link href={"/dashboard/settings"}>
+                    <Button className="absolute right-4 bottom-4"><Pen size={15} /> edit your profile</Button></Link>
 
                 {/* proflie pic  */}
                 <div className="p-2 rounded-full  left-8 bottom-[-25%] md:bottom-[-40%]  bg-paper shadow absolute mb-2"><Avatar className="md:h-40 md:w-40 h-20 w-20  bg-primary/10">

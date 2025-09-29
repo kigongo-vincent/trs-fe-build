@@ -1,6 +1,6 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianAxis, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { useEffect, useState } from "react"
 import { getHoursByProject } from "@/services/api"
 import { getAuthData } from "@/services/auth"
@@ -86,6 +86,8 @@ export function TaskDistributionChart() {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
+                                         <CartesianGrid strokeDasharray="3 3" />
+       
         <XAxis 
           dataKey="name" 
           stroke="#888888" 

@@ -116,7 +116,7 @@ export default function CompanyAdminDashboard() {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">{dashboardTitle}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-grdient">{dashboardTitle}</h1>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8">
@@ -133,7 +133,7 @@ export default function CompanyAdminDashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">{dashboardTitle}</h1>
+        <h1 className="text-xl font-medium font-bold tracking-tight text-gradient">{dashboardTitle}</h1>
         <div className="flex items-center gap-2">
           {/* <Button asChild>
             <Link href="/dashboard/company-admin/projects/new">
@@ -157,7 +157,7 @@ export default function CompanyAdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.departments || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.departments || 0}</div>
                 <p className="text-xs text-muted-foreground">Active departments</p>
               </>
             )}
@@ -177,7 +177,7 @@ export default function CompanyAdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.projects || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.projects || 0}</div>
                 <p className="text-xs text-muted-foreground">Total projects</p>
               </>
             )}
@@ -197,7 +197,7 @@ export default function CompanyAdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.consultants || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.consultants || 0}</div>
                 <p className="text-xs text-muted-foreground">Active consultants</p>
               </>
             )}
@@ -217,7 +217,7 @@ export default function CompanyAdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">
+                <div className="text-xl font-medium text-gradient">
                   {summaryData ? formatHours(summaryData.totalMinutes) : "0h"}
                 </div>
                 <p className="text-xs text-muted-foreground">Total logged time</p>
@@ -229,26 +229,17 @@ export default function CompanyAdminDashboard() {
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Hours by Project</CardTitle>
-                <CardDescription>Distribution of logged hours across projects</CardDescription>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <HoursByProjectChart />
-              </CardContent>
-            </Card>
+
             <Card className="col-span-3">
               <CardHeader>
-                <CardTitle>Hours by Project</CardTitle>
+                <CardTitle className=" text-xl font-medium">Hours by Project</CardTitle>
                 <CardDescription>Hours tracked per project</CardDescription>
               </CardHeader>
               <CardContent>
                 <TaskDistributionChart />
               </CardContent>
             </Card>
-          </div>
+    
         </TabsContent>
       </Tabs>
     </div>
