@@ -145,7 +145,7 @@ export default function DepartmentsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Departments</h1>
+        <h1 className="text-xl font-medium tracking-tight text-gradient">Departments</h1>
         <div className="flex items-center gap-2">
           {userRole !== "Board Member" && (
             <Button asChild>
@@ -192,7 +192,7 @@ export default function DepartmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Department Distribution</CardTitle>
+          <CardTitle className="text-gradient text-xl font-medium">Department Distribution</CardTitle>
           <CardDescription>Employee distribution across departments</CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,35 +207,33 @@ export default function DepartmentsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-between">
-        <div className="relative w-full max-w-sm">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-            <SearchIcon className="h-4 w-4" />
-          </span>
-          <Input
-            type="text"
-            placeholder="Search departments..."
-            className="h-10 pl-10 pr-4 rounded-lg border border-muted bg-muted/50 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Search departments"
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-primary"
-              aria-label="Clear search"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      </div>
+
 
       <Card>
         <CardHeader>
-          <CardTitle>All Departments</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <div className="text-xl font-medium text-gradient">
+              All Departments
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="relative w-full max-w-sm">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                  <SearchIcon className="h-4 w-4" />
+                </span>
+                <Input
+                  type="text"
+                  placeholder="Search departments..."
+                  className="h-10 pl-10 pr-4 text-base font-normal rounded border   focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search departments"
+                />
+               
+              </div>
+            </div>
+          </CardTitle>
+
           <CardDescription>Manage your company departments</CardDescription>
         </CardHeader>
         <CardContent>

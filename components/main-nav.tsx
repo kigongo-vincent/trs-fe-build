@@ -3,7 +3,7 @@ import Image from "next/image"
 import LogoPrimary from "@/assets/logo-primary.png"
 
 export function MainNav({ light }: { light?: boolean }) {
-  
+
   return (
     <div className="flex items-center">
       <Link href="/dashboard" className="flex items-center" aria-label="Go to dashboard">
@@ -17,7 +17,7 @@ export function MainNav({ light }: { light?: boolean }) {
             light
               ?
 
-              <Image height={200} width={400} className="h-[50px] w-max" src="https://trs-v1.netlify.app/assets/icons/logo.svg" alt="TRS" priority />
+              <Image height={10} width={150} src="https://trs-v1.netlify.app/assets/icons/logo.svg" alt="TRS" priority />
               :
               <Image className="h-[40px] w-max" src={LogoPrimary} alt="TRS" priority />
           }

@@ -86,6 +86,7 @@ export default function AddConsultantPage() {
   const [currencies, setCurrencies] = useState<CurrencyI[]>([])
   const [loadingCurrencies, setLoadingCurrencies] = useState(false)
   // Consultant role ID
+  const [totalWorkingHours, setTotalWorkingHours] = useState(160)
   const consultantRoleId = "0728a760-9495-4c9b-850b-d1f4ca5gb707"
 
   const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -236,17 +237,20 @@ export default function AddConsultantPage() {
         });
       const attachmentsBase64 = await Promise.all(fileAttachments.map(a => toBase64(a.file)));
 
+
       const payload: any = {
         fullName: formData.fullName,
         email: formData.email,
         departmentId: formData.departmentId,
-        roleId: consultantRoleId,
+        // roleId: consultantRoleId,
         companyId: companyId,
         job_title: formData.jobTitle,
         gross_pay: formData.grossPay,
         phoneNumber: formData.phoneNumber.trim(),
         currency: formData.currency,
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
+        roleId: consultantRoleId,
+        totalWorkingHours: totalWorkingHours
       }
 
       // Only add date_of_birth if it has a value
@@ -401,6 +405,14 @@ export default function AddConsultantPage() {
                 )}
                 <button onClick={selectAllDays} className="border border-primary text-primary text-sm px-2 rounded-l-full rounded-r-full hover:opacity-100 opacity-50 py-1">Select all days</button>
                 <p className="text-sm text-muted-foreground">Select the days the consultant is expected to come in.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Total Working Hours<span className="text-red-500">*</span></Label>
+                <div className="flex items-center gap-2">
+                  <Input id="addressCity" name="addressCity" placeholder="E.g 120" value={totalWorkingHours} onChange={(e) => setTotalWorkingHours(+e.target.value)} required />
+
+                </div>
+                <p className="text-sm text-muted-foreground">Specify the number of hours a consultant is supposed to work for in a month (defualt is 160HRS)</p>
               </div>
             </div>
 

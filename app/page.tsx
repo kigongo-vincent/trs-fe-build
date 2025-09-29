@@ -131,7 +131,7 @@ export default function Home() {
         {/* Right: Login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-8">
           <div className="w-full max-w-md">
-            <Image className="h-[7.5vh] mb-[2rem] w-max" style={{
+            <Image className="h-[5.5vh] mb-[2rem] w-max" style={{
               mixBlendMode: "multiply"
             }} src={LogoLight} alt="TRS" priority />
             <h1 className="text-2xl md:text-2xl font-semibold mb-2">Welcome back to TRS</h1>
