@@ -21,9 +21,10 @@ import {
     Upload,
     Eye,
     Download,
-    Loader2
+    Loader2,
+    Trash
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, textCropper } from "@/lib/utils"
 import { uploadFile, validateFile, type UploadProgress } from "@/services/upload"
 import { toast } from "sonner"
 
@@ -187,7 +188,7 @@ export function FileAttachment({
                             value={urlNameInput}
                             onChange={e => setUrlNameInput(e.target.value)}
                         />
-                        <Button type="button" onClick={addUrlAttachment}>
+                        <Button type="button" className="gradient" onClick={addUrlAttachment}>
                             Add
                         </Button>
                     </div>
@@ -199,7 +200,7 @@ export function FileAttachment({
                     <Label>Selected Files & URLs</Label>
                     <div className="space-y-2">
                         {attachments.map((attachment) => (
-                            <Card key={attachment.id} className="p-3">
+                            <Card key={attachment.id} className="p-3 bg-pale">
                                 <CardContent className="p-0">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -212,18 +213,9 @@ export function FileAttachment({
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium truncate">{attachment.name}</p>
+                                                    <p className="text-sm font-medium truncate">{textCropper(attachment.name, 30)}</p>
                                                 </div>
-                                                {attachment.type === "file" && attachment.size && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {formatFileSize(attachment.size)}
-                                                    </p>
-                                                )}
-                                                {attachment.type === "url" && (
-                                                    <p className="text-xs text-muted-foreground truncate">
-                                                        {attachment.url}
-                                                    </p>
-                                                )}
+                                               
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -247,7 +239,7 @@ export function FileAttachment({
                                                 onClick={() => removeAttachment(attachment.id)}
                                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                                             >
-                                                <X className="h-4 w-4" />
+                                                <Trash className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     </div>

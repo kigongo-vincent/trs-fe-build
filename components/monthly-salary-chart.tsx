@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { formatCurrency, GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 import { getAuthData } from "@/services/auth"
 
 
@@ -34,28 +34,33 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
   return (
     <div className="w-full">
       <div className="text-sm font-medium text-muted-foreground mb-2">{userCurrency}</div>
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={250}>
         <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+
           <XAxis
             dataKey={xKey}
             stroke={`hsl(var(--muted-foreground))`}
             fontSize={12}
-            tickLine={false}
-            axisLine={false}
+          // tickLine={false}
+          // axisLine={false}
           />
           <YAxis
             stroke={`hsl(var(--muted-foreground))`}
             fontSize={12}
-            tickLine={false}
-            axisLine={false}
+            // tickLine={false}
+            // axisLine={false}
             tickFormatter={(value) => `${value}`}
           />
           <Tooltip
             formatter={(_value: number, _name: string, props: any) => {
               const currency = props.payload && props.payload.currency ? props.payload.currency.toUpperCase() : 'USD';
-              return [` ${currency} ${props.value}`, 'Amount'];
+              return [`${formatCurrency(props?.value, currency)}`, 'Amount'];
             }}
-            cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
+            cursor={{ fill: '#f4f4f4' }}
+            contentStyle={{
+              border: "none"
+            }}
           />
           <Bar
             dataKey="amount"

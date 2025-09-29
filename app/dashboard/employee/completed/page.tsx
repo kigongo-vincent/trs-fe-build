@@ -21,6 +21,8 @@ import {
   FileText,
   X,
   LinkIcon,
+  Loader2,
+  MoveRight,
 } from "lucide-react"
 import { CompletedTasksChart } from "@/components/completed-tasks-chart"
 import { Badge } from "@/components/ui/badge"
@@ -45,6 +47,7 @@ import {
 } from "@/services/employee"
 import { IMAGE_BASE_URL } from "@/services/api"
 import DOMPurify from 'dompurify'
+import TaskDetailModal, { Attachment } from "@/components/TaskDetailModal"
 
 export default function CompletedTasksPage() {
   const [selectedTask, setSelectedTask] = useState<TimeLog | null>(null)
@@ -218,13 +221,16 @@ export default function CompletedTasksPage() {
     )
   }
 
+  const getAttachmentsFromTimeLog = (timeLog: TimeLog): Attachment[] => {
+    if (!timeLog.attachments || timeLog.attachments.length === 0) {
+      return []
+    }
+    return []
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Completed Tasks</h1>
-        <div className="flex items-center gap-2">
-        </div>
-      </div>
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -240,7 +246,7 @@ export default function CompletedTasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{completionData?.completedToday.count || 0}</div>
+                <div className="text-2xl font-medium text-gradient">{completionData?.completedToday.count || 0}</div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {getTrendIcon(completionData?.completedToday.change || 0)}
                   {getTrendText(completionData?.completedToday.change || 0, "yesterday")}
@@ -263,7 +269,7 @@ export default function CompletedTasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{completionData?.completedThisWeek.count || 0}</div>
+                <div className="text-2xl font-medium text-gradient">{completionData?.completedThisWeek.count || 0}</div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {getTrendIcon(completionData?.completedThisWeek.change || 0)}
                   {getTrendText(completionData?.completedThisWeek.change || 0, "last week")}
@@ -286,7 +292,7 @@ export default function CompletedTasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{completionData?.completedThisMonth.count || 0}</div>
+                <div className="text-2xl font-medium text-gradient">{completionData?.completedThisMonth.count || 0}</div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {getTrendIcon(completionData?.completedThisMonth.change || 0)}
                   {getTrendText(completionData?.completedThisMonth.change || 0, "last month")}
@@ -309,7 +315,7 @@ export default function CompletedTasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{completionData?.completionRate.rate || 0}%</div>
+                <div className="text-2xl font-medium text-gradient">{completionData?.completionRate.rate || 0}%</div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   {getTrendIcon(completionData?.completionRate.change || 0)}
                   {getTrendText(completionData?.completionRate.change || 0, "last month")}
@@ -322,7 +328,7 @@ export default function CompletedTasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Completion Trends</CardTitle>
+          <CardTitle className="text-xl text-gradient">Completion Trends</CardTitle>
           <CardDescription>Tasks completed over time</CardDescription>
         </CardHeader>
         <CardContent>
@@ -330,16 +336,16 @@ export default function CompletedTasksPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input
+      <div className="flex flex-col  gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-1  items-center space-x-2">
+          {/* <Input
             type="text"
             placeholder="Search tasks..."
             className="h-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Button
+          /> */}
+          {/* <Button
             variant="outline"
             size="sm"
             className="h-9 px-2 lg:px-3"
@@ -352,12 +358,38 @@ export default function CompletedTasksPage() {
               <Search className="h-4 w-4" />
             )}
             <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-          </Button>
-        </div>
-        <div className="flex flex-row max-w-[90vw] overflow-auto m-auto items-center gap-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="start-date" className="text-xs font-medium">Start Date</label>
+          </Button> */}
+          <div className="p-2 flex-1 bg-paper gap-3 rounded flex items-center ">
+            <div />
             <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={handleSearch}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch()
+                }
+              }}
+              placeholder="Search for your tasks..." type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
+            <Button className=" bg-gray-900 hover:bg-gray-600" onClick={handleSearch}>
+              {isSearchLoading ? (
+                <>
+                  <Loader2
+                    className="h-4 w-4 animate-spin" />
+                  <span className="sr-only md:not-sr-only md:ml-2">Searching...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+        <div className="flex md:flex-row  bg-paper p-2 rounded overflow-auto justify-between items-center gap-2">
+          <div className="flex flex-col gap-1 ">
+            <Input
               id="start-date"
               type="date"
               className="h-9 px-2 border rounded"
@@ -369,9 +401,10 @@ export default function CompletedTasksPage() {
               max={dateRange.to.toISOString().slice(0, 10)}
             />
           </div>
+          <MoveRight size={15} className="opacity-40" />
+
           <div className="flex flex-col gap-1">
-            <label htmlFor="end-date" className="text-xs font-medium">End Date</label>
-            <input
+            <Input
               id="end-date"
               type="date"
               className="h-9 px-2 border rounded"
@@ -384,8 +417,7 @@ export default function CompletedTasksPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="project-select" className="text-xs font-medium">Project</label>
+          <div className="  hidden md:flex flex-col gap-1">
             <Select
               value={projectFilter}
               onValueChange={async (id) => {
@@ -413,7 +445,7 @@ export default function CompletedTasksPage() {
                 }
               }}
             >
-              <SelectTrigger id="project-select" className="h-9 w-[160px]">
+              <SelectTrigger id="project-select" className="h-9 w-[160px] ">
                 <SelectValue placeholder="Project" />
               </SelectTrigger>
               <SelectContent>
@@ -432,7 +464,7 @@ export default function CompletedTasksPage() {
 
       <Card className="max-w-[90vw] sm:max-w-full  sm:m-0 m-auto">
         <CardHeader>
-          <CardTitle>Time Logs</CardTitle>
+          <CardTitle className="text-xl text-gradient">Time Logs</CardTitle>
           <CardDescription>
             Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
           </CardDescription>
@@ -505,122 +537,15 @@ export default function CompletedTasksPage() {
       </Card>
 
       {/* Task Details Dialog */}
-      {selectedTask && isDialogOpen && (
-        <Dialog open={true} onOpenChange={open => { if (!open) setIsDialogOpen(false) }}>
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Overlay */}
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" aria-hidden="true"></div>
-            {/* Fullscreen Modal Content */}
-            <div
-              className="relative w-screen h-screen bg-background flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
-              style={{ maxWidth: '100vw', maxHeight: '100vh' }}
-            >
-              {/* Sticky Header */}
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-background border-b px-8 py-4">
-                <DialogHeader className="flex flex-row items-center gap-4 w-full">
-                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                    {selectedTask?.title || "Task Details"}
-                  </DialogTitle>
-                </DialogHeader>
-                <button
-                  onClick={() => setIsDialogOpen(false)}
-                  className="ml-auto rounded-full p-2 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                  aria-label="Close"
-                >
-                  <span className="sr-only">Close</span>
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              {/* Main Content */}
-              <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full flex flex-col gap-6">
-                {/* Header and Meta */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      {selectedTask.title}
-                      <Badge variant="outline" className={getStatusBadgeColor(selectedTask.status)}>{selectedTask.status}</Badge>
-                      <Badge variant="secondary">{selectedTask.project}</Badge>
-                    </CardTitle>
-                    <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm items-center">
-                      <span className="flex items-center gap-1"><User className="h-4 w-4" />{selectedTask.user?.fullName || 'No owner'}</span>
-                      <span className="flex items-center gap-1">
-                        <CalendarIconComponent className="h-4 w-4 text-green-600" />
-                        <span>Created: {formatDate(selectedTask.createdAt)} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {formatDateTime(selectedTask.createdAt)}</span>
-                        <span className="mx-2">|</span>
-                        <Clock className="h-4 w-4 text-blue-600" />
-                        <span>Last Updated: {formatDate(selectedTask.updatedAt)} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {formatDateTime(selectedTask.updatedAt)}</span>
-                      </span>
-                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{formatDurationString(selectedTask.duration)}</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-4">
-                      <div className="font-semibold mb-1">Description</div>
-                      <div className="rounded bg-muted p-3 text-sm min-h-[60px] prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedTask.description || 'No description provided') }} />
-                    </div>
-                    {/* Attachments Section */}
-                    {Array.isArray((selectedTask as any)?.attachments) && (selectedTask as any).attachments.length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-base font-semibold">Attachments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {(selectedTask as any).attachments.map((attachment: any) => (
-                              <div key={attachment.id || attachment.url || attachment.name} className="flex items-center gap-3 p-2 border rounded-md bg-muted/50">
-                                {/* Icon */}
-                                {attachment.type === "url" ? (
-                                  <LinkIcon className="h-5 w-5 text-blue-500" />
-                                ) : attachment.mimeType && attachment.mimeType.startsWith("image/") ? (
-                                  <img
-                                    src={IMAGE_BASE_URL + (attachment.url || '').replace(/^\//, '')}
-                                    alt={attachment.name}
-                                    className="h-12 w-12 object-cover rounded border"
-                                  />
-                                ) : (
-                                  <FileText className="h-5 w-5 text-muted-foreground" />
-                                )}
-                                {/* Name and URL */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium truncate text-sm">{attachment.name}</div>
-                                  {attachment.type === "url" && (
-                                    <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline truncate block">
-                                      {attachment.url}
-                                    </a>
-                                  )}
-                                  {attachment.type === "file" && attachment.size && (
-                                    <div className="text-xs text-muted-foreground">{(attachment.size / 1024).toFixed(1)} KB</div>
-                                  )}
-                                </div>
-                                {/* View/Download Button */}
-                                <div>
-                                  {attachment.type === "url" ? (
-                                    <Button asChild variant="ghost" size="icon">
-                                      <a href={attachment.url} target="_blank" rel="noopener noreferrer"><Eye className="h-4 w-4" /></a>
-                                    </Button>
-                                  ) : (
-                                    <Button asChild variant="ghost" size="icon">
-                                      <a href={IMAGE_BASE_URL + (attachment.url || '').replace(/^\//, '')} target="_blank" rel="noopener noreferrer" download>
-                                        <Download className="h-4 w-4" />
-                                      </a>
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </CardContent>
-                </Card>
-                {/* Project Info, Department Info, Timeline in one row (if available) */}
-                {/* You can add more info here if your TimeLog type has project/department details */}
-              </div>
-            </div>
-          </div>
-        </Dialog>
-      )}
+
+      <TaskDetailModal
+        open={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        task={selectedTask}
+        attachments={selectedTask ? getAttachmentsFromTimeLog(selectedTask) : []}
+        urls={[]}
+      />
+
     </div>
   )
 }

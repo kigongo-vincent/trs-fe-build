@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Download, Eye, Filter, Search, Calendar, Building2, Mail, Phone, MapPin, Info, FileText } from "lucide-react"
+import { CalendarIcon, Download, Eye, Filter, Search, Calendar, Building2, Mail, Phone, MapPin, Info, FileText, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -22,7 +22,7 @@ import {
   fetchConsultantInvoices,
   fetchConsultantMonthlySummary
 } from "@/services/consultants"
-import { getAuthData } from "@/services/auth"
+import { getAuthData, getAuthUser } from "@/services/auth"
 import type { DateRange } from "react-day-picker"
 import { DateRangePicker } from "@/components/date-range-picker"
 import { format as formatDateFns } from "date-fns"
@@ -525,10 +525,13 @@ export default function InvoicesPage() {
     `
   }
 
+  const user = getAuthUser()
+  const companyLogo = user?.company?.logo || 'https://www.tekjuice.co.uk/assets/images/logos.svg'
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">My Invoices</h1>
+      {/* <div className="flex items-center bg-paper p-4 rounded justify-between">
+        <h1 className="text-xl font-medium tracking-tight text-gradient">My Invoices</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -548,7 +551,9 @@ export default function InvoicesPage() {
             )}
           </Button>
         </div>
-      </div>
+      </div> */}
+
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
@@ -566,7 +571,7 @@ export default function InvoicesPage() {
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl text-primary">
+                <div className="text-2xl text-gradient font-medium">
                   {item.amount !== null
                     ? `${formatCurrency(Number(item.amount).toFixed(2), getCurrencyCode(item.currency))}`
                     : '--'}
@@ -579,7 +584,7 @@ export default function InvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Earnings</CardTitle>
+          <CardTitle className=" text-xl font-medium">Monthly Earnings</CardTitle>
           <CardDescription>Your earnings over the past 8 months</CardDescription>
         </CardHeader>
         <CardContent>
@@ -591,21 +596,36 @@ export default function InvoicesPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex w-full max-w-sm items-center space-x-2">
-          <Input
-            type="text"
-            placeholder="Search invoices..."
-            className="h-9"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value) }}
-          />
 
-          {/* search btn  */}
-          <Button onClick={handleSearch}>
-            Search
+      <div className="flex bg-paper p-4 rounded-lg flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="p-2  bg-pale gap-3 md:min-w-[20vw] rounded flex items-center ">
+          <div />
+          <input
+            value={searchQuery}
+            placeholder="Search invoices..."
+
+            onChange={(e) => { setSearchQuery(e.target.value) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSearch()
+              }
+            }}
+            type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
+          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={handleSearch}>
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4" />
+
+              </>
+            )}
           </Button>
         </div>
+
 
         <div className="flex flex-row items-center gap-2">
           <Select value={statusFilter} onValueChange={(value: "pending" | "paid" | "processing" | "all") => {
@@ -679,12 +699,16 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setModalOpen(true); }}>
+                        <Button
+                          className="hover:bg-gray-200/50"
+
+                          variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setModalOpen(true); }}>
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="hover:bg-gray-200/50"
                           onClick={() => generateInvoicePdf(invoice)}
                           disabled={isGeneratingPdf}
                         >
@@ -708,20 +732,28 @@ export default function InvoicesPage() {
       {/* Invoice Details Modal */}
       {selectedInvoice && userSession && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-gray-50 overflow-y-auto">
-            <Card className="shadow-none border-none bg-transparent">
+          <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-pale overflow-y-auto">
+            <Card className="">
               <CardHeader className="pb-4">
+                <div className="flex  items-center  justify-center pt-6 pb-2">
+                  <img
+                    src={companyLogo}
+                    alt="Company Logo"
+                    style={{ maxHeight: 50, objectFit: 'contain', background: 'none', mixBlendMode: "multiply" }}
+                    className="mb-2"
+                  />
+                </div>
                 <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">INVOICE</CardTitle>
                 <CardDescription className="text-base text-gray-600 dark:text-gray-300">{selectedInvoice?.invoiceNumber}</CardDescription>
                 <div className="bg-primary text-white px-4 py-6 rounded mt-2">
                   <span className="text-lg font-bold">{userSession?.company?.name}</span>
-                  <span className="block text-blue-100 text-xs">{userSession?.company?.sector}</span>
+                  <span className="block  text-xs">{userSession?.company?.sector}</span>
                 </div>
                 <div className={`inline-block px-3 py-1 rounded-full w-[max-content] text-xs font-medium border mt-2 ${getStatusColor(selectedInvoice?.status || '')}`}>{selectedInvoice?.status?.toUpperCase()}</div>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="bg-card text-card-foreground border-none">
+                  <Card className="bg-pale text-card-foreground border-none">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base font-semibold flex items-center text-primary"><Calendar className="w-4 h-4 mr-2 text-primary" />Invoice Details</CardTitle>
                     </CardHeader>
@@ -731,7 +763,7 @@ export default function InvoicesPage() {
                       <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Last Updated:</span><span className="font-medium">{formatDate(selectedInvoice?.updatedAt || '')}</span></div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-card text-card-foreground border-none">
+                  <Card className="bg-pale text-card-foreground border-none">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-base font-semibold flex items-center text-primary"><Building2 className="w-4 h-4 mr-2 text-primary" />Consultant Information</CardTitle>
                     </CardHeader>
@@ -739,19 +771,19 @@ export default function InvoicesPage() {
                       <div><span className="font-semibold text-gray-900 dark:text-white">{userSession?.fullName}</span><span className="block text-gray-600 dark:text-gray-300 capitalize">{userSession?.jobTitle} Consultant</span></div>
                       <div className="flex items-center text-muted-foreground"><Mail className="w-4 h-4 mr-2" /><span>{userSession?.email}</span></div>
                       <div className="flex items-center text-muted-foreground"><Phone className="w-4 h-4 mr-2" /><span>{userSession?.phoneNumber}</span></div>
-                      <div className="flex items-start text-muted-foreground"><MapPin className="w-4 h-4 mr-2 mt-1" /><span>{userSession?.company?.address?.street}, {userSession?.company?.address?.city}, {userSession?.company?.address?.state}, {userSession?.company?.address?.country}</span></div>
+
                     </CardContent>
                   </Card>
                 </div>
-                <Card className=" dark:bg-blue-900/30 border-none">
+                <Card className="bg-pale dark:bg-blue-900/30 border-none">
                   <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Service Description</CardTitle></CardHeader>
                   <CardContent className="text-gray-700 dark:text-gray-200 text-sm">{selectedInvoice?.description}</CardContent>
                 </Card>
-                <Card className=" dark:border-neutral-700">
+                <Card className="bg-pale dark:border-neutral-700">
                   <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Invoice Items</CardTitle></CardHeader>
                   <CardContent className="p-0">
                     <table className="w-full">
-                      <thead className="bg-muted">
+                      <thead className="bg-paper">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white">Description</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Hours</th>
@@ -770,7 +802,7 @@ export default function InvoicesPage() {
                     </table>
                   </CardContent>
                 </Card>
-                <Card className="bg-card text-card-foreground border-none">
+                <Card className="bg-pale text-card-foreground border-none">
                   <CardContent className="p-4">
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between text-gray-600 dark:text-gray-300"><span>Subtotal:</span><span>{formatCurrency(selectedInvoice?.amount, currency)}</span></div>
@@ -782,7 +814,7 @@ export default function InvoicesPage() {
                     <div className="mt-2 text-xs text-muted-foreground text-right">Showing amounts in <span className="font-semibold">{currency}</span> (Company currency)</div>
                   </CardContent>
                 </Card>
-                <Card className="bg-card text-card-foreground border-none">
+                {/* <Card className="bg-pale text-card-foreground border-none">
                   <CardHeader className="pb-2"><CardTitle className="text-base font-semibold flex items-center text-primary"><Info className="w-4 h-4 mr-2 text-primary" />Payment Information</CardTitle></CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div><span className="text-xs text-gray-600 dark:text-gray-300">Bank Name</span><span className="block font-medium">{userSession?.bankDetails?.bankName}</span></div>
@@ -791,10 +823,18 @@ export default function InvoicesPage() {
                     <div><span className="text-xs text-gray-600 dark:text-gray-300">Account Number</span><span className="block font-medium">{userSession?.bankDetails?.accountNumber}</span></div>
                     <div className="md:col-span-2"><span className="text-xs text-gray-600 dark:text-gray-300">SWIFT Code</span><span className="block font-medium">{userSession?.bankDetails?.swiftCode}</span></div>
                   </CardContent>
-                </Card>
+                </Card> */}
               </CardContent>
               <CardFooter className="flex-col border-t pt-4">
                 <div className="flex justify-center gap-2 mb-4">
+                  <Button
+                    variant={"outline"}
+                    onClick={() => setModalOpen(false)}
+
+                    className="flex items-center gap-2"
+                  >
+                    close
+                  </Button>
                   <Button
                     onClick={() => generateInvoicePdf(selectedInvoice)}
                     disabled={isGeneratingPdf}
@@ -810,7 +850,7 @@ export default function InvoicesPage() {
                 </div>
                 <div className="text-center text-gray-500 dark:text-gray-400 text-xs">
                   <p>Thank you for your business!</p>
-                  <p className="mt-1">For any questions regarding this invoice, please contact {userSession?.email}</p>
+                  <p className="mt-1">For any questions regarding this invoice, please contact your company admin</p>
                 </div>
               </CardFooter>
             </Card>

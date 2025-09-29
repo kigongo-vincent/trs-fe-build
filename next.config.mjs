@@ -7,7 +7,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    domains: ["images.pexels.com", "images.unsplash.com", "trs-api.tekjuice.xyz", 'social-gems.s3.amazonaws.com'],
+    domains: ["images.pexels.com", "images.unsplash.com", "trs-api.tekjuice.xyz", 'social-gems.s3.amazonaws.com', "trs-v1.netlify.app"],
   },
   // output: 'export', // <-- DO NOT ENABLE THIS FOR APPS USING CLIENT COMPONENT HOOKS
 };

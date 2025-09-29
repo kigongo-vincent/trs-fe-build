@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { X, User, Calendar, Clock, FolderOpen, Eye, Download, Building2 } from "lucide-react";
 import DOMPurify from "dompurify";
 import React from "react";
+import { textCropper } from "@/lib/utils";
 
 export interface Attachment {
     id?: string;
@@ -43,12 +44,12 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
     if (!task) return null;
     return (
         <Dialog open={open} onOpenChange={open => { if (!open) onClose(); }}>
-            <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <DialogContent className="md:max-w-4xl max-w-[95vw] w-full md:max-h-[90vh] bg-pale p-0 overflow-y-auto">
                 {/* Sticky Header */}
-                <div className="sticky top-0 z-10 flex items-center justify-between border-b px-8 py-4">
+                <div className="sticky top-0 z-10 bg-paper flex items-center justify-between  px-8 py-4">
                     <DialogHeader className="flex flex-row items-center gap-4 w-full">
-                        <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-                            {task.title || "Task Details"}
+                        <DialogTitle className="flex items-center gap-2 text-base font-medium z-40">
+                            {"Task Details"}
                         </DialogTitle>
                     </DialogHeader>
                     <DialogClose asChild>
@@ -62,46 +63,53 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                     </DialogClose>
                 </div>
                 {/* Main Content - all info in one section */}
-                <div className="flex-1 py-8 md:py-12 px-8 overflow-y-auto h-full flex flex-col gap-6">
+                <div className="flex-1 bg-pale md:py-12 px-8 overflow-y-auto h-full flex flex-col gap-6">
                     {/* Header and Meta */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                {task.title}
-                                {(() => {
-                                    switch (task.status?.toLowerCase()) {
-                                        case 'active':
-                                            return <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800'>Active</Badge>;
-                                        case 'draft':
-                                            return <Badge variant='outline' className='bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800'>Draft</Badge>;
-                                        default:
-                                            return <Badge variant='outline'>{task.status}</Badge>;
-                                    }
-                                })()}
-                                {task.project && <Badge variant="secondary">{task.project.name}</Badge>}
+                            <CardTitle className="text-xl text-gradient  items-center gap-2">
+                                <div className="max-w-[70vw] md:max-w-[40vw]">
+                                    {task.title}
+                                </div>
+
+                                <div className="flex gap-2 my-3">
+                                    {(() => {
+                                        switch (task.status?.toLowerCase()) {
+                                            case 'active':
+                                                return <Badge variant='outline' className='bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800'>Active</Badge>;
+                                            case 'draft':
+                                                return <Badge variant='outline' className='bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800'>Draft</Badge>;
+                                            default:
+                                                return <Badge variant='outline'>{task.status}</Badge>;
+                                        }
+                                    })()}
+                                    {task.project && <Badge variant="secondary">{task.project}</Badge>}
+                                </div>
                             </CardTitle>
                             <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm items-center">
-                                {task.user && <span className="flex items-center gap-1"><User className="h-4 w-4" />{task.user.fullName || 'No owner'}</span>}
+                                {/* {task.user && <span className="flex items-center gap-1"><User className="h-4 w-4" />{task.user.fullName || 'No owner'}</span>} */}
                                 <span className="flex items-center gap-1">
                                     <Calendar className="h-4 w-4 text-green-600" />
                                     <span>Created: {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : ''} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {task.createdAt ? new Date(task.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                                    {task.updatedAt && <><span className="mx-2">|</span>
-                                        <Clock className="h-4 w-4 text-blue-600" />
-                                        <span>Last Updated: {new Date(task.updatedAt).toLocaleDateString()} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {new Date(task.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></>}
+                                    <div className="hidden md:flex items-center gap-2">
+                                        {task.updatedAt && <><span className="mx-2">|</span>
+                                            <Clock className="h-4 w-4 text-blue-600" />
+                                            <span>Last Updated: {new Date(task.updatedAt).toLocaleDateString()} <Clock className="inline h-4 w-4 text-muted-foreground ml-1" /> {new Date(task.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></>}
+                                    </div>
                                 </span>
-                                {task.duration && <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{Number(task.duration) >= 60 ? `${Math.floor(Number(task.duration) / 60)}h ${Number(task.duration) % 60}m` : `${task.duration}m`}</span>}
+
                             </CardDescription>
+                            {task.duration && <div className="flex border w-max px-4 py-1 rounded-full items-center gap-1 text-"><Clock className="h-4 w-4" />{Number(task.duration) >= 60 ? `${Math.floor(Number(task.duration) / 60)}h ${Number(task.duration) % 60}m` : `${task.duration}m`}</div>}
                         </CardHeader>
                         <CardContent>
                             <div className="mb-4">
-                                <div className="font-semibold mb-1">Description</div>
-                                <div className="rounded bg-muted p-3 text-sm min-h-[60px] prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(task.description || 'No description provided') }} />
+                                <div className="rounded bg-pale p-6 leading-8 text-sm min-h-[60px] prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(task.description || 'No description provided') }} />
                             </div>
                             {/* Attachments & URLs */}
                             {attachments.length > 0 && (
                                 <div className="mb-4">
                                     <div className="font-semibold mb-1 flex items-center gap-2">
-                                        <FolderOpen className="h-4 w-4 text-muted-foreground" /> Attachments
+                                         Attachments
                                     </div>
                                     <div className="space-y-2">
                                         {attachments.map((attachment) => {
@@ -119,38 +127,39 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                                                 );
                                             } else if (isImage) {
                                                 return (
-                                                    <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
-                                                        <CardContent className="p-0">
-                                                            <div className="flex flex-col items-start gap-2">
+                                                    <Card key={attachment.id || attachment.url || attachment.name} className="bg-pale flex items-center justify-between p-2 rounded">
+                                                        <CardContent className="p-0 h-max  w-max">
+                                                            <div className="flex  items-center gap-2">
                                                                 <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
                                                                     <img
                                                                         src={attachment.url}
                                                                         alt={attachment.name}
-                                                                        className="rounded-lg max-h-48 object-contain border mb-2"
+                                                                        className="rounded-lg h-10 w-10 object-cover  border"
                                                                         style={{ background: '#f8fafc' }}
                                                                     />
                                                                 </a>
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="font-medium truncate max-w-xs">{attachment.name}</span>
-                                                                    <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
-                                                                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download image">
-                                                                            <Download className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </a>
+                                                                    <span className="font-medium truncate max-w-xs">{textCropper(attachment.name, 20)}</span>
+
                                                                 </div>
                                                             </div>
                                                         </CardContent>
+                                                        <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2">
+                                                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download image">
+                                                                <Download className="h-4 w-4" />
+                                                            </Button>
+                                                        </a>
                                                     </Card>
                                                 );
                                             } else {
                                                 // Default: file (not image)
                                                 return (
-                                                    <Card key={attachment.id || attachment.url || attachment.name} className="p-3">
+                                                    <Card key={attachment.id || attachment.url || attachment.name} className="p-3 bg-pale shadow-none">
                                                         <CardContent className="p-0">
                                                             <div className="flex items-center  gap-3 justify-between">
                                                                 <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
                                                                     {/* <Download className="h-4 w-4 text-muted-foreground" /> */}
-                                                                    <span className="truncate max-w-xs">{attachment.name}</span>
+                                                                    <span className="truncate max-w-xs">{textCropper(attachment.name, 20)}</span>
                                                                 </a>
                                                                 <a href={attachment.url} download target="_blank" rel="noopener noreferrer" className="ml-2 ">
                                                                     <Button type="button" size="icon" variant="ghost" className="h-8 w-8 p-0" title="Download file">
@@ -186,54 +195,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                             )}
                         </CardContent>
                     </Card>
-                    {/* Project Info, Department Info, Timeline in one row */}
-                    {typeof task.project === 'object' && task.project !== null ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {/* Project Info */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5 text-muted-foreground" />{task.project.name}<Badge variant="outline" className="capitalize ml-2">{task.project.status}</Badge></CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="font-medium">Progress:</span>
-                                        <div className="flex-1 max-w-xs">
-                                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                                                <div className="h-full bg-primary" style={{ width: `${task.project.progress}%` }} />
-                                            </div>
-                                        </div>
-                                        <span className="ml-2 text-sm font-semibold">{task.project.progress}%</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mb-2"><Calendar className="h-4 w-4 text-muted-foreground" /><span className="font-medium">Deadline:</span> {task.project.deadline ? new Date(task.project.deadline).toLocaleDateString() : ''}</div>
-                                </CardContent>
-                            </Card>
-                            {/* Department Info */}
-                            {task.project.department && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-muted-foreground" />{task.project.department.name}<Badge variant="outline" className="capitalize ml-2">{task.project.department.status}</Badge></CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center gap-2 mb-2"><User className="h-4 w-4 text-muted-foreground" /><span className="font-medium">Head:</span> {task.project.department.head}</div>
-                                        <div className="rounded bg-muted p-3 text-sm"><span className="font-semibold">Description:</span> {task.project.department.description || 'No description'}</div>
-                                    </CardContent>
-                                </Card>
-                            )}
-                        </div>
-                    ) : (
-                        task.project && (
-                            <div className="mt-4">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <FolderOpen className="h-5 w-5 text-muted-foreground" />
-                                            {typeof task.project === 'string' ? task.project : String(task.project)}
-                                        </CardTitle>
-                                    </CardHeader>
-                                </Card>
-                            </div>
-                        )
-                    )}
+
                 </div>
             </DialogContent>
         </Dialog>

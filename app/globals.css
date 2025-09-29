@@ -4,6 +4,32 @@
 
 .gradient {
   background: linear-gradient(120deg, #f6931b, #ff7f29);
+  transition: 0.3s;
+  /* transform: scale(0.95); */
+}
+.gradient:hover {
+  background: linear-gradient(-120deg, #f6931b, #f66b0e);
+  transition: 0.3s;
+  /* transform: scale(1); */
+}
+
+.bg-pale {
+  background-color: #f4f4f4;
+  color: #111827;
+}
+.bg-paper {
+  background-color: #f9f9f9;
+  /* color:#111827; */
+  box-shadow: 10px 10px 10px rgba(62, 62, 62, 0.02);
+}
+
+.bg-darkblue {
+  background-color: rgb(20, 20, 20);
+  color: #ddd;
+}
+
+.shadow-custom {
+  /* box-shadow: 10px 10px 20px rgba(62, 62, 62, 0.05); */
 }
 
 .text-gradient {

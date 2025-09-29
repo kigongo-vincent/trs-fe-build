@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight } from "lucide-react"
+import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight, RefreshCcw } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -687,14 +687,38 @@ export default function TimeLogsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex  bg-paper p-4 rounded-lg items-center justify-between">
 
-        <p className="text-2xl">Time Logs</p>
+        <div className="p-2  bg-pale gap-3 md:min-w-[20vw] rounded flex items-center ">
+          <div />
+          <input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleApplyFilters()
+              }
+            }}
+            placeholder="Search for your tasks..." type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
+          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={handleApplyFilters}>
+            {isFiltering ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4" />
+
+              </>
+            )}
+          </Button>
+        </div>
 
         <div className="flex items-center gap-2">
-          <Button asChild>
+          <Button asChild className="gradient">
             <Link href="/dashboard/employee/time-logs/new">
-              <Plus className="mr-2 h-4 w-4" /> Log Time
+              <Plus className="h-4 w-4" /> Log Time
             </Link>
           </Button>
         </div>
@@ -703,7 +727,7 @@ export default function TimeLogsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm ">Hours Today</CardTitle>
+            <CardTitle className="text-sm font-normal">Hours Today</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -714,7 +738,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl text-primary">{summaryStats.hoursToday.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursToday.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 8 hours ({Math.round((summaryStats.hoursToday / 8) * 100)}%)
                 </p>
@@ -724,7 +748,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm ">Hours This Week</CardTitle>
+            <CardTitle className="text-sm font-normal">Hours This Week</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -735,7 +759,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 40 hours ({Math.round((summaryStats.hoursWeek / 40) * 100)}%)
                 </p>
@@ -745,7 +769,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm ">Hours This Month</CardTitle>
+            <CardTitle className="text-sm font-normal ">Hours This Month</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -756,7 +780,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl text-primary">{summaryStats.hoursMonth.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursMonth.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
                   of 160 hours ({Math.round((summaryStats.hoursMonth / 160) * 100)}%)
                 </p>
@@ -766,7 +790,7 @@ export default function TimeLogsPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm ">Billable Hours</CardTitle>
+            <CardTitle className="text-sm font-normal">Billable Hours</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -777,7 +801,7 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl text-primary">{summaryStats.billableHours.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">{summaryStats.billableHours.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">{Math.round(summaryStats.billableRate)}% billable rate</p>
               </>
             )}
@@ -786,31 +810,7 @@ export default function TimeLogsPage() {
       </div>
 
       {/* Search Row */}
-      <div className="p-2 my-3 shadow gap-3 rounded flex items-center w-full">
-        <Search size={17} className="opacity-40 ml-4" />
-        <input
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleApplyFilters()
-            }
-          }}
-          placeholder="What are you looking for..." type="text" className="bg-none flex-1 text-sm outline-none border-none" />
-        <Button>
-          {isFiltering ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
-            </>
-          ) : (
-            <>
-              <Search className="h-4 w-4" />
-              <span className="sr-only md:not-sr-only md:ml-2">Search</span>
-            </>
-          )}
-        </Button>
-      </div>
+
       {/* <div className="flex items-center gap-2">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <div className="relative flex-1">
@@ -862,8 +862,8 @@ export default function TimeLogsPage() {
       </div> */}
 
       {/* Filters Row */}
-      <div className="overflow-auto max-w-[90vw] flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-row items-center rounded bg-gray-100/50 p-4 gap-2">
+      <div className=" max-w-[92vw]  bg-paper p-4 rounded flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-row items-center rounded bg-pale overflow-auto p-4 gap-2">
           <div className="flex items-center gap-2">
 
             <Input
@@ -885,7 +885,31 @@ export default function TimeLogsPage() {
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
             />
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 bg-transparent"
+              onClick={handleApplyFilters}
+              disabled={isFiltering}
+            >
+              {isFiltering ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <Filter className="h-4 w-4" />
+                  Apply Filters
+                </>
+              )}
+            </Button>
           </div>
+
+        </div>
+        <div className="flex items-center bg-pale p-4 rounded gap-2">
+
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="h-9 w-[160px]">
               <SelectValue placeholder="Project" />
@@ -901,27 +925,7 @@ export default function TimeLogsPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex items-center bg-gray-100/50 p-4 rounded gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 bg-transparent"
-            onClick={handleApplyFilters}
-            disabled={isFiltering}
-          >
-            {isFiltering ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Applying...
-              </>
-            ) : (
-              <>
-                <Filter className="mr-2 h-4 w-4" />
-                Apply Filters
-              </>
-            )}
-          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -929,34 +933,35 @@ export default function TimeLogsPage() {
             onClick={handleResetFilters}
             disabled={isFiltering}
           >
+            <RefreshCcw />
             Reset
           </Button>
         </div>
       </div>
 
-      <Card className="">
+      <Card >
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>
+          <CardTitle className="flex items-center text-xl text-primary justify-between">
+            <span className="text-gradient">
               Time Logs
             </span>
 
             <span className="flex items-center space-x-3">
               <Button
-                variant="outline"
+
                 size="sm"
-                className="h-9"
+                className="h-9 gradient"
                 onClick={generateFilteredTimeLogsPdf}
                 disabled={isGeneratingPdf || filteredTimeLogs.length === 0}
               >
                 {isGeneratingPdf ? (
                   <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     Generating...
                   </>
                 ) : (
                   <>
-                    <FileText className="mr-2 h-4 w-4" />
+                    <FileText className="h-4 w-4" />
                     Export ({filteredTimeLogs.length})
                   </>
                 )}
@@ -992,13 +997,16 @@ export default function TimeLogsPage() {
         <CardContent className=" overflow-auto max-w-[90vw]">
           {loading ? (
             <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
-                  </div>
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex items-center justify-stretch space-x-4">
+
+                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-[200px] flex-1" />
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-4 w-[100px]" />
+
                 </div>
               ))}
             </div>
@@ -1027,9 +1035,9 @@ export default function TimeLogsPage() {
                   return (
                     <TableRow key={log.id}>
                       <TableCell>{formatDate(log.createdAt)}</TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="">
                         <div>
-                          <div className="font-medium">{log.title}</div>
+                          <div className="">{log.title}</div>
                           <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                             {log.description.replace(/<[^>]*>/g, '').substring(0, 100)}
                             {log.description.length > 100 && '...'}
@@ -1055,6 +1063,8 @@ export default function TimeLogsPage() {
                       <TableCell className="text-right flex items-center justify-end">
                         <Button
                           variant="ghost"
+                          className="hover:bg-gray-200/50"
+
                           size="icon"
                           onClick={() => handleViewDetails(log)}
                           aria-label="View"
@@ -1064,6 +1074,7 @@ export default function TimeLogsPage() {
                         {log.status === "draft" && (
                           <>
                             <Button
+                              className="hover:bg-gray-200/50"
                               variant="ghost"
                               size="icon"
                               onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
@@ -1083,6 +1094,8 @@ export default function TimeLogsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="hover:bg-gray-200/50"
+
                               onClick={() => { setPublishDialogOpen(true); setPublishLogId(log.id); }}
                               aria-label="Publish"
                               disabled={isPublishing || loading}
@@ -1114,13 +1127,16 @@ export default function TimeLogsPage() {
 
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Time Log</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className=" backdrop-blur-sm">
+            <div className="flex items-center  justify-between">
+              <DialogTitle className="text-xl text-gradient">Edit Time Log</DialogTitle>
+              <Button type="button" variant="ghost" className="hover:bg-gray-100" onClick={() => setIsEditDialogOpen(false)} aria-label="Close">
+                <X className="h-10 w-10" />
+              </Button>
+            </div>
             <DialogDescription>Update your time log entry</DialogDescription>
-            <Button type="button" variant="ghost" className="absolute top-4 right-4" onClick={() => setIsEditDialogOpen(false)} aria-label="Close">
-              <X className="h-5 w-5" />
-            </Button>
+
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -1156,7 +1172,7 @@ export default function TimeLogsPage() {
                       <SelectItem key={project.id} value={project.id}>
                         <div>
                           <div className="font-semibold">{project.name}</div>
-                          <div className="text-xs text-muted-foreground">ID: {project.id}</div>
+
                         </div>
                       </SelectItem>
                     ))
@@ -1210,6 +1226,7 @@ export default function TimeLogsPage() {
               onAttachmentsChange={setEditAttachments}
               maxFiles={10}
               maxSize={10 * 1024 * 1024}
+
               acceptedFileTypes={["image/*", "application/pdf"]}
               showUrlInput={true}
             />
@@ -1220,7 +1237,7 @@ export default function TimeLogsPage() {
               <Button type="submit" disabled={isEditSubmitting || isLoadingProjects}>
                 {isEditSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className=" h-4 w-4 animate-spin" />
                     Saving...
                   </>
                 ) : (

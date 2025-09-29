@@ -7,7 +7,7 @@ export interface PackagesApiResponse {
   data: any[];
 }
 
-export const BASE_URL = "https://trs-api.tekjuice.xyz/api"
+export const BASE_URL = "https://trs-api.tekjuice.xyz/api";
 export const IMAGE_BASE_URL = "https://trs-api.tekjuice.xyz/";
 
 export interface UploadProgressEvent {

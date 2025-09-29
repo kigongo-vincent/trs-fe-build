@@ -149,9 +149,9 @@ export default function CompanySignup() {
   }, [])
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 bg-card">
+    <div className="relative min-h-screen flex items-center justify-center bg-pale dark:bg-gray-900 bg-card">
       {/* Split layout */}
-      <div className="flex sm:w-[90vw] sm:min-h-[80vh] w-[93vw] bg-card rounded-2xl shadow-lg shadow-gray-100  dark:shadow-gray-900 overflow-hidden relative z-10">
+      <div className="flex sm:w-[90vw] sm:min-h-[80vh] w-[93vw] bg-paper rounded-2xl shadow-lg shadow-gray-100  dark:shadow-gray-900 overflow-hidden relative z-10">
         {/* Left: Image + testimonial */}
         <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 dark:bg-black/60 relative">
           <Image
