@@ -66,9 +66,9 @@ export function RevenueChart() {
         <Tooltip />
         <Legend />
         <Bar dataKey="basic" fill={GRAPH_PRIMARY_COLOR} />
-        <Bar dataKey="standard" fill="#82ca9d" />
-        <Bar dataKey="premium" fill="#ffc658" />
-        <Bar dataKey="enterprise" fill="#ff8042" />
+        <Bar dataKey="standard" fill={`hsl(var(--chart-2))`} />
+        <Bar dataKey="premium" fill={`hsl(var(--chart-4))`} />
+        <Bar dataKey="enterprise" fill={`hsl(var(--chart-5))`} />
       </BarChart>
     </ResponsiveContainer>
   )

@@ -7,6 +7,7 @@ import "@fontsource/poppins/400.css"
 import "@fontsource/poppins/500.css"
 import "@fontsource/poppins/600.css"
 import "@fontsource/poppins/700.css"
+import { AnimatePresence } from "framer-motion"
 
 export const metadata = {
   title: "Task Reporting System (TRS)",
@@ -21,9 +22,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
           <Confetti />
           {children}
           <Toaster />

@@ -23,6 +23,7 @@ import { Lock, LockOpen, Pencil, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const getStatusColor = (status: string): string => {
+    return "text-gray-700"
     if (!status || typeof status !== 'string') return 'text-gray-500';
     switch (status.toLowerCase()) {
         case 'not started':
@@ -186,13 +187,13 @@ const ProjectsPage = () => {
     }
 
     return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6 text-primary">My Projects</h1>
+        <div className="">
+            <h1 className="text-xl font-medium mb-3 text-gradient">My Projects</h1>
             <div className="grid gap-4">
                 {projects.map((project) => (
                     <Card
                         key={project.id}
-                        className="hover:shadow-md transition-shadow cursor-pointer group"
+                        className=" transition-shadow cursor-pointer group"
                     >
                         <CardHeader className="pb-3">
                             <div className="flex justify-between items-start">
@@ -247,7 +248,7 @@ const ProjectsPage = () => {
                 )}
             </div>
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent>
+                <DialogContent className='md:max-w-[35vw] max-w-[95vw]'>
                     {selectedProject && (
                         <form onSubmit={handleSubmit}>
                             <DialogHeader>
@@ -311,14 +312,14 @@ const ProjectsPage = () => {
                                         </Button>
                                     </div>
                                     {onHold && (
-                                        <div className="text-sm text-amber-500 mt-1">
+                                        <div className="text-sm text-gray-500 mt-1">
                                             Project is currently <strong>On Hold</strong>.
                                         </div>
                                     )}
                                 </div>
                             </div>
                             <DialogFooter className="mt-6">
-                                <Button type="submit" className="w-full" disabled={modalLoading}>
+                                <Button type="submit" className="" disabled={modalLoading}>
                                     {modalLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     Update Project
                                 </Button>

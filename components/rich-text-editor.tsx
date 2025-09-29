@@ -97,10 +97,10 @@ export function RichTextEditor({
   return (
     <div className={cn("space-y-2", className)}>
       {label && <Label>{label}</Label>}
-      <div className="border rounded-md bg-background">
+      <div className=" rounded-md ">
         {!readOnly && (
           <>
-            <div className="flex flex-wrap items-center gap-1 p-2 border-b bg-muted/50">
+            <div className="flex flex-wrap items-center gap-1 p-2  bg-pale">
               {/* Text Formatting */}
               <Button
                 type="button"
@@ -226,7 +226,7 @@ export function RichTextEditor({
               <Separator orientation="vertical" className="h-6" />
 
               {/* Colors */}
-              <div className="flex items-center gap-1">
+              {/* <div className="flex items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"
@@ -262,7 +262,7 @@ export function RichTextEditor({
                   onClick={() => setColor("#8b5cf6")}
                   className="h-8 w-6 p-0 bg-purple-500 hover:bg-purple-600"
                 />
-              </div>
+              </div> */}
 
               <Separator orientation="vertical" className="h-6" />
 
@@ -281,9 +281,10 @@ export function RichTextEditor({
         )}
         <EditorContent
           editor={editor}
+          placeholder={"Add some description about your task..."}
           className={cn(
-            "min-h-[120px] focus:outline-none",
-            readOnly && "bg-muted/50"
+            "min-h-[120px] bg-pale rounded mt-3 focus:outline-none",
+            readOnly && ""
           )}
           onKeyDown={(e) => {
             // Prevent form submit on Cmd/Ctrl+Enter or Enter with meta/ctrl

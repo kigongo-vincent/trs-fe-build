@@ -101,9 +101,9 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <div className="relative min-h-screen flex items-center justify-center bg-pale dark:bg-gray-900">
       {/* Split layout */}
-      <div className="flex md:w-[80vw] md:min-h-[80vh] w-[90vw] sm:p-0 py-[2rem]  bg-white dark:bg-card rounded-2xl shadow-lg shadow-gray-100 dark:shadow-gray-900 overflow-hidden relative z-10">
+      <div className="flex md:w-[80vw] md:min-h-[80vh] w-[90vw] sm:p-0 py-[2rem]  bg-paper dark:bg-card rounded-2xl   overflow-hidden relative z-10">
         {/* Left: Image + testimonial */}
         <div className="hidden md:flex flex-col justify-between w-[50%] bg-black/40 relative">
           <Image
@@ -134,8 +134,8 @@ export default function Home() {
             <Image className="h-[7.5vh] mb-[2rem] w-max" style={{
               mixBlendMode: "multiply"
             }} src={LogoLight} alt="TRS" priority />
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">Welcome back to TRS</h1>
-            <p className="text-gray-500 mb-8">Log in to manage your team and tasks efficiently.</p>
+            <h1 className="text-2xl md:text-2xl font-semibold mb-2">Welcome back to TRS</h1>
+            <p className="text-gray-500 mb-8 text-sm">Log in to manage your team and tasks efficiently.</p>
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
                 <Label htmlFor="email" className="mb-1">Email</Label>

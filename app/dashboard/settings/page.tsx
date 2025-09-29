@@ -775,7 +775,7 @@ export default function SettingsPage() {
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Settings</CardTitle>
+              <CardTitle className="text-xl text-gradient">Profile Settings</CardTitle>
               <CardDescription>Update your profile information</CardDescription>
             </CardHeader>
             <CardContent>
@@ -826,7 +826,7 @@ export default function SettingsPage() {
                         onChange={e => handleProfileChange("bio", e.target.value)}
                         placeholder="Enter your bio"
                         disabled={isUpdatingProfile}
-                        className={profileErrors.bio ? "border-red-500" : ""}
+                        className={`${profileErrors.bio ? "border-red-500" : ""} bg-transparent`}
                       />
                       {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
                     </div>
@@ -1089,7 +1089,7 @@ export default function SettingsPage() {
         <TabsContent value="password">
           <Card>
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle className="text-xl text-gradient">Change Password</CardTitle>
               <CardDescription>Update your account password</CardDescription>
             </CardHeader>
             <CardContent>

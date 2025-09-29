@@ -115,6 +115,7 @@ export function CompletedTasksChart() {
         <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} fontSize={12} />
         <YAxis />
         <Tooltip
+          contentStyle={{ border: 0 }}
           formatter={(value: number, name: string) => [`${value} ${value === 1 ? "task" : "tasks"}`, name]}
           labelFormatter={(label: string, payload: any) => {
             if (payload && payload.length > 0) {
@@ -128,8 +129,8 @@ export function CompletedTasksChart() {
         <Area
           type="monotone"
           dataKey="Completed Tasks"
-          stroke="#4f46e5"
-          fill="#4f46e5"
+          stroke="#f6931b"
+          fill="#f6931b3A"
           fillOpacity={0.2}
           strokeWidth={2}
         />

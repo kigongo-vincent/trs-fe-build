@@ -7,6 +7,9 @@
 /.next/
 /out/
 
+# app 
+/app/services/api.ts
+
 # production
 /build
 

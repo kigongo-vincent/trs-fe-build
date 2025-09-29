@@ -177,10 +177,10 @@ export default function BoardMembersPage() {
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-primary">
-                    <Users className="h-6 w-6" /> Board Members
+                    <Users className="h-6 w-6" /> Evaluators
                 </h1>
                 <Button onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Member
+                    <Plus className="mr-2 h-4 w-4" /> Add evaluator
                 </Button>
             </div>
             <Card>
@@ -209,7 +209,7 @@ export default function BoardMembersPage() {
                                 ))
                             ) : members.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center">No board members found.</TableCell>
+                                    <TableCell colSpan={4} className="text-center">No evaluators found.</TableCell>
                                 </TableRow>
                             ) : (
                                 members.map(member => (
@@ -277,8 +277,8 @@ export default function BoardMembersPage() {
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add Board Member</DialogTitle>
-                        <DialogDescription>Enter details for the new board member.</DialogDescription>
+                        <DialogTitle>Add Evaluator</DialogTitle>
+                        <DialogDescription>Enter details for the new evaluator.</DialogDescription>
                     </DialogHeader>
                     <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleCreate(); }}>
                         <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />

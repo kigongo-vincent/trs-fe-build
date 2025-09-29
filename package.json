@@ -58,6 +58,7 @@
     "date-fns": "latest",
     "dompurify": "^3.2.6",
     "embla-carousel-react": "latest",
+    "framer-motion": "^12.23.22",
     "html2pdf.js": "^0.10.3",
     "input-otp": "latest",
     "jspdf": "^3.0.1",

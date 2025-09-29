@@ -187,7 +187,7 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
                                     </FormItem>
                                 )}
                             />
-                            <FormField
+                            {/* <FormField
                                 control={form.control}
                                 name="projectId"
                                 render={({ field }) => (
@@ -208,8 +208,9 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
                                         <FormMessage />
                                     </FormItem>
                                 )}
-                            />
-                            <FormField
+                            /> */}
+                            {/* <FormField
+                                
                                 control={form.control}
                                 name="departmentId"
                                 render={({ field }) => (
@@ -230,7 +231,7 @@ export const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onClose, onUpd
                                         <FormMessage />
                                     </FormItem>
                                 )}
-                            />
+                            /> */}
                             <div>
                                 <FormLabel>Attachments & URLs</FormLabel>
                                 <FileAttachment
