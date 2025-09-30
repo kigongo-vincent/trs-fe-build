@@ -264,7 +264,7 @@ export default function CompanyAdminPackagesPage() {
     const CARD_MIN_HEIGHT = "min-h-[240px]" // reduced height for a more compact look
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="flex p-8 bg-white rounded-lg flex-col gap-8">
             <div>
                 <h1 className="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2 text-primary">
                     <Package className="h-6 w-6" /> Packages

@@ -43,6 +43,9 @@ export default function TimeLogsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTimeLogId, setDeleteTimeLogId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  
+
   const [summaryStats, setSummaryStats] = useState(() => {
     // initial value for summaryStats
     return {
@@ -62,6 +65,7 @@ export default function TimeLogsPage() {
   const [endDate, setEndDate] = useState<string>("")
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isFiltering, setIsFiltering] = useState(false)
+  const user = getAuthUser()
 
   // Fetch time logs with filters
   const fetchTimeLogsWithFilters = async () => {
@@ -718,7 +722,7 @@ export default function TimeLogsPage() {
         <div className="flex items-center gap-2">
           <Button asChild className="gradient">
             <Link href="/dashboard/employee/time-logs/new">
-              <Plus className="h-4 w-4" /> Log Time
+              <Plus className="h-4 w-4" /> <span className="hidden md:flex">Log Time</span>
             </Link>
           </Button>
         </div>
@@ -740,7 +744,7 @@ export default function TimeLogsPage() {
               <>
                 <div className="text-2xl font-semibold text-primary">{summaryStats.hoursToday.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
-                  of 8 hours ({Math.round((summaryStats.hoursToday / 8) * 100)}%)
+                  of {user?.totalHoursPerMonth / 20} hours ({Math.round((summaryStats.hoursToday / user?.totalHoursPerMonth / 20) * 100)}%)
                 </p>
               </>
             )}
@@ -761,7 +765,7 @@ export default function TimeLogsPage() {
               <>
                 <div className="text-2xl font-semibold text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
-                  of 40 hours ({Math.round((summaryStats.hoursWeek / 40) * 100)}%)
+                  of {user?.totalHoursPerMonth /4} hours ({Math.round((summaryStats.hoursWeek / user?.totalHoursPerMonth /4) * 100)}%)
                 </p>
               </>
             )}
@@ -782,7 +786,7 @@ export default function TimeLogsPage() {
               <>
                 <div className="text-2xl font-semibold text-primary">{summaryStats.hoursMonth.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
-                  of 160 hours ({Math.round((summaryStats.hoursMonth / 160) * 100)}%)
+                  of {user?.totalHoursPerMonth} hours ({Math.round((summaryStats.hoursMonth / user?.totalHoursPerMonth) * 100)}%)
                 </p>
               </>
             )}

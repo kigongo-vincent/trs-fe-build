@@ -164,7 +164,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{totalDepartments}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-gradient tex-xl font-mdedium">{totalDepartments}</div>}
             <p className="text-xs text-muted-foreground">Active departments</p>
           </CardContent>
         </Card>
@@ -174,7 +174,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{totalEmployees}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-gradient tex-xl font-mdedium">{totalEmployees}</div>}
             <p className="text-xs text-muted-foreground">Across all departments</p>
           </CardContent>
         </Card>
@@ -184,7 +184,7 @@ export default function DepartmentsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-primary font-bold">{avgTeamSize}</div>}
+            {loading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl text-gradient tex-xl font-mdedium">{avgTeamSize}</div>}
             <p className="text-xs text-muted-foreground">Employees per department</p>
           </CardContent>
         </Card>

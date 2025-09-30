@@ -336,7 +336,7 @@ export default function CompletedTasksPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col  gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="md:flex flex-col hidden gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1  items-center space-x-2">
           {/* <Input
             type="text"

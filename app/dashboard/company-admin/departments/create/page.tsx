@@ -123,12 +123,12 @@ export default function CreateDepartmentPage() {
                 >
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <h1 className="text-2xl font-bold tracking-tight text-primary">Create New Department</h1>
+                <h1 className="font-medium tracking-tight text-base">Create New Department</h1>
             </div>
 
             <Card className="max-w-2xl">
                 <CardHeader>
-                    <CardTitle>Department Information</CardTitle>
+                    <CardTitle className="text-xl font-medium">Department Information</CardTitle>
                     <CardDescription>
                         Add a new department to your organization. Fill in the required information below.
                     </CardDescription>

@@ -11,7 +11,7 @@ import { MainNav } from "@/components/main-nav"
 import DashboardSidebarWithSuspense from "@/components/dashboard-sidebar"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, Menu, X } from "lucide-react"
+import { AlertCircle, Loader2, Menu, X } from "lucide-react"
 import { getUserRole, isAuthenticated, isTokenExpired, getAuthUser } from "@/services/auth"
 import { Badge } from "@/components/ui/badge"
 import { Package } from "lucide-react"
@@ -160,9 +160,16 @@ export default function DashboardLayout({
             </div>
           )}
 
-          <Suspense fallback={<div>Loading...</div>}>
+          <Suspense fallback={<div className=" h-full flex items-center justify-center w-full">
+            <div className="bg-paper flex flex-col items-center justify-center rounded p-10">
+              <Loader2 className="animate-spin text-primary" size={30} />
+              <p className="text-2xl mt-4">Getting things ready</p>
+              <p className="text-[13.5px] mt-1 opacity-50">Pleas stand by....</p>
+            </div>
+          </div>}>
             {children}
           </Suspense>
+
         </main>
       </div>
     </div>
