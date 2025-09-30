@@ -29,6 +29,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { generatePdf, imageToBase64 } from "@/utils/GeneratePDF"
 import { Invoice } from "@/services/employee"
 import { User } from "@/services/departments"
+import * as Tabz from "@radix-ui/react-tabs";
 
 // Helper function for date formatting (top-level, shared)
 function formatDate(dateString: string) {
@@ -114,7 +115,7 @@ export default function InvoicesPage() {
   const [isRetrying, setIsRetrying] = useState(false)
 
   // Filter states
-  const [status, setStatus] = useState("all")
+  const [status, setStatus] = useState("processing")
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [filterLoading, setFilterLoading] = useState(false)
@@ -321,16 +322,8 @@ export default function InvoicesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Invoices</h1>
-        <div className="flex items-center gap-2">
-          <InvoiceActions onDownloadAll={handleTopDownloadPDF} />
-        </div>
-      </div>
-      {/* Bottom selected currency renderer */}
-      <div className="text-xs text-muted-foreground">
-        Showing totals in <span className="font-semibold">{displayCurrency}</span>: {displayCurrency} {Number(computedCurrencyTotals[displayCurrency] ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
+
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {loading ? (
@@ -381,7 +374,7 @@ export default function InvoicesPage() {
         ) : summary ? (
           summary.map((item, i) => (
             item.label === "Total Amount" ? (
-              <Card key={item.label}>
+              <Card key={item.label} className="">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
                   <FileText className="h-4 w-4 text-muted-foreground" />
@@ -425,15 +418,11 @@ export default function InvoicesPage() {
           ))
         ) : null}
       </div>
-      {showDisclaimer && (
-        <div className="text-xs text-muted-foreground mt-2">
-          * Amounts are shown in USD by default. If your data uses a different currency, please check your company settings.
-        </div>
-      )}
+
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Invoices</CardTitle>
+          <CardTitle className="text-xl font-medium">Monthly Invoices</CardTitle>
           <CardDescription>Invoice amounts by month</CardDescription>
         </CardHeader>
         <CardContent>
@@ -451,7 +440,7 @@ export default function InvoicesPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end mt-3 md:justify-between">
+      <div className="flex bg-paper rounded-lg p-4 flex-col gap-4 md:flex-row md:items-end mt-3 md:justify-between">
         <div className="flex w-full max-w-sm items-center space-x-2 relative">
           <Input
             type="text"
@@ -507,7 +496,7 @@ export default function InvoicesPage() {
               min={startDate || undefined}
             />
           </div>
-          <div className="flex flex-col">
+          {/* <div className="flex flex-col">
             <label htmlFor="status-filter" className="text-xs text-muted-foreground font-normal mb-1">Status</label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger id="status-filter" className="h-9 w-[120px]">
@@ -518,9 +507,14 @@ export default function InvoicesPage() {
                 <SelectItem value="approved">approved</SelectItem>
                 <SelectItem value="pending">pending</SelectItem>
                 <SelectItem value="processing">processing</SelectItem>
+                <SelectItem value="processing">paid</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
+
+
+
+
           <Button type="submit" variant="default" size="sm" className="h-9 px-4 self-end" disabled={filterLoading || !isFilterActive}>
             {filterLoading ? "Filtering..." : "Apply Filter"}
           </Button>
@@ -537,9 +531,42 @@ export default function InvoicesPage() {
         </form>
       </div>
 
+      <div onClick={handleFilterSubmit} className="bg-paper rounded p-4">
+        <Tabz.Root value={status} onValueChange={setStatus} className="flex flex-col space-y-2">
+
+          <Tabz.List className="flex space-x-2">
+
+            <Tabz.Trigger
+              value="approved"
+              className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
+            >
+              Approved
+            </Tabz.Trigger>
+            <Tabz.Trigger
+              value="pending"
+              className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
+            >
+              Pending
+            </Tabz.Trigger>
+            <Tabz.Trigger
+              value="processing"
+              className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
+            >
+              Processing
+            </Tabz.Trigger>
+            <Tabz.Trigger
+              value="paid"
+              className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
+            >
+              Paid
+            </Tabz.Trigger>
+          </Tabz.List>
+        </Tabz.Root>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary">All Invoices</CardTitle>
+          <CardTitle className="text-xl font-medium">All Invoices</CardTitle>
           <CardDescription>Manage and track all company invoices</CardDescription>
         </CardHeader>
         <CardContent>
@@ -858,7 +885,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                       <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
                     </td>
                     <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${invoice.user.currency} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${invoice.user.currency} ${((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900">${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
@@ -1452,7 +1479,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
                       <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
                     </td>
                     <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${((invoice.user?.grossPay / 160).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td class="px-4 py-3 text-right font-medium text-gray-900">${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                   </tr>
                 </tbody>
@@ -1571,7 +1598,7 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
                 src={companyLogo}
                 alt="Company Logo"
                 style={{ maxHeight: 64, maxWidth: 120, objectFit: 'contain', background: 'none' }}
-                className="mb-2"
+                className="mb-2 mix-blend-multiply"
               />
             </div>
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">INVOICE</CardTitle>
@@ -1609,12 +1636,12 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
               </Card>
             </div>
             {invoice.description && (
-              <Card className=" dark:bg-blue-900/30 border-none">
+              <Card className="bg-white border-none">
                 <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Service Description</CardTitle></CardHeader>
                 <CardContent className="text-gray-700 dark:text-gray-200 text-sm">{invoice.description}</CardContent>
               </Card>
             )}
-            <Card className=" dark:border-neutral-700">
+            <Card className=" bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-base font-semibold text-primary">Invoice Items</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <table className="w-full">

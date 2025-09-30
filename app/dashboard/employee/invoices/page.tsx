@@ -732,14 +732,14 @@ export default function InvoicesPage() {
       {/* Invoice Details Modal */}
       {selectedInvoice && userSession && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-2xl p-0 min-w-[60vw] max-h-[95vh] bg-pale overflow-y-auto">
+          <DialogContent className="md:max-w-2xl p-0 md:min-w-[60vw] max-w-[95vw] max-h-[95vh] bg-pale overflow-y-auto">
             <Card className="">
               <CardHeader className="pb-4">
                 <div className="flex  items-center  justify-center pt-6 pb-2">
                   <img
                     src={companyLogo}
                     alt="Company Logo"
-                    style={{ maxHeight: 50, objectFit: 'contain', background: 'none', mixBlendMode: "multiply" }}
+                    style={{ maxHeight: 40, objectFit: 'contain', background: 'none', mixBlendMode: "multiply" }}
                     className="mb-2"
                   />
                 </div>
@@ -785,7 +785,7 @@ export default function InvoicesPage() {
                     <table className="w-full">
                       <thead className="bg-paper">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white">Description</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900 dark:text-white hidden md:flex">Description</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Hours</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900 dark:text-white">Rate</th>
                           <th className="px-4 py-3 text-right text-xs font-semibold text-gray-900 dark:text-white">Amount</th>
@@ -793,7 +793,7 @@ export default function InvoicesPage() {
                       </thead>
                       <tbody className=" dark:bg-neutral-900  divide-gray-200 dark:divide-neutral-800">
                         <tr>
-                          <td className="px-4 py-3"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {formatDate(selectedInvoice?.startDate || '')} to {formatDate(selectedInvoice?.endDate || '')}</span></td>
+                          <td className="px-4 py-3 md:flex flex-col hidden"><span className="font-medium text-gray-900 dark:text-white">Consulting Services</span><span className="block text-xs text-gray-500 dark:text-gray-400">Period: {formatDate(selectedInvoice?.startDate || '')} to {formatDate(selectedInvoice?.endDate || '')}</span></td>
                           <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{selectedInvoice?.totalHours}</td>
                           <td className="px-4 py-3 text-center text-gray-900 dark:text-white">{formatCurrency(selectedInvoice?.amount && selectedInvoice?.totalHours ? Number(selectedInvoice.amount) / Number(selectedInvoice.totalHours) : 0, currency)}</td>
                           <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(selectedInvoice?.amount, currency)}</td>

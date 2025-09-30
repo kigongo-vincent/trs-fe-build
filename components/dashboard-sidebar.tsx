@@ -565,7 +565,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
 
 export default function DashboardSidebarWithSuspense(props: DashboardSidebarProps) {
   return (
-    <Suspense fallback={<div>Loading sidebar...</div>}>
+    <Suspense fallback={<div></div>}>
       <DashboardSidebar {...props} />
     </Suspense>
   )

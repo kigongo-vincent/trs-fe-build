@@ -390,9 +390,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Consultant Tasks</h1>
-      </div>
+   
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -408,7 +406,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.totalTasks || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.totalTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData?.totalTasks === 1 ? "task" : "tasks"} in total
                 </p>
@@ -429,7 +427,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.activeTasks || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.activeTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData && summaryData.totalTasks > 0
                     ? `${Math.round(((summaryData.activeTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
@@ -452,7 +450,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.draftTasks || 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.draftTasks || 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData && summaryData.totalTasks > 0
                     ? `${Math.round(((summaryData.draftTasks || 0) / summaryData.totalTasks) * 100)}% of total tasks`
@@ -475,7 +473,7 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{summaryData?.totalHours ? (summaryData.totalHours / 60)?.toFixed(2) : 0}</div>
+                <div className="text-xl font-medium text-gradient">{summaryData?.totalHours ? (summaryData.totalHours / 60)?.toFixed(2) : 0}</div>
                 <p className="text-xs text-muted-foreground">
                   {summaryData?.totalHours === 1 ? "hour" : "hours"} logged
                 </p>
@@ -488,7 +486,7 @@ export default function TasksPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-primary">Task Status</CardTitle>
+            <CardTitle className="text-xl font-medium">Task Status</CardTitle>
             <CardDescription>Distribution of tasks by status</CardDescription>
           </CardHeader>
           <CardContent>
@@ -506,7 +504,7 @@ export default function TasksPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-primary">Tasks by Department</CardTitle>
+            <CardTitle className="text-xl font-medium">Tasks by Department</CardTitle>
             <CardDescription>Distribution of tasks across departments</CardDescription>
           </CardHeader>
           <CardContent>
@@ -515,7 +513,7 @@ export default function TasksPage() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex bg-paper rounded p-4 flex-col gap-4 md:flex-row md:items-center md:justify-between">
         {/* Search Form */}
         <form
           className="flex w-full  max-w-[20rem] items-center space-x-2"
@@ -585,7 +583,7 @@ export default function TasksPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-primary">All Tasks</CardTitle>
+          <CardTitle className="text-xl font-medium">All Tasks</CardTitle>
           <CardDescription>
             {isTasksLoading ? "Loading tasks..." : `${filteredTasks.length} of ${tasks.filter((task) => task.status.toLowerCase() !== "draft").length} tasks`}
           </CardDescription>

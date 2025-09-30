@@ -218,7 +218,7 @@ export default function NewTimeLogPage() {
                 placeholder="Enter task title"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                className="text-lg"
+                // className="text-lg"
               />
             </div>
 

@@ -181,8 +181,8 @@ export default function ProfilePage() {
 
                     <div className="bg-paper mt-4 rounded p-4">
                         <div className="text-muted-foreground my-4">{user.bio || "-"}</div>
-                        <div className="flex flex-col md:flex-row gap-2 items-stretch justify-stretch">
-                            <div className="flex flex-1 flex-col gap-3 text-sm text-muted-foreground mb-2 bg-pale rounded p-6  w-max">
+                        <div className="flex-col md:flex-row gap-2 hidden md:flex items-stretch justify-stretch">
+                            <div className="flex flex-1 flex-col gap-3 text-sm text-muted-foreground mb-2 bg-pale rounded p-6 ">
                                 <span className="flex items-center gap-2"><Mail size={15} /> {user.email || "-"}</span>
                                 <span className="flex items-center gap-2"><Phone size={15} /> {user.phoneNumber || "-"}</span>
                                 <span className="flex items-center gap-2"><MapPin size={15} />
@@ -195,7 +195,7 @@ export default function ProfilePage() {
                                     </span>}
                                 </span>
                             </div>
-                            <div className="flex-1 md:border-r">
+                            <div className="flex-1  md:border-r">
 
                                 <CardContent className="space-y-2 w-full">
                                     <div><Label>Gross Pay</Label><div className="text-muted-foreground">{user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}</div></div>

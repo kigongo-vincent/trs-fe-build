@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Productivity metrics by department</CardDescription>
               </CardHeader>
               <CardContent>
-                <DepartmentPerformanceChart data={hoursPerDept?.map(prev => ({ ...prev, hours: (prev.hours / 160).toFixed(2) }))} xAxisLabel="Department" yAxisLabel="Hours" isLoading={isLoadingHoursPerDept} />
+                <DepartmentPerformanceChart data={hoursPerDept?.map(prev => ({ ...prev, hours: (prev.hours / 60).toFixed(2) }))} xAxisLabel="Department" yAxisLabel="Hours" isLoading={isLoadingHoursPerDept} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Top performing employees by hours logged</CardDescription>
               </CardHeader>
               <CardContent>
-                <EmployeePerformanceChart data={topConsultants?.map(prev => ({ ...prev, hours: (prev.hours / 160).toFixed(2) }))} xAxisLabel="Consultant" yAxisLabel="Hours" isLoading={isLoadingTopConsultants} />
+                <EmployeePerformanceChart data={topConsultants?.map(prev => ({ ...prev, hours: (prev.hours / 60).toFixed(2) }))} xAxisLabel="Consultant" yAxisLabel="Hours" isLoading={isLoadingTopConsultants} />
               </CardContent>
             </Card>
           </TabsContent>

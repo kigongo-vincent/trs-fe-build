@@ -44,7 +44,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
     if (!task) return null;
     return (
         <Dialog open={open} onOpenChange={open => { if (!open) onClose(); }}>
-            <DialogContent className="md:max-w-4xl max-w-[95vw] w-full md:max-h-[90vh] bg-pale p-0 overflow-y-auto">
+            <DialogContent className="md:max-w-4xl max-w-[95vw] w-full max-h-[90vh] bg-pale p-0 overflow-y-auto">
                 {/* Sticky Header */}
                 <div className="sticky top-0 z-10 bg-paper flex items-center justify-between  px-8 py-4">
                     <DialogHeader className="flex flex-row items-center gap-4 w-full">
