@@ -12,7 +12,7 @@ import DashboardSidebarWithSuspense from "@/components/dashboard-sidebar"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Loader2, Menu, X } from "lucide-react"
-import { getUserRole, isAuthenticated, isTokenExpired, getAuthUser } from "@/services/auth"
+import { getUserRole, isAuthenticated, isTokenExpired, getAuthUser, getDashboardPath } from "@/services/auth"
 import { Badge } from "@/components/ui/badge"
 import { Package } from "lucide-react"
 import Link from "next/link"
@@ -61,6 +61,37 @@ export default function DashboardLayout({
     loadDefaults()
   }, [router])
 
+  // Client-side role guard: read from localStorage via getAuthUser
+  const pathname = usePathname()
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const user = getAuthUser()
+    const token = localStorage.getItem("token")
+
+    if (!user || !token) {
+      router.replace("/")
+      return
+    }
+
+    // normalize role per auth.ts logic
+    let role = user?.role?.name as string | null
+    if (role === "Consultancy") role = "Consultant"
+
+    const requires = (path: string): string | null => {
+      if (path.startsWith("/dashboard/super-admin")) return "Super Admin"
+      if (path.startsWith("/dashboard/company-admin")) return "Company Admin"
+      if (path.startsWith("/dashboard/department-head")) return "Department Head"
+      if (path.startsWith("/dashboard/employee") || path.startsWith("/dashboard/consultant")) return "Consultant"
+      if (path.startsWith("/dashboard")) return null
+      return null
+    }
+
+    const requiredRole = requires(pathname || "")
+    if (requiredRole && role !== requiredRole) {
+      router.replace(getDashboardPath())
+    }
+  }, [pathname, router])
+
   // Handler for dismissing the alert
   const handleDismissAlert = () => {
     setShowPlanAlert(false)
@@ -92,7 +123,8 @@ export default function DashboardLayout({
               animate={{ opacity: 1 }}
               initial={{
                 opacity: 0
-              }} className="fixed shadow-custom w-full top-0 z-40  bg-paper">
+              }}
+              className="fixed shadow-custom w-full top-0 z-40  bg-paper">
               <div className="  flex h-16 items-center justify-between px-4 md:px-6">
                 <div className="flex items-center gap-2 md:gap-4">
                   <Button variant="outline" size="icon" className="md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
