@@ -123,7 +123,7 @@ export default function CreateDepartmentPage() {
                 >
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <h1 className="font-medium tracking-tight text-base">Create New Department</h1>
+                <h1 className="font-medium tracking-tight text-base">Create New Department</h1> 
             </div>
 
             <Card className="max-w-2xl">
