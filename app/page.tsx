@@ -27,26 +27,35 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== "undefined" && isAuthenticated()) {
-      // Check for departmentHeadId in stored user
-      const storedUser = localStorage.getItem("user");
-      let parsedUser = null;
-      try {
-        parsedUser = storedUser ? JSON.parse(storedUser) : null;
-      } catch (e) {
-        parsedUser = null;
+    const checkAuthentication = () => {
+      if (typeof window !== "undefined") {
+        if (isAuthenticated()) {
+          // Check for departmentHeadId in stored user
+          const storedUser = localStorage.getItem("user");
+          let parsedUser = null;
+          try {
+            parsedUser = storedUser ? JSON.parse(storedUser) : null;
+          } catch (e) {
+            parsedUser = null;
+          }
+          if (parsedUser && parsedUser.departmentHead && parsedUser.departmentHead.name) {
+            router.replace("/dashboard/department-head");
+          } else if (parsedUser && parsedUser.departmentHeadId) {
+            router.replace("/dashboard/department-head");
+          } else {
+            // fallback to default dashboard
+            router.replace("/dashboard/profile?section=personal");
+          }
+          return;
+        }
       }
-      if (parsedUser && parsedUser.departmentHead && parsedUser.departmentHead.name) {
-        router.replace("/dashboard/department-head");
-      } else if (parsedUser && parsedUser.departmentHeadId) {
-        router.replace("/dashboard/department-head");
-      } else {
-        // fallback to default dashboard
-        router.replace("/dashboard/profile?section=personal");
-      }
-    }
+      setIsCheckingAuth(false);
+    };
+
+    checkAuthentication();
   }, [router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,6 +107,18 @@ export default function Home() {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
+  }
+
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center bg-pale dark:bg-gray-900">
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
