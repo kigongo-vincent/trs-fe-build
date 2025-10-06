@@ -13,7 +13,6 @@ import {
   Package,
   PieChart,
   Users,
-  X,
   Receipt,
   User,
   LayoutList,
@@ -37,7 +36,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const profileSection = searchParams?.get('section') || ''
-  const [mounted, setMounted] = useState(false)
+
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     admin: true,
     management: true,
@@ -49,7 +48,6 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
-    setMounted(true)
     if (typeof window !== "undefined") {
       setUserRole(getUserRole())
     }
@@ -62,6 +60,11 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     })
   }
 
+  const handleLinkClick = () => {
+    // Close sidebar on mobile when clicking navigation links
+    setOpen(false)
+  }
+
   const isActive = (path: string, exact = false) => {
     if (exact) {
       return pathname === path;
@@ -69,8 +72,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     return pathname === path || pathname.startsWith(path + "/");
   }
 
-  // Show Super Admin section to all users
-  const shouldShowSuperAdmin = true;
+
   const shouldShowCompanyAdmin = userRole === "Company Admin" || userRole === "Board Member"
   const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
   const shouldShowDepartmentAdmin = userRole === "Department Admin"
@@ -103,6 +105,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/super-admin"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                       isActive("/dashboard/super-admin", true) && "bg-gray-800 text-primary font-semibold",
@@ -132,6 +135,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   <div className="mt-1 space-y-1">
                     <Link
                       href="/dashboard/super-admin/packages"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/packages") && "bg-gray-800 text-primary font-semibold",
@@ -142,6 +146,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/super-admin/companies"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/companies") && "bg-gray-800 text-primary font-semibold",
@@ -152,6 +157,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/super-admin/licenses"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/licenses") && "bg-gray-800 text-primary font-semibold",
@@ -162,6 +168,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/super-admin/invoices"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/invoices") && "bg-gray-800 text-primary font-semibold",
@@ -172,6 +179,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/super-admin/quotes"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/quotes") && "bg-gray-800 text-primary font-semibold",
@@ -202,6 +210,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   <div className="mt-1 space-y-1">
                     <Link
                       href="/dashboard/super-admin/analytics"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/analytics") && "bg-gray-800 text-primary font-semibold",
@@ -212,6 +221,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/super-admin/revenue"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/super-admin/revenue") && "bg-gray-800 text-primary font-semibold",
@@ -233,6 +243,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/company-admin"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                       isActive("/dashboard/company-admin", true) && "bg-gray-800 text-primary font-semibold",
@@ -261,6 +272,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   <div className="mt-1 space-y-1">
                     <Link
                       href="/dashboard/company-admin/departments"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/company-admin/departments") && "bg-gray-800 text-primary font-semibold",
@@ -271,6 +283,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/company-admin/projects"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/company-admin/projects") && "bg-gray-800 text-primary font-semibold",
@@ -281,6 +294,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/company-admin/consultants"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/company-admin/consultants") && "bg-gray-800 text-primary font-semibold",
@@ -292,6 +306,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     {userRole !== "Board Member" && (
                       <Link
                         href="/dashboard/company-admin/board-members"
+                        onClick={handleLinkClick}
                         className={cn(
                           "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                           isActive("/dashboard/company-admin/board-members") && "bg-gray-800 text-primary font-semibold",
@@ -303,6 +318,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     )}
                     <Link
                       href="/dashboard/company-admin/tasks"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                         isActive("/dashboard/company-admin/tasks") && "bg-gray-800 text-primary font-semibold",
@@ -329,6 +345,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                         <div className="ml-6 mt-1 space-y-1">
                           <Link
                             href="/dashboard/company-admin/invoices"
+                            onClick={handleLinkClick}
                             className={cn(
                               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                               isActive("/dashboard/company-admin/invoices") && "bg-gray-800 text-primary font-semibold",
@@ -339,6 +356,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                           </Link>
                           <Link
                             href="/dashboard/company-admin/analytics"
+                            onClick={handleLinkClick}
                             className={cn(
                               "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                               isActive("/dashboard/company-admin/analytics") && "bg-gray-800 text-primary font-semibold",
@@ -350,6 +368,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                           {userRole === "Company Admin" && (
                             <Link
                               href="/dashboard/company-admin/packages"
+                              onClick={handleLinkClick}
                               className={cn(
                                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                                 isActive("/dashboard/company-admin/packages") && "bg-gray-800 text-primary font-semibold",
@@ -375,6 +394,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/department-head"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                       isActive("/dashboard/department-head", true) && "bg-gray-800 text-primary font-semibold",
@@ -385,6 +405,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   </Link>
                   <Link
                     href="/dashboard/department-head/consultants"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                       isActive("/dashboard/department-head/consultants") && "bg-gray-800 text-primary font-semibold",
@@ -395,6 +416,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   </Link>
                   <Link
                     href="/dashboard/department-head/time-logs"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-700",
                       isActive("/dashboard/department-head/time-logs") && "bg-gray-800 text-primary font-semibold",
@@ -415,6 +437,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/employee"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                       isActive("/dashboard/employee", true) && "bg-gray-800 text-primary font-semibold",
@@ -430,6 +453,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 <div className="space-y-1">
                   <Link
                     href="/dashboard/employee/projects"
+                    onClick={handleLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                       isActive("/dashboard/employee/projects") && "bg-gray-800 text-primary font-semibold",
@@ -460,6 +484,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                   <div className="mt-1 space-y-1">
                     <Link
                       href="/dashboard/employee/time-logs"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                         isActive("/dashboard/employee/time-logs") && "bg-gray-800 text-primary font-semibold",
@@ -470,6 +495,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/employee/completed"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                         isActive("/dashboard/employee/completed") && "bg-gray-800 text-primary font-semibold",
@@ -480,6 +506,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     </Link>
                     <Link
                       href="/dashboard/employee/invoices"
+                      onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                         (isActive("/dashboard/employee/invoices") || pathname.includes("/dashboard/employee/invoices/")) && "bg-gray-800 text-primary font-semibold",
@@ -499,6 +526,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
             <div className="space-y-1">
               <Link
                 href="/dashboard/settings"
+                onClick={handleLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                   isActive("/dashboard/settings") && "bg-gray-800 text-primary font-semibold",
@@ -530,7 +558,10 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                           "flex w-full text-left items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800  transition",
                           isProfileActive && profileSection === section.key && " text-primary"
                         )}
-                        onClick={() => router.push(`/dashboard/profile?section=${section.key}`)}
+                        onClick={() => {
+                          router.push(`/dashboard/profile?section=${section.key}`)
+                          handleLinkClick()
+                        }}
                       >
                         <span>{section.label}</span>
                         {isProfileActive && profileSection === section.key && <span className="ml-auto h-2 w-2 rounded-full bg-primary" />}
@@ -550,7 +581,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     <>
       {/* Mobile sidebar (Sheet) */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="left" onClick={() => setOpen(false)} className="p-0 w-64 border-0">
+        <SheetContent side="left" className="p-0 w-64 border-0">
           {sidebarContent}
         </SheetContent>
       </Sheet>

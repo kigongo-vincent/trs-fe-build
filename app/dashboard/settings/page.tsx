@@ -172,6 +172,9 @@ export default function SettingsPage() {
   const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
   const [companyCurrency, setCompanyCurrency] = useState<string>("USD"); // Now read-only, set from session
   const [enableTimeLogSteppers, setEnableTimeLogSteppers] = useState(false);
+  const [showTimeLogAttachments, setShowTimeLogAttachments] = useState(true);
+  const [showTimeLogUrls, setShowTimeLogUrls] = useState(true);
+  const [showTimeLogProjects, setShowTimeLogProjects] = useState(true);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -281,10 +284,25 @@ export default function SettingsPage() {
       setEnableFloatingPoint(typeof user.company.roundOff === 'boolean' ? user.company.roundOff : false);
     }
 
-    // Load time log stepper preference from localStorage
+    // Load time log preferences from localStorage
     const savedStepperPreference = localStorage.getItem("enableTimeLogSteppers");
     if (savedStepperPreference !== null) {
       setEnableTimeLogSteppers(JSON.parse(savedStepperPreference));
+    }
+
+    const savedAttachmentsPreference = localStorage.getItem("showTimeLogAttachments");
+    if (savedAttachmentsPreference !== null) {
+      setShowTimeLogAttachments(JSON.parse(savedAttachmentsPreference));
+    }
+
+    const savedUrlsPreference = localStorage.getItem("showTimeLogUrls");
+    if (savedUrlsPreference !== null) {
+      setShowTimeLogUrls(JSON.parse(savedUrlsPreference));
+    }
+
+    const savedProjectsPreference = localStorage.getItem("showTimeLogProjects");
+    if (savedProjectsPreference !== null) {
+      setShowTimeLogProjects(JSON.parse(savedProjectsPreference));
     }
   }, [userRole, user]);
 
@@ -648,6 +666,30 @@ export default function SettingsPage() {
     });
   };
 
+  // Handle time log field visibility preferences
+  const handleTimeLogFieldChange = (field: string, enabled: boolean) => {
+    const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
+
+    switch (field) {
+      case 'attachments':
+        setShowTimeLogAttachments(enabled);
+        localStorage.setItem("showTimeLogAttachments", JSON.stringify(enabled));
+        break;
+      case 'urls':
+        setShowTimeLogUrls(enabled);
+        localStorage.setItem("showTimeLogUrls", JSON.stringify(enabled));
+        break;
+      case 'projects':
+        setShowTimeLogProjects(enabled);
+        localStorage.setItem("showTimeLogProjects", JSON.stringify(enabled));
+        break;
+    }
+
+    toast.success(`${fieldName} field ${enabled ? 'shown' : 'hidden'}`, {
+      description: `The ${field} field will now be ${enabled ? 'visible' : 'hidden'} in time log creation.`,
+    });
+  };
+
   // Add handleNestedProfileChange above component return
   const handleNestedProfileChange = (field: string, value: string) => {
     const [parent, child] = field.split(".");
@@ -685,7 +727,9 @@ export default function SettingsPage() {
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="company">Company</TabsTrigger>
+            {userRole === "Company Admin" && (
+              <TabsTrigger value="company">Company</TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="profile">
             <Card>
@@ -1056,8 +1100,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-6">
+                {/* Time Log Interface Preference */}
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="md:max-w-[90%] max-w-[70%]">
                     <label htmlFor="enableTimeLogSteppers" className="text-base font-medium select-none">
                       Enable steppers for time log creation
                     </label>
@@ -1071,6 +1116,72 @@ export default function SettingsPage() {
                     onCheckedChange={handleTimeLogStepperChange}
                     className="ml-4"
                   />
+                </div>
+
+                <Separator />
+
+                {/* Time Log Field Visibility Section */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium">Time Log Field Visibility</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Control which optional fields are shown when creating time logs
+                    </p>
+                  </div>
+
+                  {/* Projects Field */}
+                  <div className="flex items-center justify-between">
+                    <div className="md:max-w-[90%] max-w-[70%]">
+                      <label htmlFor="showTimeLogProjects" className="text-base font-medium select-none">
+                        Show Projects field
+                      </label>
+                      <span className="opacity-60 text-sm block mt-1">
+                        When enabled, you can select a project when creating time logs.
+                      </span>
+                    </div>
+                    <Switch
+                      id="showTimeLogProjects"
+                      checked={showTimeLogProjects}
+                      onCheckedChange={(enabled) => handleTimeLogFieldChange('projects', enabled)}
+                      className="ml-4"
+                    />
+                  </div>
+
+                  {/* Attachments Field */}
+                  <div className="flex items-center justify-between">
+                    <div className="md:max-w-[90%] max-w-[70%]">
+                      <label htmlFor="showTimeLogAttachments" className="text-base font-medium select-none">
+                        Show Attachments field
+                      </label>
+                      <span className="opacity-60 text-sm block mt-1">
+                        When enabled, you can upload files and documents to your time logs.
+                      </span>
+                    </div>
+                    <Switch
+                      id="showTimeLogAttachments"
+                      checked={showTimeLogAttachments}
+                      onCheckedChange={(enabled) => handleTimeLogFieldChange('attachments', enabled)}
+                      className="ml-4"
+                    />
+                  </div>
+
+                  {/* URLs Field */}
+                  <div className="flex items-center justify-between">
+                    <div className="md:max-w-[90%] max-w-[70%]">
+                      <label htmlFor="showTimeLogUrls" className="text-base font-medium select-none">
+                        Show URLs field
+                      </label>
+                      <span className="opacity-60 text-sm block mt-1">
+                        When enabled, you can add reference links and URLs to your time logs.
+                      </span>
+                    </div>
+                    <Switch
+                      id="showTimeLogUrls"
+                      checked={showTimeLogUrls}
+                      onCheckedChange={(enabled) => handleTimeLogFieldChange('urls', enabled)}
+                      className="ml-4"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
