@@ -171,6 +171,7 @@ export default function SettingsPage() {
   const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
   const [isUpdatingCompany, setIsUpdatingCompany] = useState(false);
   const [companyCurrency, setCompanyCurrency] = useState<string>("USD"); // Now read-only, set from session
+  const [enableTimeLogSteppers, setEnableTimeLogSteppers] = useState(false);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -271,13 +272,19 @@ export default function SettingsPage() {
     loadUserDataAndDepartments();
   }, [router]);
 
-  // Load company info for Company Admin
+  // Load company info for Company Admin and user preferences
   useEffect(() => {
     if (userRole === "Company Admin" && user?.company) {
       setCompanyName(user.company.name || "");
       setCompanyLogo(user.company.logo || null);
       setCompanyCurrency(user.company.currency || "USD"); // set from session
       setEnableFloatingPoint(typeof user.company.roundOff === 'boolean' ? user.company.roundOff : false);
+    }
+
+    // Load time log stepper preference from localStorage
+    const savedStepperPreference = localStorage.getItem("enableTimeLogSteppers");
+    if (savedStepperPreference !== null) {
+      setEnableTimeLogSteppers(JSON.parse(savedStepperPreference));
     }
   }, [userRole, user]);
 
@@ -632,6 +639,15 @@ export default function SettingsPage() {
     }
   };
 
+  // Handle time log stepper preference change
+  const handleTimeLogStepperChange = (enabled: boolean) => {
+    setEnableTimeLogSteppers(enabled);
+    localStorage.setItem("enableTimeLogSteppers", JSON.stringify(enabled));
+    toast.success(`Time log steppers ${enabled ? 'enabled' : 'disabled'}`, {
+      description: `You will now see a ${enabled ? 'stepped' : 'full form'} interface when creating time logs.`,
+    });
+  };
+
   // Add handleNestedProfileChange above component return
   const handleNestedProfileChange = (field: string, value: string) => {
     const [parent, child] = field.split(".");
@@ -668,6 +684,7 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="preferences">Preferences</TabsTrigger>
             <TabsTrigger value="company">Company</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
@@ -731,6 +748,29 @@ export default function SettingsPage() {
               </div>
             </div>
           </TabsContent>
+          <TabsContent value="preferences">
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <Skeleton className="h-6 w-40 mb-2" />
+                </CardTitle>
+                <CardDescription>
+                  <Skeleton className="h-4 w-60" />
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Skeleton className="h-4 w-56 mb-2" />
+                      <Skeleton className="h-3 w-80" />
+                    </div>
+                    <Skeleton className="h-6 w-12" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
           <TabsContent value="password">
             <Card>
               <CardHeader>
@@ -768,6 +808,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
           {userRole === "Company Admin" && (
             <TabsTrigger value="company">Company</TabsTrigger>
           )}
@@ -1005,6 +1046,34 @@ export default function SettingsPage() {
                 Cancel
               </Button>
             </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="preferences">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl text-gradient">User Preferences</CardTitle>
+              <CardDescription>Customize your experience</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label htmlFor="enableTimeLogSteppers" className="text-base font-medium select-none">
+                      Enable steppers for time log creation
+                    </label>
+                    <span className="opacity-60 text-sm block mt-1">
+                      When enabled, creating a new time log will use a step-by-step interface. When disabled, you'll see the full form at once.
+                    </span>
+                  </div>
+                  <Switch
+                    id="enableTimeLogSteppers"
+                    checked={enableTimeLogSteppers}
+                    onCheckedChange={handleTimeLogStepperChange}
+                    className="ml-4"
+                  />
+                </div>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
         {userRole === "Company Admin" && (

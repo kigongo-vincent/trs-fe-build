@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File } from "lucide-react"
+import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File, ToggleLeft, ToggleRight } from "lucide-react"
 import Link from "next/link"
 import { getProjects, type Project } from "@/services/projects"
 import { getAuthUser } from "@/services/auth"
@@ -45,16 +45,23 @@ export default function NewTimeLogPage() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [enableSteppers, setEnableSteppers] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     project: "",
     minutes: "",
-    status: "active",
+    status: "draft",
   })
 
-  // Fetch projects on component mount
+  // Load stepper preference and fetch projects on component mount
   useEffect(() => {
+    // Load stepper preference from localStorage
+    const savedStepperPreference = localStorage.getItem("enableTimeLogSteppers")
+    if (savedStepperPreference !== null) {
+      setEnableSteppers(JSON.parse(savedStepperPreference))
+    }
+
     const fetchProjects = async () => {
       try {
         const user = getAuthUser()
@@ -115,6 +122,14 @@ export default function NewTimeLogPage() {
       default:
         return null
     }
+  }
+
+  const validateFullForm = (): string | null => {
+    if (!formData.title.trim()) return "Task title is required"
+    if (!formData.minutes) return "Time duration is required"
+    if (Number(formData.minutes) <= 0) return "Time must be greater than 0"
+    if (!formData.description.trim()) return "Task description is required"
+    return null
   }
 
   const handleNext = () => {
@@ -206,6 +221,138 @@ export default function NewTimeLogPage() {
     return projects.find(p => p.id === formData.project)
   }
 
+  const renderFullForm = () => {
+    return (
+      <div className="space-y-6">
+        {/* Basic Info Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="taskTitle">Task Title *</Label>
+              <Input
+                id="taskTitle"
+                placeholder="Enter task title"
+                value={formData.title}
+                onChange={(e) => handleInputChange("title", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project">Project (optional)</Label>
+              <Select
+                value={formData.project}
+                onValueChange={(value) => handleInputChange("project", value)}
+                disabled={isLoadingProjects}
+              >
+                <SelectTrigger id="project">
+                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingProjects ? (
+                    <SelectItem value="loading" disabled>
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading projects...
+                      </div>
+                    </SelectItem>
+                  ) : projects.length === 0 ? (
+                    <SelectItem value="no-projects" disabled>
+                      No projects available
+                    </SelectItem>
+                  ) : (
+                    projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{project.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {project.department.name} • {project.lead.fullName}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Time & Status Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Time & Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="minutes">Time Duration *</Label>
+              <div className="flex items-center">
+                <Input
+                  id="minutes"
+                  type="number"
+                  placeholder="0"
+                  min="1"
+                  step="1"
+                  value={formData.minutes}
+                  onChange={(e) => handleInputChange("minutes", e.target.value)}
+                />
+                <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+              </div>
+              {formData.minutes && Number(formData.minutes) > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Total: {Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.status === "draft" && (
+                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                  ⚠️ Draft time logs will be automatically published by midnight
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Description Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Description</h3>
+          <div className="space-y-2">
+            <Label>Task Description *</Label>
+            <RichTextEditor
+              value={formData.description}
+              onChange={(value) => handleInputChange("description", value)}
+              placeholder="Describe the task you worked on with rich formatting..."
+              className="min-h-[200px]"
+            />
+          </div>
+        </div>
+
+        {/* Attachments Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Attachments (Optional)</h3>
+          <FileAttachment
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            maxFiles={10}
+            maxSize={10 * 1024 * 1024} // 10MB
+            acceptedFileTypes={["image/*", "application/pdf"]}
+            showUrlInput={true}
+          />
+        </div>
+      </div>
+    )
+  }
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -218,7 +365,7 @@ export default function NewTimeLogPage() {
                 placeholder="Enter task title"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                // className="text-lg"
+              // className="text-lg"
               />
             </div>
 
@@ -298,6 +445,11 @@ export default function NewTimeLogPage() {
                   <SelectItem value="active">Active</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.status === "draft" && (
+                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                  ⚠️ Draft time logs will be automatically published by midnight
+                </p>
+              )}
             </div>
           </div>
         )
@@ -399,132 +551,152 @@ export default function NewTimeLogPage() {
 
   return (
     <div className="flex flex-col gap-4">
-
       <Card className="max-w-4xl">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between mb-6">
             <CardTitle className="text-base">New Time log</CardTitle>
-            <span className="text-sm text-muted-foreground">
-              Step {currentStep} of {STEPS.length}
-            </span>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const newValue = !enableSteppers
+                  setEnableSteppers(newValue)
+                  localStorage.setItem("enableTimeLogSteppers", JSON.stringify(newValue))
+                  toast.success(`Switched to ${newValue ? 'stepped' : 'full form'} interface`)
+                }}
+                className="text-xs"
+              >
+                {enableSteppers ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
+                {enableSteppers ? 'Steps' : 'Full Form'}
+              </Button>
+              {enableSteppers && (
+                <span className="text-sm text-muted-foreground">
+                  Step {currentStep} of {STEPS.length}
+                </span>
+              )}
+            </div>
           </div>
-          {/* <Progress value={progress} className="mb-4" /> */}
 
-          {/* MUI-inspired Stepper */}
-          <div className="w-full bg-pale rounded p-6">
-            {/* Desktop stepper */}
-            <div className="hidden sm:block">
-              <div className="flex items-center justify-between relative">
-                {STEPS.map((step, index) => (
-                  <div key={step.id} className="flex flex-col items-center flex-1 relative">
-                    {/* Connector line */}
-                    {index < STEPS.length - 1 && (
-                      <div className="absolute top-5 left-1/2 w-full h-0.5 -z-10">
-                        <div className={cn(
-                          "h-full transition-all duration-500 ease-in-out",
+          {/* MUI-inspired Stepper - Only show if steppers are enabled */}
+          {enableSteppers && (
+            <div className="w-full bg-pale rounded p-6">
+              {/* Desktop stepper */}
+              <div className="hidden sm:block">
+                <div className="flex items-center justify-between relative">
+                  {STEPS.map((step, index) => (
+                    <div key={step.id} className="flex flex-col items-center flex-1 relative">
+                      {/* Connector line */}
+                      {index < STEPS.length - 1 && (
+                        <div className="absolute top-5 left-1/2 w-full h-0.5 -z-10">
+                          <div className={cn(
+                            "h-full transition-all duration-500 ease-in-out",
+                            currentStep > step.id
+                              ? "bg-green-500"
+                              : "bg-gray-200"
+                          )} />
+                        </div>
+                      )}
+
+                      {/* Step circle */}
+                      <div
+                        onClick={() => setCurrentStep(index + 1)}
+                        className={cn(
+                          "flex items-center justify-center cursor-pointer w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 relative z-10 shadow-sm",
                           currentStep > step.id
-                            ? "bg-green-500"
-                            : "bg-gray-200"
-                        )} />
+                            ? "bg-green-500 text-white shadow-lg scale-105"
+                            : currentStep === step.id
+                              ? "gradient text-primary-foreground shadow-lg ring-4 ring-primary/20 scale-110"
+                              : "bg-white text-gray-400 border-2 border-gray-200"
+                        )}>
+                        {currentStep > step.id ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <span>{step.id}</span>
+                        )}
                       </div>
-                    )}
 
-                    {/* Step circle */}
-                    <div
-                      onClick={() => setCurrentStep(index + 1)}
-                      className={cn(
-                        "flex items-center justify-center cursor-pointer w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 relative z-10 shadow-sm",
-                        currentStep > step.id
-                          ? "bg-green-500 text-white shadow-lg scale-105"
-                          : currentStep === step.id
-                            ? "gradient text-primary-foreground shadow-lg ring-4 ring-primary/20 scale-110"
-                            : "bg-white text-gray-400 border-2 border-gray-200"
-                      )}>
-                      {currentStep > step.id ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <span>{step.id}</span>
-                      )}
-                    </div>
-
-                    {/* Step label */}
-                    <div className="mt-3 text-center">
-                      <div className={cn(
-                        "text-sm font-medium transition-colors duration-300",
-                        currentStep >= step.id
-                          ? "text-gray-900"
-                          : "text-gray-400"
-                      )}>
-                        {step.title}
-                      </div>
-                      <div className={cn(
-                        "text-xs mt-1 transition-colors duration-300",
-                        currentStep >= step.id
-                          ? "text-gray-600"
-                          : "text-gray-400"
-                      )}>
-                        {step.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile stepper */}
-            <div className="block sm:hidden">
-              <div className="flex items-center justify-between mb-4">
-                {STEPS.map((step, index) => (
-                  <div key={step.id} className="flex items-center flex-1">
-                    <div className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all duration-300",
-                      currentStep > step.id
-                        ? "bg-green-500 text-white shadow-md"
-                        : currentStep === step.id
-                          ? "gradient text-primary-foreground shadow-md ring-2 ring-primary/30"
-                          : "bg-gray-200 text-gray-500"
-                    )}>
-                      {currentStep > step.id ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        step.id
-                      )}
-                    </div>
-
-                    {/* Connector for mobile */}
-                    {index < STEPS.length - 1 && (
-                      <div className="flex-1 mx-2 h-0.5">
+                      {/* Step label */}
+                      <div className="mt-3 text-center">
                         <div className={cn(
-                          "h-full transition-all duration-500",
-                          currentStep > step.id ? "bg-green-500" : "bg-gray-200"
-                        )} />
+                          "text-sm font-medium transition-colors duration-300",
+                          currentStep >= step.id
+                            ? "text-gray-900"
+                            : "text-gray-400"
+                        )}>
+                          {step.title}
+                        </div>
+                        <div className={cn(
+                          "text-xs mt-1 transition-colors duration-300",
+                          currentStep >= step.id
+                            ? "text-gray-600"
+                            : "text-gray-400"
+                        )}>
+                          {step.description}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Current step info for mobile */}
-              <div className="text-center mt-8">
-                <div className="text-lg font-semibold text-gray-900">
-                  {STEPS[currentStep - 1]?.title}
+              {/* Mobile stepper */}
+              <div className="block sm:hidden">
+                <div className="flex items-center justify-between mb-4">
+                  {STEPS.map((step, index) => (
+                    <div key={step.id} className="flex items-center flex-1">
+                      <div className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all duration-300",
+                        currentStep > step.id
+                          ? "bg-green-500 text-white shadow-md"
+                          : currentStep === step.id
+                            ? "gradient text-primary-foreground shadow-md ring-2 ring-primary/30"
+                            : "bg-gray-200 text-gray-500"
+                      )}>
+                        {currentStep > step.id ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          step.id
+                        )}
+                      </div>
+
+                      {/* Connector for mobile */}
+                      {index < STEPS.length - 1 && (
+                        <div className="flex-1 mx-2 h-0.5">
+                          <div className={cn(
+                            "h-full transition-all duration-500",
+                            currentStep > step.id ? "bg-green-500" : "bg-gray-200"
+                          )} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div className="text-sm text-gray-600">
-                  {STEPS[currentStep - 1]?.description}
+
+                {/* Current step info for mobile */}
+                <div className="text-center mt-8">
+                  <div className="text-lg font-semibold text-gray-900">
+                    {STEPS[currentStep - 1]?.title}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {STEPS[currentStep - 1]?.description}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="text-center pt-6 ">
-            <CardDescription>
-              {STEPS[currentStep - 1]?.description}
-            </CardDescription>
-          </div>
+          {enableSteppers && (
+            <div className="text-center pt-6 ">
+              <CardDescription>
+                {STEPS[currentStep - 1]?.description}
+              </CardDescription>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="py-6">
-          {renderStepContent()}
+          {enableSteppers ? renderStepContent() : renderFullForm()}
         </CardContent>
 
         <CardFooter className="flex justify-between pt-6">
@@ -532,31 +704,59 @@ export default function NewTimeLogPage() {
             <Button variant="outline" asChild type="button" className="bg-transparent">
               <Link href="/dashboard/employee/time-logs">Cancel</Link>
             </Button>
-
           </div>
 
           <div className="items-center flex gap-3">
-            {currentStep > 1 && (
-              <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
-                <ChevronLeft className=" h-4 w-4" />
-                <span className="font-normal">back</span>
-              </Button>
-            )}
-            {currentStep < STEPS.length ? (
-              <Button
-                onClick={handleNext}
-                type="button"
-                className="gradient"
-                disabled={!validateStep(currentStep)}
-              >
-                Next
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+            {enableSteppers ? (
+              // Stepped interface navigation
+              <>
+                {currentStep > 1 && (
+                  <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
+                    <ChevronLeft className=" h-4 w-4" />
+                    <span className="font-normal">back</span>
+                  </Button>
+                )}
+                {currentStep < STEPS.length ? (
+                  <Button
+                    onClick={handleNext}
+                    type="button"
+                    className="gradient"
+                    disabled={!validateStep(currentStep)}
+                  >
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    type="button"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Create Time Entry"
+                    )}
+                  </Button>
+                )}
+              </>
             ) : (
+              // Full form interface - single submit button
               <Button
-                onClick={handleSubmit}
+                onClick={() => {
+                  const error = validateFullForm()
+                  if (error) {
+                    toast.error(error)
+                    return
+                  }
+                  handleSubmit()
+                }}
                 disabled={isSubmitting}
                 type="button"
+                className="gradient"
               >
                 {isSubmitting ? (
                   <>
