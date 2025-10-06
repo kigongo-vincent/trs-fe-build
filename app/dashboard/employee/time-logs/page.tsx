@@ -44,7 +44,7 @@ export default function TimeLogsPage() {
   const [deleteTimeLogId, setDeleteTimeLogId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  
+
 
   const [summaryStats, setSummaryStats] = useState(() => {
     // initial value for summaryStats
@@ -765,7 +765,7 @@ export default function TimeLogsPage() {
               <>
                 <div className="text-2xl font-semibold text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
                 <p className="text-xs text-muted-foreground">
-                  of {user?.totalHoursPerMonth /4} hours ({Math.round((summaryStats.hoursWeek / user?.totalHoursPerMonth /4) * 100)}%)
+                  of {user?.totalHoursPerMonth / 4} hours ({Math.round((summaryStats.hoursWeek / user?.totalHoursPerMonth / 4) * 100)}%)
                 </p>
               </>
             )}
@@ -952,21 +952,20 @@ export default function TimeLogsPage() {
 
             <span className="flex items-center space-x-3">
               <Button
-
                 size="sm"
-                className="h-9 gradient"
+                className="h-9 gradient flex items-center gap-2"
                 onClick={generateFilteredTimeLogsPdf}
                 disabled={isGeneratingPdf || filteredTimeLogs.length === 0}
               >
                 {isGeneratingPdf ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Generating...
+                    <span className="hidden md:inline">Generating...</span>
                   </>
                 ) : (
                   <>
                     <FileText className="h-4 w-4" />
-                    Export ({filteredTimeLogs.length})
+                    <span className="hidden md:inline">Export ({filteredTimeLogs.length})</span>
                   </>
                 )}
               </Button>
@@ -979,7 +978,7 @@ export default function TimeLogsPage() {
                   className="flex items-center gap-2"
                 >
                   {isPublishingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Publish All Drafts
+                  <span className="hidden md:inline">Publish All Drafts</span>
                 </Button>
               )}
             </span>
@@ -1235,17 +1234,23 @@ export default function TimeLogsPage() {
               showUrlInput={true}
             />
             <div className="flex justify-between gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancel
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="flex items-center gap-2">
+                <X className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">Cancel</span>
+                <span className="md:hidden">Cancel</span>
               </Button>
-              <Button type="submit" disabled={isEditSubmitting || isLoadingProjects}>
+              <Button type="submit" disabled={isEditSubmitting || isLoadingProjects} className="flex items-center gap-2">
                 {isEditSubmitting ? (
                   <>
-                    <Loader2 className=" h-4 w-4 animate-spin" />
-                    Saving...
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="hidden md:inline">Saving...</span>
                   </>
                 ) : (
-                  "Save Changes"
+                  <>
+                    <Pencil className="h-4 w-4 md:hidden" />
+                    <span className="hidden md:inline">Save Changes</span>
+                    <span className="md:hidden">Save</span>
+                  </>
                 )}
               </Button>
             </div>
@@ -1267,8 +1272,11 @@ export default function TimeLogsPage() {
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
+              className="flex items-center gap-2"
             >
-              Cancel
+              <X className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Cancel</span>
+              <span className="md:hidden">Cancel</span>
             </Button>
             <Button
               variant="destructive"
@@ -1291,8 +1299,20 @@ export default function TimeLogsPage() {
                 }
               }}
               disabled={isDeleting}
+              className="flex items-center gap-2"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden md:inline">Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Delete</span>
+                  <span className="md:hidden">Delete</span>
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -1312,15 +1332,30 @@ export default function TimeLogsPage() {
               variant="outline"
               onClick={() => setPublishDialogOpen(false)}
               disabled={isPublishing}
+              className="flex items-center gap-2"
             >
-              Cancel
+              <X className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Cancel</span>
+              <span className="md:hidden">Cancel</span>
             </Button>
             <Button
               variant="default"
               onClick={() => publishLogId && handlePublishDraft(publishLogId)}
               disabled={isPublishing}
+              className="flex items-center gap-2"
             >
-              {isPublishing ? 'Publishing...' : 'Publish'}
+              {isPublishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden md:inline">Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Publish</span>
+                  <span className="md:hidden">Publish</span>
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -1340,15 +1375,30 @@ export default function TimeLogsPage() {
               variant="outline"
               onClick={() => setPublishAllDialogOpen(false)}
               disabled={isPublishingAll}
+              className="flex items-center gap-2"
             >
-              Cancel
+              <X className="h-4 w-4 md:hidden" />
+              <span className="hidden md:inline">Cancel</span>
+              <span className="md:hidden">Cancel</span>
             </Button>
             <Button
               variant="default"
               onClick={handlePublishAllDrafts}
               disabled={isPublishingAll}
+              className="flex items-center gap-2"
             >
-              {isPublishingAll ? 'Publishing...' : 'Publish All'}
+              {isPublishingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden md:inline">Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 md:hidden" />
+                  <span className="hidden md:inline">Publish All</span>
+                  <span className="md:hidden">Publish All</span>
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

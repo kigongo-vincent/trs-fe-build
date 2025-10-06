@@ -49,6 +49,7 @@ interface FileAttachmentProps {
     acceptedFileTypes?: string[]
     autoUpload?: boolean
     showUrlInput?: boolean
+    showFileInput?: boolean
 }
 
 const getFileIcon = (fileType: string | undefined) => {
@@ -76,7 +77,8 @@ export function FileAttachment({
     maxSize = 10 * 1024 * 1024, // 10MB
     acceptedFileTypes = ["image/*", "application/pdf", "text/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
     autoUpload = false,
-    showUrlInput = false
+    showUrlInput = false,
+    showFileInput = true
 }: FileAttachmentProps) {
     const [urlInput, setUrlInput] = useState("");
     const [urlNameInput, setUrlNameInput] = useState("");
@@ -138,39 +140,41 @@ export function FileAttachment({
 
     return (
         <div className="space-y-4">
-            <div className="space-y-2">
-                <Label>
-                    Attachments ({attachments.length}/{maxFiles})
-                </Label>
-                {/* File Drop Zone */}
-                <div
-                    {...getRootProps()}
-                    className={cn(
-                        "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                        isDragActive
-                            ? "border-primary bg-primary/5"
-                            : "border-muted-foreground/25 hover:border-primary/50"
-                    )}
-                >
-                    <input {...getInputProps()} />
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    {isDragActive ? (
-                        <p className="text-sm text-muted-foreground">Drop files here...</p>
-                    ) : (
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-1">
-                                Drag & drop files here, or click to select
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Max {maxFiles} files, {formatFileSize(maxSize)} each
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Accepted: {acceptedFileTypes.join(", ")}
-                            </p>
-                        </div>
-                    )}
+            {showFileInput && (
+                <div className="space-y-2">
+                    <Label>
+                        File Attachments ({attachments.filter(a => a.type === 'file').length}/{maxFiles})
+                    </Label>
+                    {/* File Drop Zone */}
+                    <div
+                        {...getRootProps()}
+                        className={cn(
+                            "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                            isDragActive
+                                ? "border-primary bg-primary/5"
+                                : "border-muted-foreground/25 hover:border-primary/50"
+                        )}
+                    >
+                        <input {...getInputProps()} />
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        {isDragActive ? (
+                            <p className="text-sm text-muted-foreground">Drop files here...</p>
+                        ) : (
+                            <div>
+                                <p className="text-sm text-muted-foreground mb-1">
+                                    Drag & drop files here, or click to select
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Max {maxFiles} files, {formatFileSize(maxSize)} each
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    Accepted: {acceptedFileTypes.join(", ")}
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
             {/* URL Input Section */}
             {showUrlInput && (
                 <div className="space-y-2">
@@ -197,7 +201,11 @@ export function FileAttachment({
             {/* Attachments List */}
             {attachments.length > 0 && (
                 <div className="space-y-2">
-                    <Label>Selected Files & URLs</Label>
+                    <Label>
+                        {showFileInput && showUrlInput ? 'Selected Files & URLs' :
+                            showFileInput ? 'Selected Files' :
+                                showUrlInput ? 'Selected URLs' : 'Selected Attachments'}
+                    </Label>
                     <div className="space-y-2">
                         {attachments.map((attachment) => (
                             <Card key={attachment.id} className="p-3 bg-pale">
@@ -215,7 +223,7 @@ export function FileAttachment({
                                                 <div className="flex items-center gap-2">
                                                     <p className="text-sm font-medium truncate">{textCropper(attachment.name, 30)}</p>
                                                 </div>
-                                               
+
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">

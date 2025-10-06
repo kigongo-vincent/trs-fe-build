@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File } from "lucide-react"
+import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File, ToggleLeft, ToggleRight } from "lucide-react"
 import Link from "next/link"
 import { getProjects, type Project } from "@/services/projects"
 import { getAuthUser } from "@/services/auth"
@@ -45,16 +45,41 @@ export default function NewTimeLogPage() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [enableSteppers, setEnableSteppers] = useState(false)
+  const [showAttachments, setShowAttachments] = useState(true)
+  const [showUrls, setShowUrls] = useState(true)
+  const [showProjects, setShowProjects] = useState(true)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     project: "",
     minutes: "",
-    status: "active",
+    status: "draft",
   })
 
-  // Fetch projects on component mount
+  // Load preferences and fetch projects on component mount
   useEffect(() => {
+    // Load preferences from localStorage
+    const savedStepperPreference = localStorage.getItem("enableTimeLogSteppers")
+    if (savedStepperPreference !== null) {
+      setEnableSteppers(JSON.parse(savedStepperPreference))
+    }
+
+    const savedAttachmentsPreference = localStorage.getItem("showTimeLogAttachments")
+    if (savedAttachmentsPreference !== null) {
+      setShowAttachments(JSON.parse(savedAttachmentsPreference))
+    }
+
+    const savedUrlsPreference = localStorage.getItem("showTimeLogUrls")
+    if (savedUrlsPreference !== null) {
+      setShowUrls(JSON.parse(savedUrlsPreference))
+    }
+
+    const savedProjectsPreference = localStorage.getItem("showTimeLogProjects")
+    if (savedProjectsPreference !== null) {
+      setShowProjects(JSON.parse(savedProjectsPreference))
+    }
+
     const fetchProjects = async () => {
       try {
         const user = getAuthUser()
@@ -117,6 +142,14 @@ export default function NewTimeLogPage() {
     }
   }
 
+  const validateFullForm = (): string | null => {
+    if (!formData.title.trim()) return "Task title is required"
+    if (!formData.minutes) return "Time duration is required"
+    if (Number(formData.minutes) <= 0) return "Time must be greater than 0"
+    if (!formData.description.trim()) return "Task description is required"
+    return null
+  }
+
   const handleNext = () => {
     const error = getStepError(currentStep)
     if (error) {
@@ -124,8 +157,14 @@ export default function NewTimeLogPage() {
       return
     }
 
-    if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1)
+    const effectiveStepCount = getEffectiveStepCount()
+    if (currentStep < effectiveStepCount) {
+      // If we're skipping attachments step, go directly to review
+      if (currentStep === 3 && !showAttachments && !showUrls) {
+        setCurrentStep(currentStep + 1) // This will be the review step
+      } else {
+        setCurrentStep(currentStep + 1)
+      }
     }
   }
 
@@ -206,11 +245,33 @@ export default function NewTimeLogPage() {
     return projects.find(p => p.id === formData.project)
   }
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
+  const getEffectiveSteps = () => {
+    // If both attachments and URLs are disabled, skip step 4
+    if (!showAttachments && !showUrls) {
+      return STEPS.filter(step => step.id !== 4).map((step, index) => ({
+        ...step,
+        id: index + 1
+      }))
+    }
+    return STEPS
+  }
+
+  const getEffectiveStepCount = () => {
+    return getEffectiveSteps().length
+  }
+
+  const isAttachmentsStep = (step: number) => {
+    const effectiveSteps = getEffectiveSteps()
+    return effectiveSteps[step - 1]?.title === "Attachments"
+  }
+
+  const renderFullForm = () => {
+    return (
+      <div className="space-y-6">
+        {/* Basic Info Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Basic Information</h3>
+          <div className={`grid grid-cols-1 ${showProjects ? 'md:grid-cols-2' : ''} gap-4`}>
             <div className="space-y-2">
               <Label htmlFor="taskTitle">Task Title *</Label>
               <Input
@@ -218,10 +279,152 @@ export default function NewTimeLogPage() {
                 placeholder="Enter task title"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
-                // className="text-lg"
               />
             </div>
 
+            {showProjects && (
+              <div className="space-y-2">
+                <Label htmlFor="project">Project (optional)</Label>
+                <Select
+                  value={formData.project}
+                  onValueChange={(value) => handleInputChange("project", value)}
+                  disabled={isLoadingProjects}
+                >
+                  <SelectTrigger id="project">
+                    <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingProjects ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading projects...
+                        </div>
+                      </SelectItem>
+                    ) : projects.length === 0 ? (
+                      <SelectItem value="no-projects" disabled>
+                        No projects available
+                      </SelectItem>
+                    ) : (
+                      projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{project.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {project.department.name} • {project.lead.fullName}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Time & Status Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Time & Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="minutes">Time Duration *</Label>
+              <div className="flex items-center">
+                <Input
+                  id="minutes"
+                  type="number"
+                  placeholder="0"
+                  min="1"
+                  step="1"
+                  value={formData.minutes}
+                  onChange={(e) => handleInputChange("minutes", e.target.value)}
+                />
+                <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
+              </div>
+              {formData.minutes && Number(formData.minutes) > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Total: {Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.status === "draft" && (
+                <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                  ⚠️ Draft time logs will be automatically published by midnight
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Description Section */}
+        <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+          <h3 className="text-lg font-semibold text-gradient">Description</h3>
+          <div className="space-y-2">
+            <Label>Task Description *</Label>
+            <RichTextEditor
+              value={formData.description}
+              onChange={(value) => handleInputChange("description", value)}
+              placeholder="Describe the task you worked on with rich formatting..."
+              className="min-h-[200px]"
+            />
+          </div>
+        </div>
+
+        {/* Attachments Section */}
+        {(showAttachments || showUrls) && (
+          <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
+            <h3 className="text-lg font-semibold text-gradient">
+              {showAttachments && showUrls ? 'Attachments (Optional)' :
+                showAttachments ? 'File Attachments (Optional)' :
+                  'URL Links (Optional)'}
+            </h3>
+            <FileAttachment
+              attachments={attachments}
+              onAttachmentsChange={setAttachments}
+              maxFiles={10}
+              maxSize={10 * 1024 * 1024} // 10MB
+              acceptedFileTypes={["image/*", "application/pdf"]}
+              showUrlInput={showUrls}
+              showFileInput={showAttachments}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderStepContent = () => {
+    const effectiveSteps = getEffectiveSteps()
+    const currentStepInfo = effectiveSteps[currentStep - 1]
+
+    // Map current step to original step logic based on title
+    if (currentStepInfo?.title === "Basic Info") {
+      return (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="taskTitle">Task Title *</Label>
+            <Input
+              id="taskTitle"
+              placeholder="Enter task title"
+              value={formData.title}
+              onChange={(e) => handleInputChange("title", e.target.value)}
+            />
+          </div>
+
+          {showProjects && (
             <div className="space-y-2">
               <Label htmlFor="project">Project (optional)</Label>
               <Select
@@ -259,272 +462,309 @@ export default function NewTimeLogPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        )
+          )}
+        </div>
+      )
+    }
 
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="minutes">Time Duration *</Label>
-              <div className="flex items-center">
-                <Input
-                  id="minutes"
-                  type="number"
-                  placeholder="0"
-                  min="1"
-                  step="1"
-                  value={formData.minutes}
-                  onChange={(e) => handleInputChange("minutes", e.target.value)}
-                  className="text-lg"
-                />
-                <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
-              </div>
-              {formData.minutes && Number(formData.minutes) > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Total: {Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )
-
-      case 3:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Task Description *</Label>
-              <RichTextEditor
-                value={formData.description}
-                onChange={(value) => handleInputChange("description", value)}
-                placeholder="Describe the task you worked on with rich formatting..."
-                className="min-h-[300px]"
+    if (currentStepInfo?.title === "Time & Status") {
+      return (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="minutes">Time Duration *</Label>
+            <div className="flex items-center">
+              <Input
+                id="minutes"
+                type="number"
+                placeholder="0"
+                min="1"
+                step="1"
+                value={formData.minutes}
+                onChange={(e) => handleInputChange("minutes", e.target.value)}
+                className="text-lg"
               />
+              <Clock className="ml-2 h-4 w-4 text-muted-foreground" />
             </div>
+            {formData.minutes && Number(formData.minutes) > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Total: {Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m
+              </p>
+            )}
           </div>
-        )
 
-      case 4:
-        return (
-          <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+              <SelectTrigger id="status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+              </SelectContent>
+            </Select>
+            {formData.status === "draft" && (
+              <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                ⚠️ Draft time logs will be automatically published by midnight
+              </p>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    if (currentStepInfo?.title === "Description") {
+      return (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Task Description *</Label>
+            <RichTextEditor
+              value={formData.description}
+              onChange={(value) => handleInputChange("description", value)}
+              placeholder="Describe the task you worked on with rich formatting..."
+              className="min-h-[300px]"
+            />
+          </div>
+        </div>
+      )
+    }
+
+    if (currentStepInfo?.title === "Attachments") {
+      return (
+        <div className="space-y-4">
+          {(showAttachments || showUrls) ? (
             <FileAttachment
               attachments={attachments}
               onAttachmentsChange={setAttachments}
               maxFiles={10}
               maxSize={10 * 1024 * 1024} // 10MB
               acceptedFileTypes={["image/*", "application/pdf"]}
-              showUrlInput={true}
+              showUrlInput={showUrls}
+              showFileInput={showAttachments}
             />
-          </div>
-        )
-
-      case 5:
-        const selectedProject = getSelectedProject()
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Task Title</Label>
-                <p className="font-medium">{formData.title}</p>
-              </div>
-
-              {selectedProject && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-muted-foreground">Project</Label>
-                  <div>
-                    <p className="font-medium">{selectedProject.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedProject.department.name} • {selectedProject.lead.fullName}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Time Duration</Label>
-                <p className="font-medium">
-                  {formData.minutes} minutes ({Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m)
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Status</Label>
-                <p className="font-medium lowercase  text-gradient  w-max">{formData.status}</p>
-              </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Attachments and URLs are disabled in your preferences.</p>
+              <p className="text-sm mt-2">You can enable them in Settings → Preferences.</p>
             </div>
+          )}
+        </div>
+      )
+    }
 
+    if (currentStepInfo?.title === "Review") {
+      const selectedProject = getSelectedProject()
+      return (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-muted-foreground">Description</Label>
-              <div className=" rounded p-3 bg-pale max-h-32 overflow-y-auto">
-                <div dangerouslySetInnerHTML={{ __html: formData.description }} />
-              </div>
+              <Label className="text-sm font-medium text-muted-foreground">Task Title</Label>
+              <p className="font-medium">{formData.title}</p>
             </div>
 
-            {attachments.length > 0 && (
+            {selectedProject && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-muted-foreground">Attachments</Label>
-                <div className="space-y-1">
-                  {attachments.map((attachment, index) => (
-                    <p key={index} className="text-sm p-4 bg-pale flex items-center gap-2 rounded-lg">
-                      {/* {attachment.type === "file" ? `📎 ${attachment.name}` : `🔗 ${attachment.name}`} */}
-                      <File size={15} />
-                      {attachment.name}
-                    </p>
-                  ))}
+                <Label className="text-sm font-medium text-muted-foreground">Project</Label>
+                <div>
+                  <p className="font-medium">{selectedProject.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProject.department.name} • {selectedProject.lead.fullName}
+                  </p>
                 </div>
               </div>
             )}
-          </div>
-        )
 
-      default:
-        return null
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground">Time Duration</Label>
+              <p className="font-medium">
+                {formData.minutes} minutes ({Math.floor(Number(formData.minutes) / 60)}h {Number(formData.minutes) % 60}m)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+              <p className="font-medium lowercase text-gradient w-max">{formData.status}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+            <div className="rounded p-3 bg-pale max-h-32 overflow-y-auto">
+              <div dangerouslySetInnerHTML={{ __html: formData.description }} />
+            </div>
+          </div>
+
+          {attachments.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-muted-foreground">Attachments</Label>
+              <div className="space-y-1">
+                {attachments.map((attachment, index) => (
+                  <p key={index} className="text-sm p-4 bg-pale flex items-center gap-2 rounded-lg">
+                    <File size={15} />
+                    {attachment.name}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )
     }
+
+    return null
   }
 
-  const progress = (currentStep / STEPS.length) * 100
+  const effectiveSteps = getEffectiveSteps()
+  const progress = (currentStep / effectiveSteps.length) * 100
 
   return (
     <div className="flex flex-col gap-4">
-
       <Card className="max-w-4xl">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between mb-6">
             <CardTitle className="text-base">New Time log</CardTitle>
-            <span className="text-sm text-muted-foreground">
-              Step {currentStep} of {STEPS.length}
-            </span>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const newValue = !enableSteppers
+                  setEnableSteppers(newValue)
+                  localStorage.setItem("enableTimeLogSteppers", JSON.stringify(newValue))
+                  toast.success(`Switched to ${newValue ? 'stepped' : 'full form'} interface`)
+                }}
+                className="text-xs"
+              >
+                {enableSteppers ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
+                {enableSteppers ? 'Steps' : 'Full Form'}
+              </Button>
+              {enableSteppers && (
+                <span className="text-sm text-muted-foreground">
+                  Step {currentStep} of {effectiveSteps.length}
+                </span>
+              )}
+            </div>
           </div>
-          {/* <Progress value={progress} className="mb-4" /> */}
 
-          {/* MUI-inspired Stepper */}
-          <div className="w-full bg-pale rounded p-6">
-            {/* Desktop stepper */}
-            <div className="hidden sm:block">
-              <div className="flex items-center justify-between relative">
-                {STEPS.map((step, index) => (
-                  <div key={step.id} className="flex flex-col items-center flex-1 relative">
-                    {/* Connector line */}
-                    {index < STEPS.length - 1 && (
-                      <div className="absolute top-5 left-1/2 w-full h-0.5 -z-10">
-                        <div className={cn(
-                          "h-full transition-all duration-500 ease-in-out",
+          {/* MUI-inspired Stepper - Only show if steppers are enabled */}
+          {enableSteppers && (
+            <div className="w-full bg-pale rounded p-6">
+              {/* Desktop stepper */}
+              <div className="hidden sm:block">
+                <div className="flex items-center justify-between relative">
+                  {effectiveSteps.map((step, index) => (
+                    <div key={step.id} className="flex flex-col items-center flex-1 relative">
+                      {/* Connector line */}
+                      {index < effectiveSteps.length - 1 && (
+                        <div className="absolute top-5 left-1/2 w-full h-0.5 -z-10">
+                          <div className={cn(
+                            "h-full transition-all duration-500 ease-in-out",
+                            currentStep > step.id
+                              ? "bg-green-500"
+                              : "bg-gray-200"
+                          )} />
+                        </div>
+                      )}
+
+                      {/* Step circle */}
+                      <div
+                        onClick={() => setCurrentStep(index + 1)}
+                        className={cn(
+                          "flex items-center justify-center cursor-pointer w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 relative z-10 shadow-sm",
                           currentStep > step.id
-                            ? "bg-green-500"
-                            : "bg-gray-200"
-                        )} />
+                            ? "bg-green-500 text-white shadow-lg scale-105"
+                            : currentStep === step.id
+                              ? "gradient text-primary-foreground shadow-lg ring-4 ring-primary/20 scale-110"
+                              : "bg-white text-gray-400 border-2 border-gray-200"
+                        )}>
+                        {currentStep > step.id ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <span>{step.id}</span>
+                        )}
                       </div>
-                    )}
 
-                    {/* Step circle */}
-                    <div
-                      onClick={() => setCurrentStep(index + 1)}
-                      className={cn(
-                        "flex items-center justify-center cursor-pointer w-10 h-10 rounded-full font-semibold text-sm transition-all duration-300 relative z-10 shadow-sm",
-                        currentStep > step.id
-                          ? "bg-green-500 text-white shadow-lg scale-105"
-                          : currentStep === step.id
-                            ? "gradient text-primary-foreground shadow-lg ring-4 ring-primary/20 scale-110"
-                            : "bg-white text-gray-400 border-2 border-gray-200"
-                      )}>
-                      {currentStep > step.id ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        <span>{step.id}</span>
-                      )}
-                    </div>
-
-                    {/* Step label */}
-                    <div className="mt-3 text-center">
-                      <div className={cn(
-                        "text-sm font-medium transition-colors duration-300",
-                        currentStep >= step.id
-                          ? "text-gray-900"
-                          : "text-gray-400"
-                      )}>
-                        {step.title}
-                      </div>
-                      <div className={cn(
-                        "text-xs mt-1 transition-colors duration-300",
-                        currentStep >= step.id
-                          ? "text-gray-600"
-                          : "text-gray-400"
-                      )}>
-                        {step.description}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile stepper */}
-            <div className="block sm:hidden">
-              <div className="flex items-center justify-between mb-4">
-                {STEPS.map((step, index) => (
-                  <div key={step.id} className="flex items-center flex-1">
-                    <div className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all duration-300",
-                      currentStep > step.id
-                        ? "bg-green-500 text-white shadow-md"
-                        : currentStep === step.id
-                          ? "gradient text-primary-foreground shadow-md ring-2 ring-primary/30"
-                          : "bg-gray-200 text-gray-500"
-                    )}>
-                      {currentStep > step.id ? (
-                        <CheckCircle2 className="h-4 w-4" />
-                      ) : (
-                        step.id
-                      )}
-                    </div>
-
-                    {/* Connector for mobile */}
-                    {index < STEPS.length - 1 && (
-                      <div className="flex-1 mx-2 h-0.5">
+                      {/* Step label */}
+                      <div className="mt-3 text-center">
                         <div className={cn(
-                          "h-full transition-all duration-500",
-                          currentStep > step.id ? "bg-green-500" : "bg-gray-200"
-                        )} />
+                          "text-sm font-medium transition-colors duration-300",
+                          currentStep >= step.id
+                            ? "text-gray-900"
+                            : "text-gray-400"
+                        )}>
+                          {step.title}
+                        </div>
+                        <div className={cn(
+                          "text-xs mt-1 transition-colors duration-300",
+                          currentStep >= step.id
+                            ? "text-gray-600"
+                            : "text-gray-400"
+                        )}>
+                          {step.description}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Current step info for mobile */}
-              <div className="text-center mt-8">
-                <div className="text-lg font-semibold text-gray-900">
-                  {STEPS[currentStep - 1]?.title}
+              {/* Mobile stepper */}
+              <div className="block sm:hidden">
+                <div className="flex items-center justify-between mb-4">
+                  {effectiveSteps.map((step, index) => (
+                    <div key={step.id} className="flex items-center flex-1">
+                      <div className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold transition-all duration-300",
+                        currentStep > step.id
+                          ? "bg-green-500 text-white shadow-md"
+                          : currentStep === step.id
+                            ? "gradient text-primary-foreground shadow-md ring-2 ring-primary/30"
+                            : "bg-gray-200 text-gray-500"
+                      )}>
+                        {currentStep > step.id ? (
+                          <CheckCircle2 className="h-4 w-4" />
+                        ) : (
+                          step.id
+                        )}
+                      </div>
+
+                      {/* Connector for mobile */}
+                      {index < effectiveSteps.length - 1 && (
+                        <div className="flex-1 mx-2 h-0.5">
+                          <div className={cn(
+                            "h-full transition-all duration-500",
+                            currentStep > step.id ? "bg-green-500" : "bg-gray-200"
+                          )} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                <div className="text-sm text-gray-600">
-                  {STEPS[currentStep - 1]?.description}
+
+                {/* Current step info for mobile */}
+                <div className="text-center mt-8">
+                  <div className="text-lg font-semibold text-gray-900">
+                    {effectiveSteps[currentStep - 1]?.title}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {effectiveSteps[currentStep - 1]?.description}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="text-center pt-6 ">
-            <CardDescription>
-              {STEPS[currentStep - 1]?.description}
-            </CardDescription>
-          </div>
+          {enableSteppers && (
+            <div className="text-center pt-6 ">
+              <CardDescription>
+                {effectiveSteps[currentStep - 1]?.description}
+              </CardDescription>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent className="py-6">
-          {renderStepContent()}
+          {enableSteppers ? renderStepContent() : renderFullForm()}
         </CardContent>
 
         <CardFooter className="flex justify-between pt-6">
@@ -532,31 +772,59 @@ export default function NewTimeLogPage() {
             <Button variant="outline" asChild type="button" className="bg-transparent">
               <Link href="/dashboard/employee/time-logs">Cancel</Link>
             </Button>
-
           </div>
 
           <div className="items-center flex gap-3">
-            {currentStep > 1 && (
-              <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
-                <ChevronLeft className=" h-4 w-4" />
-                <span className="font-normal">back</span>
-              </Button>
-            )}
-            {currentStep < STEPS.length ? (
-              <Button
-                onClick={handleNext}
-                type="button"
-                className="gradient"
-                disabled={!validateStep(currentStep)}
-              >
-                Next
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+            {enableSteppers ? (
+              // Stepped interface navigation
+              <>
+                {currentStep > 1 && (
+                  <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
+                    <ChevronLeft className=" h-4 w-4" />
+                    <span className="font-normal">back</span>
+                  </Button>
+                )}
+                {currentStep < effectiveSteps.length ? (
+                  <Button
+                    onClick={handleNext}
+                    type="button"
+                    className="gradient"
+                    disabled={!validateStep(currentStep)}
+                  >
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    type="button"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Create Time Entry"
+                    )}
+                  </Button>
+                )}
+              </>
             ) : (
+              // Full form interface - single submit button
               <Button
-                onClick={handleSubmit}
+                onClick={() => {
+                  const error = validateFullForm()
+                  if (error) {
+                    toast.error(error)
+                    return
+                  }
+                  handleSubmit()
+                }}
                 disabled={isSubmitting}
                 type="button"
+                className="gradient"
               >
                 {isSubmitting ? (
                   <>
