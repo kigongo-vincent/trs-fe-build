@@ -153,13 +153,19 @@
   @apply my-2;
 }
 
-.ProseMirror ul,
+.ProseMirror ul {
+  @apply pl-6 my-2;
+  list-style-type: disc;
+}
+
 .ProseMirror ol {
   @apply pl-6 my-2;
+  list-style-type: decimal;
 }
 
 .ProseMirror li {
   @apply my-1;
+  display: list-item;
 }
 
 .ProseMirror blockquote {
