@@ -674,13 +674,13 @@ export default function CompanySignup() {
           <div className="p-6">
             <span className="text-lg font-bold text-white drop-shadow">Task Reporting System</span>
           </div>
-          <div className="p-6 text-white">
+          {/* <div className="p-6 text-white">
             <p className="text-lg font-semibold mb-2">"Simply all the tools that my team and I need."</p>
             <div className="text-sm opacity-80">
               <div className="font-bold">Wensi Nuwagaba</div>
               <div>Chief Executive Officer</div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Right: Signup form */}

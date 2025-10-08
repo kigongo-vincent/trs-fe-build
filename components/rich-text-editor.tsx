@@ -22,7 +22,6 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Palette,
   Eraser
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -90,9 +89,7 @@ export function RichTextEditor({
     return null
   }
 
-  const setColor = (color: string) => {
-    editor.chain().focus().setColor(color).run()
-  }
+
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -288,7 +285,7 @@ export function RichTextEditor({
           )}
           onKeyDown={(e) => {
             // Prevent form submit on Cmd/Ctrl+Enter or Enter with meta/ctrl
-            if ((e.key === "Enter" && (e.metaKey || e.ctrlKey)) || (e.key === "Enter" && e.target.tagName !== "TEXTAREA")) {
+            if ((e.key === "Enter" && (e.metaKey || e.ctrlKey)) || (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA")) {
               e.preventDefault();
             }
             // Prevent form submit on Cmd/Ctrl+B, Cmd/Ctrl+I, Cmd/Ctrl+U

@@ -119,7 +119,7 @@ export default function InvoicesPage() {
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [filterLoading, setFilterLoading] = useState(false)
-  const [filterParams, setFilterParams] = useState<{ status: string, startDate: string, endDate: string }>({ status: "all", startDate: "", endDate: "" })
+  const [filterParams, setFilterParams] = useState<{ status: string, startDate: string, endDate: string }>({ status: "processing", startDate: "", endDate: "" })
 
   // Add a ref to InvoiceTable for PDF download
   const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void } | null>(null)
@@ -307,13 +307,19 @@ export default function InvoicesPage() {
   }
 
   const handleClearFilters = () => {
-    setStatus("all")
+    setStatus("processing")
     setStartDate("")
     setEndDate("")
-    setFilterParams({ status: "all", startDate: "", endDate: "" })
+    setFilterParams({ status: "processing", startDate: "", endDate: "" })
   }
 
-  const isFilterActive = status !== "all" || !!startDate || !!endDate
+  // Auto-apply filter when status changes from tabs
+  useEffect(() => {
+    setFilterParams({ status, startDate, endDate })
+    setSearchTerm("") // Clear search when filtering by status
+  }, [status, startDate, endDate])
+
+  const isFilterActive = status !== "processing" || !!startDate || !!endDate
 
   // Handler to trigger PDF from top button
   const handleTopDownloadPDF = () => {
@@ -531,16 +537,16 @@ export default function InvoicesPage() {
         </form>
       </div>
 
-      <div onClick={handleFilterSubmit} className="bg-paper rounded p-4">
+      <div className="bg-paper rounded p-4">
         <Tabz.Root value={status} onValueChange={setStatus} className="flex flex-col space-y-2">
 
           <Tabz.List className="flex space-x-2">
 
             <Tabz.Trigger
-              value="approved"
+              value="processing"
               className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
             >
-              Approved
+              Processing
             </Tabz.Trigger>
             <Tabz.Trigger
               value="pending"
@@ -549,10 +555,10 @@ export default function InvoicesPage() {
               Pending
             </Tabz.Trigger>
             <Tabz.Trigger
-              value="processing"
+              value="approved"
               className="px-3 py-1.5 text-sm rounded-md border text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-white"
             >
-              Processing
+              Approved
             </Tabz.Trigger>
             <Tabz.Trigger
               value="paid"
@@ -624,7 +630,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       if (searchTerm) {
         params.search = searchTerm
       } else if (filterParams) {
-        if (filterParams.status && filterParams.status !== "all") {
+        if (filterParams.status) {
           params.status = filterParams.status
         }
         if (filterParams.startDate) {
@@ -693,12 +699,35 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
   // Selection handlers
   const handleSelectInvoice = (invoiceId: string, checked: boolean) => {
+    const invoice = sortedInvoices.find(inv => inv.id === invoiceId)
+    if (!invoice) return
+
     const newSelected = new Set(selectedInvoices)
+
     if (checked) {
+      // Check if this selection would create an incompatible mix
+      const currentlySelected = sortedInvoices.filter(inv => selectedInvoices.has(inv.id))
+
+      if (currentlySelected.length > 0) {
+        const firstSelectedStatus = currentlySelected[0].status
+
+        // Prevent mixing different statuses that can't be batch processed together
+        if (
+          (firstSelectedStatus === 'approved' && invoice.status !== 'approved') ||
+          (firstSelectedStatus !== 'approved' && invoice.status === 'approved') ||
+          (invoice.status === 'paid') ||
+          (currentlySelected.some(inv => inv.status === 'paid'))
+        ) {
+          alert("Cannot select invoices with different statuses for batch operations. Please select invoices with the same status.")
+          return
+        }
+      }
+
       newSelected.add(invoiceId)
     } else {
       newSelected.delete(invoiceId)
     }
+
     setSelectedInvoices(newSelected)
 
     // Update select all state
@@ -711,9 +740,17 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allIds = new Set(sortedInvoices.map(invoice => invoice.id))
-      setSelectedInvoices(allIds)
-      setSelectAll(true)
+      // Only select invoices that can be batch processed together
+      // For now, select all invoices with the same status as the first one
+      if (sortedInvoices.length > 0) {
+        const firstStatus = sortedInvoices[0].status
+        const compatibleInvoices = sortedInvoices.filter(invoice =>
+          invoice.status === firstStatus && invoice.status !== 'paid'
+        )
+        const compatibleIds = new Set(compatibleInvoices.map(invoice => invoice.id))
+        setSelectedInvoices(compatibleIds)
+        setSelectAll(compatibleIds.size === sortedInvoices.length)
+      }
     } else {
       setSelectedInvoices(new Set())
       setSelectAll(false)
@@ -722,22 +759,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
   const [loading2, setLoading2] = useState(false)
 
-  const handleApproveAll = async () => {
-    const selectedIds = Array.from(selectedInvoices)
-    setLoading2(true)
-    try {
 
-      const data = await postRequest(`/company/invoices/approve/${authData.user.company.id}`, { invoiceIds: selectedIds })
-      if (data) {
-        fetchInvoicesWithRetry(1)
-      }
-    } catch (err) {
-      console.warn(err)
-    } finally {
-
-      setLoading2(false)
-    }
-  }
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     let aValue: any, bValue: any
@@ -770,6 +792,26 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     if (aValue > bValue) return sortDir === "asc" ? 1 : -1
     return 0
   })
+
+  // Get selected invoices with their status
+  const selectedInvoicesWithStatus = useMemo(() => {
+    return sortedInvoices.filter(invoice => selectedInvoices.has(invoice.id))
+  }, [selectedInvoices, sortedInvoices])
+
+  // Check if any selected invoices are already approved
+  const hasApprovedInvoices = useMemo(() => {
+    return selectedInvoicesWithStatus.some(invoice => invoice.status === 'approved')
+  }, [selectedInvoicesWithStatus])
+
+  // Check if all selected invoices are approved (for paid button)
+  const allSelectedAreApproved = useMemo(() => {
+    return selectedInvoicesWithStatus.length > 0 && selectedInvoicesWithStatus.every(invoice => invoice.status === 'approved')
+  }, [selectedInvoicesWithStatus])
+
+  // Check if any selected invoices are already paid
+  const hasPaidInvoices = useMemo(() => {
+    return selectedInvoicesWithStatus.some(invoice => invoice.status === 'paid')
+  }, [selectedInvoicesWithStatus])
 
   // PDF download for row (stateless: checkboxes No, comment empty)
   const handleRowDownloadPDF = async (invoice: any) => {
@@ -1045,6 +1087,52 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     }
   }
 
+  const handleApproveAll = async () => {
+    // Prevent approval if any selected invoices are already approved
+    if (hasApprovedInvoices) {
+      alert("Cannot approve invoices that are already approved. Please deselect approved invoices and try again.")
+      return
+    }
+
+    const selectedIds = Array.from(selectedInvoices)
+    setLoading2(true)
+    try {
+      const data = await postRequest(`/company/invoices/approve/${authData.user.company.id}`, { invoiceIds: selectedIds })
+      if (data) {
+        fetchInvoicesWithRetry(1)
+        setSelectedInvoices(new Set()) // Clear selection after successful approval
+        setSelectAll(false)
+      }
+    } catch (err) {
+      console.warn(err)
+    } finally {
+      setLoading2(false)
+    }
+  }
+
+  const handleMarkAsPaid = async () => {
+    // Prevent marking as paid if any selected invoices are already paid
+    if (hasPaidInvoices) {
+      alert("Cannot mark invoices as paid that are already paid. Please deselect paid invoices and try again.")
+      return
+    }
+
+    const selectedIds = Array.from(selectedInvoices)
+    setLoading2(true)
+    try {
+      const data = await postRequest(`/company/invoices/mark-paid/${authData.user.company.id}`, { invoiceIds: selectedIds })
+      if (data) {
+        fetchInvoicesWithRetry(1)
+        setSelectedInvoices(new Set()) // Clear selection after successful update
+        setSelectAll(false)
+      }
+    } catch (err) {
+      console.warn(err)
+    } finally {
+      setLoading2(false)
+    }
+  }
+
   useImperativeHandle(ref, () => ({ handleAllInvoicesPDF }))
 
   if (loading) {
@@ -1147,14 +1235,46 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
           </span>
         </div>
         {selectedInvoices.size > 0 && (
-          <Button
-            onClick={handleApproveAll}
-            variant="default"
-            size="sm"
-            className="bg-primary"
-          >
-            {loading2 ? "Updating..." : "Approve All"} ({selectedInvoices.size})
-          </Button>
+          <div className="flex gap-2">
+            {/* Show Approve button only if no approved invoices are selected */}
+            {!hasApprovedInvoices && !allSelectedAreApproved && (
+              <Button
+                onClick={handleApproveAll}
+                variant="default"
+                size="sm"
+                className="bg-primary"
+                disabled={loading2}
+              >
+                {loading2 ? "Updating..." : "Approve All"} ({selectedInvoices.size})
+              </Button>
+            )}
+
+            {/* Show Mark as Paid button only if all selected invoices are approved */}
+            {allSelectedAreApproved && !hasPaidInvoices && (
+              <Button
+                onClick={handleMarkAsPaid}
+                variant="default"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                disabled={loading2}
+              >
+                {loading2 ? "Updating..." : "Mark as Paid"} ({selectedInvoices.size})
+              </Button>
+            )}
+
+            {/* Show warning if trying to select mixed statuses */}
+            {hasApprovedInvoices && !allSelectedAreApproved && (
+              <div className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded border border-amber-200">
+                Cannot approve: Some selected invoices are already approved
+              </div>
+            )}
+
+            {hasPaidInvoices && (
+              <div className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded border border-blue-200">
+                Cannot update: Some selected invoices are already paid
+              </div>
+            )}
+          </div>
         )}
       </div>
       <Table>
