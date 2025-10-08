@@ -141,13 +141,7 @@ export default function Home() {
             </div>
           </div>
           {/* Testimonial */}
-          <div className="p-6 text-white">
-            <p className="text-lg font-semibold mb-2">“Simply all the tools that my team and I need.”</p>
-            <div className="text-sm opacity-80">
-              <div className="font-bold">Wensi Nuwagaba</div>
-              <div>Chief Executive Officer</div>
-            </div>
-          </div>
+
         </div>
         {/* Right: Login form */}
         <div className="flex-1 flex flex-col justify-center items-center p-8">
