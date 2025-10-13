@@ -175,6 +175,7 @@ export default function SettingsPage() {
   const [showTimeLogAttachments, setShowTimeLogAttachments] = useState(true);
   const [showTimeLogUrls, setShowTimeLogUrls] = useState(true);
   const [showTimeLogProjects, setShowTimeLogProjects] = useState(true);
+  const [enableSaveAndAddAnother, setEnableSaveAndAddAnother] = useState(false);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -303,6 +304,11 @@ export default function SettingsPage() {
     const savedProjectsPreference = localStorage.getItem("showTimeLogProjects");
     if (savedProjectsPreference !== null) {
       setShowTimeLogProjects(JSON.parse(savedProjectsPreference));
+    }
+
+    const savedSaveAndAddAnotherPreference = localStorage.getItem("enableSaveAndAddAnother");
+    if (savedSaveAndAddAnotherPreference !== null) {
+      setEnableSaveAndAddAnother(JSON.parse(savedSaveAndAddAnotherPreference));
     }
   }, [userRole, user]);
 
@@ -690,6 +696,15 @@ export default function SettingsPage() {
     });
   };
 
+  // Handle save and add another functionality preference
+  const handleSaveAndAddAnotherChange = (enabled: boolean) => {
+    setEnableSaveAndAddAnother(enabled);
+    localStorage.setItem("enableSaveAndAddAnother", JSON.stringify(enabled));
+    toast.success(`Save and Add Another ${enabled ? 'enabled' : 'disabled'}`, {
+      description: `The "Save and Add Another" button will now be ${enabled ? 'visible' : 'hidden'} when creating time logs.`,
+    });
+  };
+
   // Add handleNestedProfileChange above component return
   const handleNestedProfileChange = (field: string, value: string) => {
     const [parent, child] = field.split(".");
@@ -774,7 +789,7 @@ export default function SettingsPage() {
                 <Skeleton className="h-6 w-12" />
               </div>
               <Separator />
-              <div className="flex block flex-col md:flex-row gap-6 items-center">
+              <div className="flex flex-col md:flex-row gap-6 items-center">
                 <div className="flex-1">
                   <Skeleton className="h-4 w-32 mb-2" />
                   <Skeleton className="h-10 w-full" />
@@ -1114,6 +1129,26 @@ export default function SettingsPage() {
                     id="enableTimeLogSteppers"
                     checked={enableTimeLogSteppers}
                     onCheckedChange={handleTimeLogStepperChange}
+                    className="ml-4"
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Save and Add Another Functionality */}
+                <div className="flex items-center justify-between">
+                  <div className="md:max-w-[90%] max-w-[70%]">
+                    <label htmlFor="enableSaveAndAddAnother" className="text-base font-medium select-none">
+                      Enable "Save and Add Another" functionality
+                    </label>
+                    <span className="opacity-60 text-sm block mt-1">
+                      When enabled, you'll see both "Create Time Entry" and "Save and Add Another" buttons when creating time logs.
+                    </span>
+                  </div>
+                  <Switch
+                    id="enableSaveAndAddAnother"
+                    checked={enableSaveAndAddAnother}
+                    onCheckedChange={handleSaveAndAddAnotherChange}
                     className="ml-4"
                   />
                 </div>
