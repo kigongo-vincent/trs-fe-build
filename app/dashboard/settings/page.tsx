@@ -1508,13 +1508,13 @@ export default function SettingsPage() {
 
       {/* Camera/Device Selection Modal */}
       <Dialog open={showCameraModal} onOpenChange={handleCloseCameraModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md  max-w-[90vw] m-auto">
           <DialogHeader>
             <DialogTitle>Choose Photo Source</DialogTitle>
           </DialogHeader>
 
           {!cameraStream ? (
-            <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col  gap-4 py-4">
               <Button
                 onClick={startCamera}
                 className="flex items-center justify-center gap-3 h-12 text-base"
@@ -1587,7 +1587,7 @@ export default function SettingsPage() {
 
       {/* Image Cropper Modal */}
       <Dialog open={showCropperModal} onOpenChange={setShowCropperModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-w-[90vw]">
           <DialogHeader>
             <DialogTitle>Crop Your Avatar</DialogTitle>
           </DialogHeader>
@@ -1626,11 +1626,8 @@ export default function SettingsPage() {
               {zoom.toFixed(1)}x
             </div>
           </div>
-          <DialogFooter className="flex justify-between">
-            <Button variant="outline" onClick={handleCancelCrop}>
-              Cancel
-            </Button>
-            <div className="flex gap-2">
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -1641,13 +1638,24 @@ export default function SettingsPage() {
                     fileInputRef.current?.click();
                   }, 100);
                 }}
+                className="w-full sm:w-auto"
               >
                 Select Another
               </Button>
-              <Button onClick={handleCropComplete}>
+              <Button
+                onClick={handleCropComplete}
+                className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+              >
                 Confirm
               </Button>
             </div>
+            <Button
+              variant="outline"
+              onClick={handleCancelCrop}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

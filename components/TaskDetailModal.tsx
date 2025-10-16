@@ -6,6 +6,7 @@ import { X, User, Calendar, Clock, FolderOpen, Eye, Download, Building2 } from "
 import DOMPurify from "dompurify";
 import React from "react";
 import { textCropper } from "@/lib/utils";
+import Link from "next/link";
 
 export interface Attachment {
     id?: string;
@@ -109,7 +110,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                             {attachments.length > 0 && (
                                 <div className="mb-4">
                                     <div className="font-semibold mb-1 flex items-center gap-2">
-                                         Attachments
+                                        Attachments
                                     </div>
                                     <div className="space-y-2">
                                         {attachments.map((attachment) => {

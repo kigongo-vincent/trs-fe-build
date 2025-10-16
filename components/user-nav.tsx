@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, User, Package } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { getAuthUser, clearAuth } from "@/services/auth"
 import { getImage } from "@/services/api"
 import { Badge } from "@/components/ui/badge"
@@ -109,16 +110,16 @@ export function UserNav({ role, planName }: UserNavProps) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <a href="/dashboard/profile" className="flex items-center w-full">
+            <Link href="/dashboard/profile" className="flex items-center w-full">
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
-            </a>
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <a href="/dashboard/settings" className="flex items-center w-full">
+            <Link href="/dashboard/settings" className="flex items-center w-full">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
-            </a>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
