@@ -103,7 +103,7 @@ export default function AddConsultantPage() {
         }
 
         const companyId = authData.user.company.id
-      
+
         const response = await getRequest<DepartmentsResponse>(`/departments/company/${companyId}`)
         setDepartments(response.data)
       } catch (err: any) {
@@ -244,7 +244,9 @@ export default function AddConsultantPage() {
         companyId: companyId,
         job_title: formData.jobTitle,
         gross_pay: formData.grossPay,
-        phoneNumber: formData.phoneNumber.trim(),
+        phoneNumber: formData.phoneNumber.startsWith('+')
+          ? formData.phoneNumber.trim()
+          : `+${formData.phoneNumber.trim()}`,
         currency: formData.currency,
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
       }
@@ -264,7 +266,9 @@ export default function AddConsultantPage() {
         payload.next_of_kin = {}
         if (formData.nextOfKinName.trim()) payload.next_of_kin.name = formData.nextOfKinName.trim()
         if (formData.nextOfKinRelationship.trim()) payload.next_of_kin.relationship = formData.nextOfKinRelationship.trim()
-        if (formData.nextOfKinPhone.trim()) payload.next_of_kin.phoneNumber = formData.nextOfKinPhone.trim()
+        if (formData.nextOfKinPhone.trim()) payload.next_of_kin.phoneNumber = formData.nextOfKinPhone.startsWith('+')
+          ? formData.nextOfKinPhone.trim()
+          : `+${formData.nextOfKinPhone.trim()}`
         if (formData.nextOfKinEmail.trim()) payload.next_of_kin.email = formData.nextOfKinEmail.trim()
       }
 

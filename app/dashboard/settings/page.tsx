@@ -618,7 +618,9 @@ export default function SettingsPage() {
 
       // Only add phoneNumber if it has a value and is visible in the UI
       if (profileForm.phoneNumber && profileForm.phoneNumber.trim()) {
-        requestData.phoneNumber = profileForm.phoneNumber.trim();
+        requestData.phoneNumber = profileForm.phoneNumber.startsWith('+')
+          ? profileForm.phoneNumber.trim()
+          : `+${profileForm.phoneNumber.trim()}`;
       }
 
       // Only add profileImage if a new avatar is selected

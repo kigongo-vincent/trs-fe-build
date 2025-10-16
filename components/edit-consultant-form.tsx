@@ -202,7 +202,9 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 jobTitle: formData.jobTitle,
                 grossPay: formData.grossPay,
                 dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
-                phoneNumber: formData.phoneNumber.trim(),
+                phoneNumber: formData.phoneNumber.startsWith('+')
+                    ? formData.phoneNumber.trim()
+                    : `+${formData.phoneNumber.trim()}`,
                 currency: formData.currency,
                 departmentId: formData.departmentId,
                 totalWorkingHours: totalWorkingHours,
@@ -222,7 +224,9 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 nextOfKin: (formData.nextOfKinName || formData.nextOfKinRelationship || formData.nextOfKinPhone || formData.nextOfKinEmail) ? {
                     name: formData.nextOfKinName,
                     relationship: formData.nextOfKinRelationship,
-                    phoneNumber: formData.nextOfKinPhone,
+                    phoneNumber: formData.nextOfKinPhone.startsWith('+')
+                        ? formData.nextOfKinPhone
+                        : `+${formData.nextOfKinPhone}`,
                     email: formData.nextOfKinEmail,
                 } : null,
                 bankDetails: (formData.bankAccountName || formData.bankAccountNumber || formData.bankName || formData.bankSwiftCode || formData.bankBranch) ? {
