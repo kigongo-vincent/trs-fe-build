@@ -44,11 +44,15 @@ export default function EditDepartmentPage() {
                     return
                 }
 
-                const companyId = authData.user.company.id
-                const response = await getAllConsultants(companyId)
+                const response = await getAllConsultants()
 
                 if (response.status === 200) {
-                    setConsultants(response.data)
+                    // Handle both paginated and non-paginated responses
+                    if (response.data && response.data.items) {
+                        setConsultants(response.data.items)
+                    } else {
+                        setConsultants(response.data || [])
+                    }
                 } else {
                     toast.error("Failed to fetch consultants")
                 }

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon, FileText, Download, PhoneCall, PhoneIcon, MapPin } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon, FileText, Download, PhoneCall, PhoneIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -18,6 +18,7 @@ import {
   type Consultant,
   type DepartmentSummary,
   getAllConsultants,
+  getConsultantsPaginated,
   getConsultantsSummary,
   getConsultantDashboard,
   formatMinutesToHours,
@@ -27,7 +28,6 @@ import {
   updateConsultantStatus,
   getConsultantLogsByRange,
 } from "@/services/consultants"
-import { fetchConsultants as fetchConsultantsApi } from "@/services/api"
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
 import { getAuthData, getUserRole } from "@/services/auth"
@@ -50,20 +50,60 @@ export default function ConsultantsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  // Fetch consultants with filters/search using generic API service
-  const fetchConsultants = async () => {
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  })
+
+  // Get unique departments for filter dropdown - use both name and ID
+  const departments = Array.from(new Set(consultants.map((c) => c.department.name)))
+  const departmentMap = new Map(consultants.map((c) => [c.department.name, c.department.id]))
+
+  // Fetch consultants with filters/search using paginated service
+  const fetchConsultants = async (page: number = 1, limit?: number) => {
     setListLoading(true);
     try {
-      const params: Record<string, any> = {};
+      const params: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        departmentId?: string;
+        status?: string;
+      } = {
+        page,
+        limit: limit || pagination.limit
+      };
+
       if (searchQuery.trim()) params.search = searchQuery.trim();
-      if (departmentFilter !== "all") params.departmentId = departmentFilter;
+      if (departmentFilter !== "all") {
+        const departmentId = departmentMap.get(departmentFilter);
+        if (departmentId) params.departmentId = departmentId;
+      }
       if (statusFilter !== "all") params.status = statusFilter;
-      const result = await fetchConsultantsApi(params);
+
+      const result = await getConsultantsPaginated(params);
       if (result.status !== 200) throw new Error(result.message || "Failed to fetch consultants");
-      setFilteredConsultants(result.data || []);
+
+      // Handle paginated response structure
+      setFilteredConsultants(result.data.items);
+      setPagination(result.data.pagination);
     } catch (err: any) {
       toast.error(err?.message || "Failed to fetch consultants");
       setFilteredConsultants([]);
+      setPagination({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+      });
     } finally {
       setListLoading(false);
     }
@@ -74,20 +114,8 @@ export default function ConsultantsPage() {
     setSearchQuery("");
     setDepartmentFilter("all");
     setStatusFilter("all");
-    setListLoading(true);
-    try {
-      const consultantsResponse = await getAllConsultants();
-      if (consultantsResponse.status === 200) {
-        setFilteredConsultants(consultantsResponse.data);
-      } else {
-        setFilteredConsultants([]);
-      }
-    } catch (err) {
-      toast.error("Failed to reload consultants");
-      setFilteredConsultants([]);
-    } finally {
-      setListLoading(false);
-    }
+    setPagination(prev => ({ ...prev, page: 1 }));
+    await fetchConsultants(1);
   };
   const [isConsultantModalOpen, setIsConsultantModalOpen] = useState(false)
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null)
@@ -171,13 +199,17 @@ export default function ConsultantsPage() {
       try {
         // Fetch both consultants and department summary in parallel
         const [consultantsResponse, summaryResponse] = await Promise.all([
-          getAllConsultants(),
+          getConsultantsPaginated({ page: 1, limit: 10 }),
           getConsultantsSummary(),
         ])
+
+        // Handle paginated consultants response
         if (consultantsResponse.status === 200) {
-          setConsultants(consultantsResponse.data)
-          setFilteredConsultants(consultantsResponse.data)
+          setConsultants(consultantsResponse.data.items)
+          setFilteredConsultants(consultantsResponse.data.items)
+          setPagination(consultantsResponse.data.pagination)
         }
+
         if (summaryResponse.status === 200) {
           setDepartmentSummary(summaryResponse.data)
         }
@@ -316,18 +348,15 @@ export default function ConsultantsPage() {
     }
   }
 
-  // Get unique departments for filter dropdown
-  const departments = Array.from(new Set(consultants.map((c) => c.department.name)))
+  // Calculate stats - use pagination total for accurate counts
+  const totalConsultants = pagination.total
+  const activeConsultants = filteredConsultants.filter((c) => c.status === "active").length
+  const onLeaveConsultants = filteredConsultants.filter((c) => c.status === "on-leave").length
 
-  // Calculate stats
-  const totalConsultants = consultants.length
-  const activeConsultants = consultants.filter((c) => c.status === "active").length
-  const onLeaveConsultants = consultants.filter((c) => c.status === "on-leave").length
-
-  // Calculate new hires (consultants added in the last 30 days)
+  // Calculate new hires (consultants added in the last 30 days) - only from current page
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const newHires = consultants.filter((c) => new Date(c.createdAt) >= thirtyDaysAgo).length
+  const newHires = filteredConsultants.filter((c) => new Date(c.createdAt) >= thirtyDaysAgo).length
 
   // Chart data for modal
   const chartData =
@@ -374,12 +403,8 @@ export default function ConsultantsPage() {
     setStatusLoading(true)
     try {
       await updateConsultantStatus(statusTargetConsultant.id, newStatus)
-      // Refetch consultants after status change
-      const consultantsResponse = await getAllConsultants();
-      if (consultantsResponse.status === 200) {
-        setConsultants(consultantsResponse.data)
-        setFilteredConsultants(consultantsResponse.data)
-      }
+      // Refetch current page after status change
+      await fetchConsultants(pagination.page)
     } catch (err: any) {
       toast.error(err?.message || 'Failed to update consultant status')
     } finally {
@@ -518,7 +543,7 @@ export default function ConsultantsPage() {
               disabled={listLoading}
             />
           </div>
-          <Button className="mr-1" onClick={fetchConsultants} disabled={listLoading}>
+          <Button className="mr-1" onClick={() => fetchConsultants(1)} disabled={listLoading}>
             {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
             <Search />
           </Button>
@@ -550,7 +575,7 @@ export default function ConsultantsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={fetchConsultants} disabled={listLoading}>
+          <Button onClick={() => fetchConsultants(1)} disabled={listLoading}>
             {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
             Filter
           </Button>
@@ -692,6 +717,117 @@ export default function ConsultantsPage() {
             </Table>
           )}
         </CardContent>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between px-6 py-4 border-t">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">Show</span>
+            <Select
+              value={pagination.limit.toString()}
+              onValueChange={(value) => {
+                const newLimit = parseInt(value);
+                setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+                fetchConsultants(1, newLimit);
+              }}
+              disabled={listLoading}
+            >
+              <SelectTrigger className="w-20 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">per page</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchConsultants(pagination.page - 1)}
+              disabled={!pagination.hasPrev || listLoading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="flex items-center space-x-1">
+              {(() => {
+                const totalPages = pagination.totalPages;
+                const currentPage = pagination.page;
+                const pages = [];
+
+                if (totalPages <= 7) {
+                  // Show all pages if 7 or fewer
+                  for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                  }
+                } else {
+                  // Show smart pagination
+                  if (currentPage <= 4) {
+                    // Show first 5 pages + ... + last page
+                    for (let i = 1; i <= 5; i++) {
+                      pages.push(i);
+                    }
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 3) {
+                    // Show first page + ... + last 5 pages
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = totalPages - 4; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first + ... + current-1, current, current+1 + ... + last
+                    pages.push(1);
+                    pages.push('...');
+                    pages.push(currentPage - 1);
+                    pages.push(currentPage);
+                    pages.push(currentPage + 1);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+
+                return pages.map((page, index) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="text-muted-foreground px-2">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <Button
+                      key={page}
+                      variant={pagination.page === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => fetchConsultants(page as number)}
+                      disabled={listLoading}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  );
+                });
+              })()}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchConsultants(pagination.page + 1)}
+              disabled={!pagination.hasNext || listLoading}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Consultant Details Modal */}
@@ -1286,18 +1422,14 @@ export default function ConsultantsPage() {
               <EditConsultantForm consultant={editConsultant} onClose={handleCloseEditModal} onUpdated={async () => {
                 setIsEditModalOpen(false);
                 setEditConsultant(null);
-                // Refetch consultants and department summary after update
+                // Refetch current page and department summary after update
                 setLoading(true);
                 setChartLoading(true);
                 try {
-                  const [consultantsResponse, summaryResponse] = await Promise.all([
-                    getAllConsultants(),
+                  const [summaryResponse] = await Promise.all([
                     getConsultantsSummary(),
+                    fetchConsultants(pagination.page),
                   ]);
-                  if (consultantsResponse.status === 200) {
-                    setConsultants(consultantsResponse.data);
-                    setFilteredConsultants(consultantsResponse.data);
-                  }
                   if (summaryResponse.status === 200) {
                     setDepartmentSummary(summaryResponse.data);
                   }
