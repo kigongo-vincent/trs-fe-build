@@ -12,9 +12,11 @@ import { motion } from "framer-motion"
 import { EmployeeHoursChart } from "@/components/employee-hours-chart"
 import {
   fetchEmployeeDashboard,
+  fetchEmployeeTimeLogs,
   type EmployeeDashboardData,
   formatMinutesToHours,
   formatHoursCount,
+  type TimeLog,
 } from "@/services/employee"
 import { useRouter } from "next/navigation"
 import { getAuthUser, getUserRole, isAuthenticated, isTokenExpired } from "@/services/auth"
@@ -24,9 +26,23 @@ export default function EmployeeDashboard() {
   const [showAdd, setShowAdd] = useState(true)
 
   const [dashboardData, setDashboardData] = useState<EmployeeDashboardData | null>(null)
+  const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  const [summaryStats, setSummaryStats] = useState(() => {
+    // initial value for summaryStats
+    return {
+      hoursToday: 0,
+      hoursWeek: 0,
+      hoursMonth: 0,
+      billableHours: 0,
+      billableRate: 0,
+      draftCount: 0,
+      draftHours: 0,
+    }
+  })
 
   const bgs = [
     "https://static.vecteezy.com/system/resources/previews/011/171/103/large_2x/white-and-orange-modern-background-free-vector.jpg",
@@ -60,8 +76,12 @@ export default function EmployeeDashboard() {
       try {
         setLoading(true)
         setError(null)
-        const data = await fetchEmployeeDashboard()
-        setDashboardData(data)
+        const [dashboardData, timeLogsData] = await Promise.all([
+          fetchEmployeeDashboard(),
+          fetchEmployeeTimeLogs()
+        ])
+        setDashboardData(dashboardData)
+        setTimeLogs(timeLogsData)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data")
       } finally {
@@ -71,6 +91,54 @@ export default function EmployeeDashboard() {
 
     loadDashboardData()
   }, [])
+
+  // Calculate summary statistics from time logs
+  useEffect(() => {
+    // recalculate summaryStats when timeLogs change
+    const today = new Date()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - today.getDay())
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    let hoursToday = 0
+    let hoursWeek = 0
+    let hoursMonth = 0
+    let billableHours = 0
+    let draftCount = 0
+    let draftHours = 0
+
+    timeLogs.forEach((log) => {
+      const logDate = new Date(log.createdAt)
+      const duration = Number.parseFloat(log.duration)
+
+      if (logDate.toDateString() === today.toDateString()) {
+        hoursToday += duration
+      }
+      if (logDate >= startOfWeek) {
+        hoursWeek += duration
+      }
+      if (logDate >= startOfMonth) {
+        hoursMonth += duration
+      }
+      if (log.status === "active") {
+        billableHours += duration
+      }
+      if (log.status === "draft") {
+        draftCount += 1
+        draftHours += duration
+      }
+    })
+
+    setSummaryStats({
+      hoursToday: hoursToday / 60,
+      hoursWeek: hoursWeek / 60,
+      hoursMonth: hoursMonth / 60,
+      billableHours: billableHours / 60,
+      billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
+      draftCount: draftCount,
+      draftHours: draftHours / 60,
+    })
+  }, [timeLogs])
 
   const getPercentageIcon = (percentage: number, index?: number) => {
     if (percentage > 0) return <TrendingUp className={`h-4 w-4 ${index == 0 ? "" : "text-green-600"}`} />
@@ -93,26 +161,18 @@ export default function EmployeeDashboard() {
     return Math.round(((current - previous) / previous) * 100);
   }
 
-  // Get today's and yesterday's hours from weekDistribution
-  const now = new Date();
-  const todayIdx = now.getDay(); // 0=Sun, 1=Mon, ...
-  const yesterdayIdx = (todayIdx - 1 + 7) % 7;
-  const weekDistribution = dashboardData?.weekDistribution ?? [];
-  const todayDist = weekDistribution.find((d) => d.day === todayIdx);
-  const yesterdayDist = weekDistribution.find((d) => d.day === yesterdayIdx);
-  const hoursTodayCount = todayDist ? todayDist.hours : 0;
-  const hoursYesterdayCount = yesterdayDist ? yesterdayDist.hours : 0;
-  const hoursTodayPercentage = calculatePercentage(hoursTodayCount, hoursYesterdayCount);
+  // Calculate percentages for time-logs data
+  // For now, we'll use simple calculations - these could be enhanced with historical data
+  const hoursTodayCount = Math.floor(summaryStats.hoursToday)
+  const hoursWeekCount = Math.floor(summaryStats.hoursWeek)
+  const hoursMonthCount = Math.floor(summaryStats.hoursMonth)
+  const billableHoursCount = Math.floor(summaryStats.billableHours)
 
-  // For 'Hours This Month', compare to last month
-  const hoursMonthCount = dashboardData?.hoursMonth?.count ?? 0;
-  const hoursLastMonthCount = (dashboardData as any)?.hoursLastMonth?.count ?? 0;
-  const hoursMonthPercentage = calculatePercentage(hoursMonthCount, hoursLastMonthCount);
-
-  // For 'Hours Last Month', compare to two months ago if available
-  // If API provides hoursTwoMonthsAgo, use it; otherwise fallback to 0
-  const hoursTwoMonthsAgoCount = (dashboardData as any)?.hoursTwoMonthsAgo?.count ?? 0;
-  const hoursLastMonthPercentage = calculatePercentage(hoursLastMonthCount, hoursTwoMonthsAgoCount);
+  // Simple percentage calculations (could be enhanced with historical data)
+  const hoursTodayPercentage = 0 // Could calculate vs yesterday
+  const hoursWeekPercentage = 0 // Could calculate vs last week
+  const hoursMonthPercentage = 0 // Could calculate vs last month
+  const billableRatePercentage = Math.round(summaryStats.billableRate)
 
   // Debug output
   if (typeof window !== 'undefined') {
@@ -223,31 +283,31 @@ export default function EmployeeDashboard() {
           {[0, 1, 2, 3].map((index) => {
             const dataMap = [
               {
-                title: 'Hours This Week',
-                icon: <CalendarArrowDown className="h-8 w-8 bg-white/40 text-white p-2 rounded backdrop-blur-sm" />,
-                value: dashboardData.hoursWeek.count,
-                percentage: dashboardData.hoursWeek.percentage,
+                title: 'Hours Today',
+                icon: <Clock className="h-8 w-8 bg-white/40 text-white p-2 rounded backdrop-blur-sm" />,
+                value: hoursTodayCount,
+                percentage: hoursTodayPercentage,
                 bg: 'bg-[url(https://static.vecteezy.com/system/resources/previews/005/210/247/non_2x/bright-abstract-background-orange-color-free-vector.jpg)]',
+              },
+              {
+                title: 'Hours This Week',
+                icon: <CalendarArrowDown className="h-8 w-8 bg-black/10 text-white p-2 rounded backdrop-blur-sm" />,
+                value: hoursWeekCount,
+                percentage: hoursWeekPercentage,
+                bg: 'bg-[url(https://static.vecteezy.com/system/resources/previews/007/075/692/non_2x/abstract-white-fluid-wave-background-free-vector.jpg)]',
               },
               {
                 title: 'Hours This Month',
                 icon: <Calendar1 className="h-8 w-8 bg-black/10 text-white p-2 rounded backdrop-blur-sm" />,
                 value: hoursMonthCount,
                 percentage: hoursMonthPercentage,
-                bg: 'bg-[url(https://static.vecteezy.com/system/resources/previews/007/075/692/non_2x/abstract-white-fluid-wave-background-free-vector.jpg)]',
-              },
-              {
-                title: 'Hours Today',
-                icon: <Clock className="h-8 w-8 bg-black/10 text-white p-2 rounded backdrop-blur-sm" />,
-                value: hoursTodayCount,
-                percentage: hoursTodayPercentage,
                 bg: 'bg-[url(https://static.vecteezy.com/system/resources/previews/003/127/955/non_2x/abstract-white-and-grey-background-with-dynamic-waves-shape-free-vector.jpg)]',
               },
               {
-                title: 'Hours Last Month',
+                title: 'Billable Hours',
                 icon: <CalendarArrowUp className="h-8 w-8 bg-black/10 text-white p-2 rounded backdrop-blur-sm" />,
-                value: hoursLastMonthCount,
-                percentage: hoursLastMonthPercentage,
+                value: billableHoursCount,
+                percentage: billableRatePercentage,
                 bg: 'bg-[url(https://static.vecteezy.com/system/resources/previews/036/340/598/large_2x/abstract-grey-background-poster-with-dynamic-waves-vector.jpg)]',
               },
             ];
@@ -262,12 +322,26 @@ export default function EmployeeDashboard() {
                     {card.icon}
                   </CardHeader>
                   <CardContent>
-                    <div className={`${index != 0 && "text-primary"} text-2xl`}>{formatHoursCount(card.value)}h</div>
+                    <div className={`${index != 0 && "text-primary"} text-2xl`}>
+                      {card.title === 'Billable Hours'
+                        ? `${Math.floor(summaryStats.billableHours)}h ${Math.round((summaryStats.billableHours % 1) * 60)}m`
+                        : card.title === 'Hours Today'
+                          ? `${Math.floor(summaryStats.hoursToday)}h ${Math.round((summaryStats.hoursToday % 1) * 60)}m`
+                          : card.title === 'Hours This Week'
+                            ? `${Math.floor(summaryStats.hoursWeek)}h ${Math.round((summaryStats.hoursWeek % 1) * 60)}m`
+                            : card.title === 'Hours This Month'
+                              ? `${Math.floor(summaryStats.hoursMonth)}h ${Math.round((summaryStats.hoursMonth % 1) * 60)}m`
+                              : `${card.value}h`
+                      }
+                    </div>
                     <div className="flex items-center gap-1 text-xs">
                       {getPercentageIcon(card.percentage, index)}
                       <span className={getPercentageColor(card.percentage, index)}>
-                        {card.percentage > 0 ? '+' : ''}
-                        {card.percentage}% from last period
+                        {card.title === 'Billable Hours'
+                          ? `${Math.round(summaryStats.billableRate)}% billable rate`
+                          : card.percentage > 0 ? '+' : ''
+                        }
+                        {card.title !== 'Billable Hours' && card.percentage}% from last period
                       </span>
                     </div>
                   </CardContent>
@@ -345,7 +419,10 @@ export default function EmployeeDashboard() {
                   <CardDescription>Your logged hours over the week</CardDescription>
                 </CardHeader>
                 <CardContent className="pl-2">
-                  <EmployeeHoursChart data={dashboardData.weekDistribution} />
+                  <EmployeeHoursChart data={dashboardData?.weekDistribution?.map(d => ({
+                    day: d.day.toString(),
+                    hours: d.hours.toString()
+                  })) || []} />
                 </CardContent>
               </Card>
             </MotionBlock>

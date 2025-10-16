@@ -17,6 +17,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { BASE_URL, getImage, updateCompany } from "@/services/api"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import dynamic from "next/dynamic"
+import "react-phone-input-2/lib/style.css"
+import { Camera, Image, Smartphone, X } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Slider } from "@/components/ui/slider"
+import Cropper from "react-easy-crop"
+import { useState as useCropState } from "react"
+
+const PhoneInput = dynamic(() => import("react-phone-input-2"), { ssr: false })
 
 interface PasswordFormData {
   currentPassword: string;
@@ -175,7 +184,21 @@ export default function SettingsPage() {
   const [showTimeLogAttachments, setShowTimeLogAttachments] = useState(true);
   const [showTimeLogUrls, setShowTimeLogUrls] = useState(true);
   const [showTimeLogProjects, setShowTimeLogProjects] = useState(true);
-  const [enableSaveAndAddAnother, setEnableSaveAndAddAnother] = useState(false);
+  const [enableStayOnForm, setEnableStayOnForm] = useState(false);
+
+  // Image cropper states
+  const [showCropperModal, setShowCropperModal] = useState(false);
+  const [cropImage, setCropImage] = useState<string>("");
+  const [crop, setCrop] = useCropState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useCropState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useCropState(null);
+
+  // Camera/Device selection modal states
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isStartingCamera, setIsStartingCamera] = useState(false);
 
   // Helper function to get department name by ID
   const getDepartmentNameById = (departmentId: string): string => {
@@ -276,6 +299,23 @@ export default function SettingsPage() {
     loadUserDataAndDepartments();
   }, [router]);
 
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  // Handle video element setup when camera stream is available
+  useEffect(() => {
+    if (cameraStream && videoRef) {
+      videoRef.srcObject = cameraStream;
+      videoRef.play().catch(console.error);
+    }
+  }, [cameraStream, videoRef]);
+
   // Load company info for Company Admin and user preferences
   useEffect(() => {
     if (userRole === "Company Admin" && user?.company) {
@@ -306,9 +346,9 @@ export default function SettingsPage() {
       setShowTimeLogProjects(JSON.parse(savedProjectsPreference));
     }
 
-    const savedSaveAndAddAnotherPreference = localStorage.getItem("enableSaveAndAddAnother");
-    if (savedSaveAndAddAnotherPreference !== null) {
-      setEnableSaveAndAddAnother(JSON.parse(savedSaveAndAddAnotherPreference));
+    const savedStayOnFormPreference = localStorage.getItem("enableStayOnForm");
+    if (savedStayOnFormPreference !== null) {
+      setEnableStayOnForm(JSON.parse(savedStayOnFormPreference));
     }
   }, [userRole, user]);
 
@@ -388,14 +428,15 @@ export default function SettingsPage() {
     }
   };
 
-  // Avatar select handler: preview image but don't upload yet
+  // Avatar select handler: show cropper modal
   const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setSelectedAvatarFile(file);
+
     const reader = new FileReader();
     reader.onloadend = () => {
-      setAvatarPreview(reader.result as string);
+      setCropImage(reader.result as string);
+      setShowCropperModal(true);
     };
     reader.readAsDataURL(file);
   };
@@ -410,6 +451,135 @@ export default function SettingsPage() {
       setCompanyLogo(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  // Cropper functions
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const createCroppedImage = async (imageSrc: string, pixelCrop: any): Promise<string> => {
+    return new Promise((resolve) => {
+      const image = document.createElement('img');
+      image.crossOrigin = 'anonymous';
+
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = pixelCrop.width;
+        canvas.height = pixelCrop.height;
+
+        ctx?.drawImage(
+          image,
+          pixelCrop.x,
+          pixelCrop.y,
+          pixelCrop.width,
+          pixelCrop.height,
+          0,
+          0,
+          pixelCrop.width,
+          pixelCrop.height
+        );
+
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      image.src = imageSrc;
+    });
+  };
+
+  const handleCropComplete = async () => {
+    if (!croppedAreaPixels) return;
+
+    try {
+      const croppedImageUrl = await createCroppedImage(cropImage, croppedAreaPixels);
+      setAvatarPreview(croppedImageUrl);
+      setSelectedAvatarFile(null); // We'll create a new file from the cropped image
+      setShowCropperModal(false);
+      setCropImage("");
+
+      // Convert cropped image to file
+      const response = await fetch(croppedImageUrl);
+      const blob = await response.blob();
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      setSelectedAvatarFile(file);
+
+      toast.success("Avatar cropped successfully!");
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      toast.error("Failed to crop image");
+    }
+  };
+
+  const handleCancelCrop = () => {
+    setShowCropperModal(false);
+    setCropImage("");
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+  };
+
+  // Camera functionality
+  const startCamera = async () => {
+    setIsStartingCamera(true);
+    try {
+      // Request camera with more flexible constraints
+      const constraints = {
+        video: {
+          facingMode: { ideal: 'user' },
+          width: { min: 320, ideal: 640, max: 1280 },
+          height: { min: 240, ideal: 480, max: 720 }
+        }
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setCameraStream(stream);
+
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      toast.error("Unable to access camera", {
+        description: "Please check your camera permissions or try selecting from device instead."
+      });
+    } finally {
+      setIsStartingCamera(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef) return;
+
+    setIsCapturing(true);
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = videoRef.videoWidth;
+    canvas.height = videoRef.videoHeight;
+
+    context?.drawImage(videoRef, 0, 0);
+
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    setCropImage(imageDataUrl);
+    setShowCameraModal(false);
+    setShowCropperModal(true);
+    stopCamera();
+    setIsCapturing(false);
+  };
+
+  const handleDeviceSelection = () => {
+    setShowCameraModal(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleCloseCameraModal = () => {
+    setShowCameraModal(false);
+    stopCamera();
   };
 
   const handleProfileUpdate = async () => {
@@ -696,12 +866,14 @@ export default function SettingsPage() {
     });
   };
 
-  // Handle save and add another functionality preference
-  const handleSaveAndAddAnotherChange = (enabled: boolean) => {
-    setEnableSaveAndAddAnother(enabled);
-    localStorage.setItem("enableSaveAndAddAnother", JSON.stringify(enabled));
-    toast.success(`Save and Add Another ${enabled ? 'enabled' : 'disabled'}`, {
-      description: `The "Save and Add Another" button will now be ${enabled ? 'visible' : 'hidden'} when creating time logs.`,
+  // Handle stay on form preference
+  const handleStayOnFormChange = (enabled: boolean) => {
+    setEnableStayOnForm(enabled);
+    localStorage.setItem("enableStayOnForm", JSON.stringify(enabled));
+    toast.success(`Stay on form ${enabled ? 'enabled' : 'disabled'}`, {
+      description: enabled
+        ? "After creating a time log, the form will clear and stay open for logging more entries."
+        : "After creating a time log, you'll be redirected to the Time Logs list.",
     });
   };
 
@@ -757,20 +929,21 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {[...Array(6)].map((_, i) => (
+                {/* WhatsApp-style Avatar Skeleton */}
+                <div className="flex flex-col items-center mb-8">
+                  <div className="relative">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                    <Skeleton className="absolute bottom-0 right-0 h-10 w-10 rounded-full" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {[...Array(5)].map((_, i) => (
                     <div key={i}>
                       <Skeleton className="h-4 w-24 mb-2" />
                       <Skeleton className="h-10 w-full" />
                     </div>
                   ))}
-                  <div className="col-span-1">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-12 w-12 rounded-full" />
-                      <Skeleton className="h-10 w-32" />
-                    </div>
-                  </div>
                 </div>
               </CardContent>
               <CardFooter>
@@ -879,7 +1052,39 @@ export default function SettingsPage() {
               <CardDescription>Update your profile information</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* WhatsApp-style Avatar Section */}
+              <div className="flex flex-col items-center mb-8">
+                <div className="relative">
+                  <Avatar className="w-32 h-32">
+                    <AvatarImage src={avatarPreview || user?.profileImage || ""} alt={user?.fullName || "User Avatar"} />
+                    <AvatarFallback className="text-2xl">
+                      {user?.fullName
+                        ? user.fullName
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")
+                        : "UA"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    size="sm"
+                    className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary hover:bg-primary/90 p-0"
+                    onClick={() => setShowCameraModal(true)}
+                    disabled={isUpdatingProfile}
+                  >
+                    <Camera className="w-4 h-4" />
+                  </Button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleAvatarSelect}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 {userRole === "Consultant" ? (
                   <>
                     <div>
@@ -908,14 +1113,20 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <Label htmlFor="phoneNumber">Phone Number</Label>
-                      <Input
-                        id="phoneNumber"
-                        value={profileForm.phoneNumber || ""}
-                        onChange={e => handleProfileChange("phoneNumber", e.target.value)}
-                        placeholder="Enter your phone number"
-                        disabled={isUpdatingProfile}
-                        className={profileErrors.phoneNumber ? "border-red-500" : ""}
-                      />
+                      <div className="w-full">
+                        <PhoneInput
+                          country={"us"}
+                          value={profileForm.phoneNumber || ""}
+                          onChange={(value) => handleProfileChange("phoneNumber", value)}
+                          inputProps={{ name: "phoneNumber", required: false, autoFocus: false }}
+                          inputClass="w-full !w-full h-10 !h-10 !pl-12 !pr-3 !rounded-md !border !border-input !bg-transparent !text-base !focus:outline-none !focus:ring-2 !focus:ring-ring !focus:ring-offset-2 !dark:!text-white !text-[#181c32]"
+                          buttonClass="!border-none !bg-transparent"
+                          dropdownClass="!bg-background dark:!bg-[#23272f] !text-base custom-phone-dropdown-shadow"
+                          enableSearch
+                          disableSearchIcon={false}
+                          specialLabel=""
+                        />
+                      </div>
                       {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
                     </div>
                     <div>
@@ -929,46 +1140,6 @@ export default function SettingsPage() {
                         className={`${profileErrors.bio ? "border-red-500" : ""} bg-transparent`}
                       />
                       {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
-                    </div>
-                    <div className="col-span-1">
-                      <Label>Avatar</Label>
-                      <div className="flex items-center">
-                        <Avatar>
-                          <AvatarImage src={avatarPreview || user?.profileImage || ""} alt={user?.fullName || "User Avatar"} />
-                          <AvatarFallback>
-                            {user?.fullName
-                              ? user.fullName
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")
-                              : "UA"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <Button
-                          variant="outline"
-                          className="ml-4"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUpdatingProfile}
-                        >
-                          {selectedAvatarFile ? "Change Selected" : "Change Avatar"}
-                        </Button>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={fileInputRef}
-                          onChange={handleAvatarSelect}
-                          className="hidden"
-                        />
-                        {avatarPreview && (
-                          <Button
-                            variant="ghost"
-                            className="ml-2 text-xs text-red-500"
-                            onClick={() => { setAvatarPreview(null); setSelectedAvatarFile(null); }}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </>
                 ) : (
@@ -1012,14 +1183,20 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <Label htmlFor="phoneNumber">Phone Number</Label>
-                      <Input
-                        id="phoneNumber"
-                        value={profileForm.phoneNumber || ""}
-                        onChange={e => handleProfileChange("phoneNumber", e.target.value)}
-                        placeholder="Enter your phone number"
-                        disabled={isUpdatingProfile}
-                        className={profileErrors.phoneNumber ? "border-red-500" : ""}
-                      />
+                      <div className="w-full">
+                        <PhoneInput
+                          country={"us"}
+                          value={profileForm.phoneNumber || ""}
+                          onChange={(value) => handleProfileChange("phoneNumber", value)}
+                          inputProps={{ name: "phoneNumber", required: false, autoFocus: false }}
+                          inputClass="w-full !w-full h-10 !h-10 !pl-12 !pr-3 !rounded-md !border !border-input !bg-transparent !text-base !focus:outline-none !focus:ring-2 !focus:ring-ring !focus:ring-offset-2 !dark:!text-white !text-[#181c32]"
+                          buttonClass="!border-none !bg-transparent"
+                          dropdownClass="!bg-background dark:!bg-[#23272f] !text-base custom-phone-dropdown-shadow"
+                          enableSearch
+                          disableSearchIcon={false}
+                          specialLabel=""
+                        />
+                      </div>
                       {profileErrors.phoneNumber && <p className="text-red-500 text-sm">{profileErrors.phoneNumber}</p>}
                     </div>
                     <div>
@@ -1045,46 +1222,6 @@ export default function SettingsPage() {
                         className={profileErrors.bio ? "border-red-500" : ""}
                       />
                       {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
-                    </div>
-                    <div className="col-span-1">
-                      <Label>Avatar</Label>
-                      <div className="flex items-center">
-                        <Avatar>
-                          <AvatarImage src={avatarPreview || user?.profileImage || ""} alt={user?.fullName || "User Avatar"} />
-                          <AvatarFallback>
-                            {user?.fullName
-                              ? user.fullName
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")
-                              : "UA"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <Button
-                          variant="outline"
-                          className="ml-4"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUpdatingProfile}
-                        >
-                          {selectedAvatarFile ? "Change Selected" : "Change Avatar"}
-                        </Button>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={fileInputRef}
-                          onChange={handleAvatarSelect}
-                          className="hidden"
-                        />
-                        {avatarPreview && (
-                          <Button
-                            variant="ghost"
-                            className="ml-2 text-xs text-red-500"
-                            onClick={() => { setAvatarPreview(null); setSelectedAvatarFile(null); }}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </>
                 )}
@@ -1135,20 +1272,20 @@ export default function SettingsPage() {
 
                 <Separator />
 
-                {/* Save and Add Another Functionality */}
+                {/* Stay on Form After Creating Time Log */}
                 <div className="flex items-center justify-between">
                   <div className="md:max-w-[90%] max-w-[70%]">
-                    <label htmlFor="enableSaveAndAddAnother" className="text-base font-medium select-none">
-                      Enable "Save and Add Another" functionality
+                    <label htmlFor="enableStayOnForm" className="text-base font-medium select-none">
+                      Stay on form to log more entries
                     </label>
                     <span className="opacity-60 text-sm block mt-1">
-                      When enabled, you'll see both "Create Time Entry" and "Save and Add Another" buttons when creating time logs.
+                      When enabled, the form will clear and stay open after creating a time log, allowing you to quickly log multiple entries. When disabled, you'll be redirected to the Time Logs list (default).
                     </span>
                   </div>
                   <Switch
-                    id="enableSaveAndAddAnother"
-                    checked={enableSaveAndAddAnother}
-                    onCheckedChange={handleSaveAndAddAnotherChange}
+                    id="enableStayOnForm"
+                    checked={enableStayOnForm}
+                    onCheckedChange={handleStayOnFormChange}
                     className="ml-4"
                   />
                 </div>
@@ -1368,6 +1505,160 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Camera/Device Selection Modal */}
+      <Dialog open={showCameraModal} onOpenChange={handleCloseCameraModal}>
+        <DialogContent className="sm:max-w-md  max-w-[90vw] m-auto">
+          <DialogHeader>
+            <DialogTitle>Choose Photo Source</DialogTitle>
+          </DialogHeader>
+
+          {!cameraStream ? (
+            <div className="flex flex-col  gap-4 py-4">
+              <Button
+                onClick={startCamera}
+                className="flex items-center justify-center gap-3 h-12 text-base"
+                variant="outline"
+                disabled={isStartingCamera}
+              >
+                <Camera className="w-5 h-5" />
+                {isStartingCamera ? "Starting Camera..." : "Take Photo with Camera"}
+              </Button>
+              <Button
+                onClick={handleDeviceSelection}
+                className="flex items-center justify-center gap-3 h-12 text-base"
+                variant="outline"
+              >
+                <Image className="w-5 h-5" />
+                Choose from Device
+              </Button>
+              <Button
+                onClick={handleCloseCameraModal}
+                className="flex items-center justify-center gap-3 h-12 text-base"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video
+                  ref={setVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-64 object-cover"
+                  onLoadedMetadata={() => {
+                    if (videoRef) {
+                      videoRef.play().catch(console.error);
+                    }
+                  }}
+                  onCanPlay={() => {
+                    if (videoRef) {
+                      videoRef.play().catch(console.error);
+                    }
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-32 h-32 border-2 border-white border-dashed rounded-full opacity-50"></div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={capturePhoto}
+                  disabled={isCapturing}
+                  className="flex-1"
+                >
+                  {isCapturing ? "Capturing..." : "Capture Photo"}
+                </Button>
+                <Button
+                  onClick={stopCamera}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Cropper Modal */}
+      <Dialog open={showCropperModal} onOpenChange={setShowCropperModal}>
+        <DialogContent className="sm:max-w-2xl max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Crop Your Avatar</DialogTitle>
+          </DialogHeader>
+          <div className="relative h-96 w-full">
+            <Cropper
+              image={cropImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+              showGrid={true}
+              style={{
+                containerStyle: {
+                  width: "100%",
+                  height: "100%",
+                  position: "relative",
+                },
+              }}
+            />
+          </div>
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium min-w-[60px]">Zoom:</label>
+            <div className="flex-1">
+              <Slider
+                value={[zoom]}
+                onValueChange={(value) => setZoom(value[0])}
+                min={1}
+                max={3}
+                step={0.1}
+                className="w-full"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground min-w-[40px] text-right">
+              {zoom.toFixed(1)}x
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 sm:gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCropperModal(false);
+                  setCropImage("");
+                  // Trigger file input again
+                  setTimeout(() => {
+                    fileInputRef.current?.click();
+                  }, 100);
+                }}
+                className="w-full sm:w-auto"
+              >
+                Select Another
+              </Button>
+              <Button
+                onClick={handleCropComplete}
+                className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+              >
+                Confirm
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleCancelCrop}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

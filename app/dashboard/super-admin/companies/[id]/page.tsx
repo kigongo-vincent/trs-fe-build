@@ -27,12 +27,17 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     setLoading(true)
     Promise.all([
       fetchCompanyById(companyId),
-      getAllConsultants(companyId),
+      getAllConsultants(),
       getCompanySummary(companyId)
     ])
       .then(([companyData, consultantsData, summaryData]) => {
         setCompany(companyData.data)
-        setConsultants(consultantsData.data)
+        // Handle both paginated and non-paginated responses
+        if (consultantsData.data && consultantsData.data.items) {
+          setConsultants(consultantsData.data.items)
+        } else {
+          setConsultants(consultantsData.data || [])
+        }
         setSummary((summaryData as any).data)
         setLoading(false)
       })

@@ -35,11 +35,15 @@ export default function CreateDepartmentPage() {
                     return
                 }
 
-                const companyId = authData.user.company.id
-                const response = await getAllConsultants(companyId)
+                const response = await getAllConsultants()
 
                 if (response.status === 200) {
-                    setConsultants(response.data)
+                    // Handle both paginated and non-paginated responses
+                    if (response.data && response.data.items) {
+                        setConsultants(response.data.items)
+                    } else {
+                        setConsultants(response.data || [])
+                    }
                 } else {
                     toast.error("Failed to fetch consultants")
                 }
@@ -123,7 +127,7 @@ export default function CreateDepartmentPage() {
                 >
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <h1 className="font-medium tracking-tight text-base">Create New Department</h1> 
+                <h1 className="font-medium tracking-tight text-base">Create New Department</h1>
             </div>
 
             <Card className="max-w-2xl">

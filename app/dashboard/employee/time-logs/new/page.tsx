@@ -49,7 +49,7 @@ export default function NewTimeLogPage() {
   const [showAttachments, setShowAttachments] = useState(true)
   const [showUrls, setShowUrls] = useState(true)
   const [showProjects, setShowProjects] = useState(true)
-  const [enableSaveAndAddAnother, setEnableSaveAndAddAnother] = useState(false)
+  const [enableStayOnForm, setEnableStayOnForm] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -81,9 +81,9 @@ export default function NewTimeLogPage() {
       setShowProjects(JSON.parse(savedProjectsPreference))
     }
 
-    const savedSaveAndAddAnotherPreference = localStorage.getItem("enableSaveAndAddAnother")
-    if (savedSaveAndAddAnotherPreference !== null) {
-      setEnableSaveAndAddAnother(JSON.parse(savedSaveAndAddAnotherPreference))
+    const savedStayOnFormPreference = localStorage.getItem("enableStayOnForm")
+    if (savedStayOnFormPreference !== null) {
+      setEnableStayOnForm(JSON.parse(savedStayOnFormPreference))
     }
 
     const fetchProjects = async () => {
@@ -192,7 +192,7 @@ export default function NewTimeLogPage() {
     setCurrentStep(1)
   }
 
-  const handleSubmit = async (action: 'create' | 'save-and-add' = 'create') => {
+  const handleSubmit = async () => {
     // Final validation
     for (let step = 1; step <= 4; step++) {
       const error = getStepError(step)
@@ -242,12 +242,11 @@ export default function NewTimeLogPage() {
 
       const response = await postRequest("/consultants/time-logs", payload);
       if ((response as { status: number }).status === 201) {
-        if (action === 'create') {
-          toast.success("Time log created successfully!");
-          router.push("/dashboard/employee");
-        } else {
-          toast.success("Time log saved! Form cleared for new entry.");
+        toast.success("Time log created successfully!");
+        if (enableStayOnForm) {
           resetForm();
+        } else {
+          router.push("/dashboard/employee/time-logs");
         }
       } else {
         toast.error("Failed to create time log");
@@ -818,80 +817,11 @@ export default function NewTimeLogPage() {
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleSubmit('create')}
-                      disabled={isSubmitting}
-                      type="button"
-                      className="gradient"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        "Submit"
-                      )}
-                    </Button>
-                    {enableSaveAndAddAnother && (
-                      <Button
-                        onClick={() => handleSubmit('save-and-add')}
-                        disabled={isSubmitting}
-                        type="button"
-                        variant="outline"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          "Save and Add Another"
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              // Full form interface - conditional submit buttons
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    const error = validateFullForm()
-                    if (error) {
-                      toast.error(error)
-                      return
-                    }
-                    handleSubmit('create')
-                  }}
-                  disabled={isSubmitting}
-                  type="button"
-                  className="gradient"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </Button>
-                {enableSaveAndAddAnother && (
                   <Button
-                    onClick={() => {
-                      const error = validateFullForm()
-                      if (error) {
-                        toast.error(error)
-                        return
-                      }
-                      handleSubmit('save-and-add')
-                    }}
+                    onClick={handleSubmit}
                     disabled={isSubmitting}
                     type="button"
-                    variant="outline"
+                    className="gradient"
                   >
                     {isSubmitting ? (
                       <>
@@ -899,11 +829,35 @@ export default function NewTimeLogPage() {
                         Saving...
                       </>
                     ) : (
-                      "Save and Add Another"
+                      "Create Time Log"
                     )}
                   </Button>
                 )}
-              </div>
+              </>
+            ) : (
+              // Full form interface - single submit button
+              <Button
+                onClick={() => {
+                  const error = validateFullForm()
+                  if (error) {
+                    toast.error(error)
+                    return
+                  }
+                  handleSubmit()
+                }}
+                disabled={isSubmitting}
+                type="button"
+                className="gradient"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Create Time Log"
+                )}
+              </Button>
             )}
           </div>
         </CardFooter>

@@ -59,6 +59,23 @@ interface ConsultantsResponse {
   data: Consultant[];
 }
 
+// Paginated consultants response interface
+export interface PaginatedConsultantsResponse {
+  status: number;
+  message: string;
+  data: {
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    items: Consultant[];
+  };
+}
+
 export interface DepartmentSummary {
   id: string;
   name: string;
@@ -198,6 +215,33 @@ export const getAllConsultants = async (): Promise<ConsultantsResponse> => {
   return getRequest<ConsultantsResponse>(
     `/company/consultants/all/${companyId}`
   );
+};
+
+// Paginated consultants with configuration options
+export const getConsultantsPaginated = async (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  departmentId?: string;
+  status?: string;
+}): Promise<PaginatedConsultantsResponse> => {
+  const companyId = getAuthUser()?.company?.id;
+
+  // Build query parameters
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.limit) queryParams.append("limit", params.limit.toString());
+  if (params?.search) queryParams.append("search", params.search);
+  if (params?.departmentId)
+    queryParams.append("departmentId", params.departmentId);
+  if (params?.status) queryParams.append("status", params.status);
+
+  const queryString = queryParams.toString();
+  const url = `/company/consultants/all/${companyId}${
+    queryString ? `?${queryString}` : ""
+  }`;
+
+  return getRequest<PaginatedConsultantsResponse>(url);
 };
 
 export const getConsultantsSummary =

@@ -97,7 +97,11 @@ export default function CompletedTasksPage() {
         setIsTimeLogsLoading(true)
         const startDate = formatDateForAPI(dateRange.from)
         const endDate = formatDateForAPI(dateRange.to)
-        const data = await fetchEmployeeTimeLogsByRange(startDate, endDate)
+        const data = await fetchEmployeeTimeLogsWithFilters({
+          startDate,
+          endDate,
+          status: "active" // Only show completed/active tasks, exclude drafts
+        })
         setTimeLogs(data)
       } catch (err) {
         console.error("Error loading time logs:", err)
@@ -121,10 +125,12 @@ export default function CompletedTasksPage() {
         search: searchTerm,
         startDate,
         endDate,
-        status: statusFilter,
+        status: "active", // Only show completed/active tasks, exclude drafts
         project: projectFilter,
       })
-      setFilteredTimeLogs(logs)
+      // Apply client-side filtering as backup protection
+      const filteredLogs = filterOutDrafts(logs)
+      setFilteredTimeLogs(filteredLogs)
     } catch (err) {
       setError("Failed to search time logs. Please try again.")
     } finally {
@@ -132,9 +138,15 @@ export default function CompletedTasksPage() {
     }
   }
 
-  // Initial load: set filteredTimeLogs to all timeLogs
+  // Client-side filter to exclude drafts (backup protection)
+  const filterOutDrafts = (logs: TimeLog[]) => {
+    return logs.filter(log => log.status !== 'draft')
+  }
+
+  // Initial load: set filteredTimeLogs to all timeLogs (excluding drafts)
   useEffect(() => {
-    setFilteredTimeLogs(timeLogs)
+    const filteredLogs = filterOutDrafts(timeLogs)
+    setFilteredTimeLogs(filteredLogs)
   }, [timeLogs])
 
   const handleViewTask = (task: TimeLog) => {
@@ -429,15 +441,22 @@ export default function CompletedTasksPage() {
                   const startDate = formatDateForAPI(dateRange.from)
                   const endDate = formatDateForAPI(dateRange.to)
                   if (id === "all") {
-                    logs = await fetchEmployeeTimeLogsByRange(startDate, endDate)
+                    logs = await fetchEmployeeTimeLogsWithFilters({
+                      startDate,
+                      endDate,
+                      status: "active" // Only show completed/active tasks, exclude drafts
+                    })
                   } else {
                     logs = await fetchEmployeeTimeLogsWithFilters({
                       project: id,
                       startDate,
                       endDate,
+                      status: "active" // Only show completed/active tasks, exclude drafts
                     })
                   }
-                  setFilteredTimeLogs(logs)
+                  // Apply client-side filtering as backup protection
+                  const filteredLogs = filterOutDrafts(logs)
+                  setFilteredTimeLogs(filteredLogs)
                 } catch (err) {
                   setError("Failed to filter by project. Please try again.")
                 } finally {

@@ -146,8 +146,13 @@ export function EditProjectDialog({ open, onOpenChange, project, onSuccess }: Ed
                 return
             }
 
-            const response = await getAllConsultants(authData.user.company.id)
-            setUsers(response.data || [])
+            const response = await getAllConsultants()
+            // Handle both paginated and non-paginated responses
+            if (response.data && response.data.items) {
+                setUsers(response.data.items || [])
+            } else {
+                setUsers(response.data || [])
+            }
         } catch (error) {
             console.error("Failed to fetch users:", error)
             toast.error("Failed to load users")

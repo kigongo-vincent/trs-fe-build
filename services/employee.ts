@@ -461,11 +461,11 @@ export function formatWeekLabel(startDate: string, endDate: string): string {
   }
 }
 
-// Helper function to get default date range (30 days)
+// Helper function to get default date range (today to tomorrow)
 export function getDefaultDateRange(): { startDate: string; endDate: string } {
-  const endDate = new Date();
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 30);
+  const endDate = new Date();
+  endDate.setDate(endDate.getDate() + 1);
 
   return {
     startDate: startDate.toISOString().split("T")[0],

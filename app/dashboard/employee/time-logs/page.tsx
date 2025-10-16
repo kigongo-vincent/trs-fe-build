@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Filter, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight, RefreshCcw } from "lucide-react"
+import { CalendarIcon, Clock, Download, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight, RefreshCcw, FileEdit } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
@@ -54,6 +54,8 @@ export default function TimeLogsPage() {
       hoursMonth: 0,
       billableHours: 0,
       billableRate: 0,
+      draftCount: 0,
+      draftHours: 0,
     }
   })
   const [publishDialogOpen, setPublishDialogOpen] = useState(false)
@@ -61,8 +63,15 @@ export default function TimeLogsPage() {
   const [isPublishing, setIsPublishing] = useState(false)
   const [publishAllDialogOpen, setPublishAllDialogOpen] = useState(false)
   const [isPublishingAll, setIsPublishingAll] = useState(false)
-  const [startDate, setStartDate] = useState<string>("")
-  const [endDate, setEndDate] = useState<string>("")
+  const [startDate, setStartDate] = useState<string>(() => {
+    const today = new Date()
+    return today.toISOString().split("T")[0]
+  })
+  const [endDate, setEndDate] = useState<string>(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return tomorrow.toISOString().split("T")[0]
+  })
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isFiltering, setIsFiltering] = useState(false)
   const user = getAuthUser()
@@ -96,7 +105,13 @@ export default function TimeLogsPage() {
         setLoading(true)
         setError(null)
         try {
-          const data = await fetchEmployeeTimeLogs()
+          const filters = {
+            startDate,
+            endDate,
+            status: statusFilter,
+            projectId: undefined
+          }
+          const data = await fetchEmployeeTimeLogsWithFilters(filters)
           setTimeLogs(data)
         } catch (err) {
           setError("Failed to load time logs. Please try again.")
@@ -110,6 +125,9 @@ export default function TimeLogsPage() {
         setError(null)
         try {
           const filters = {
+            startDate,
+            endDate,
+            status: statusFilter,
             projectId: projectFilter
           }
           const data = await fetchEmployeeTimeLogsWithFilters(filters)
@@ -121,44 +139,29 @@ export default function TimeLogsPage() {
         }
       })()
     }
-  }, [projectFilter])
-
-  // Fetch time logs data
-  useEffect(() => {
-    const loadTimeLogs = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await fetchEmployeeTimeLogs()
-        setTimeLogs(data)
-      } catch (err) {
-        console.error("Error loading time logs:", err)
-        setError("Failed to load time logs. Please try again.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadTimeLogs()
-  }, [])
-
-  // Apply filters function
-  const handleApplyFilters = async () => {
-    await fetchTimeLogsWithFilters()
-  }
+  }, [projectFilter, startDate, endDate, statusFilter])
 
   // Reset filters function
   const handleResetFilters = async () => {
     setSearchTerm("")
     setStatusFilter("all")
     setProjectFilter("all")
-    setStartDate("")
-    setEndDate("")
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    setStartDate(today.toISOString().split("T")[0])
+    setEndDate(tomorrow.toISOString().split("T")[0])
 
     try {
       setLoading(true)
       setError(null)
-      const data = await fetchEmployeeTimeLogs()
+      const filters = {
+        startDate: today.toISOString().split("T")[0],
+        endDate: tomorrow.toISOString().split("T")[0],
+        status: "all",
+        projectId: undefined
+      }
+      const data = await fetchEmployeeTimeLogsWithFilters(filters)
       setTimeLogs(data)
     } catch (err) {
       console.error("Error loading time logs:", err)
@@ -197,6 +200,8 @@ export default function TimeLogsPage() {
     let hoursWeek = 0
     let hoursMonth = 0
     let billableHours = 0
+    let draftCount = 0
+    let draftHours = 0
 
     timeLogs.forEach((log) => {
       const logDate = new Date(log.createdAt)
@@ -214,6 +219,10 @@ export default function TimeLogsPage() {
       if (log.status === "active") {
         billableHours += duration
       }
+      if (log.status === "draft") {
+        draftCount += 1
+        draftHours += duration
+      }
     })
 
     setSummaryStats({
@@ -222,6 +231,8 @@ export default function TimeLogsPage() {
       hoursMonth: hoursMonth / 60,
       billableHours: billableHours / 60,
       billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
+      draftCount: draftCount,
+      draftHours: draftHours / 60,
     })
   }, [timeLogs])
 
@@ -700,20 +711,19 @@ export default function TimeLogsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                handleApplyFilters()
+                fetchTimeLogsWithFilters()
               }
             }}
             placeholder="Search for your tasks..." type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
-          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={handleApplyFilters}>
+          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={() => fetchTimeLogsWithFilters()}>
             {isFiltering ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+                <span className="sr-only md:not-sr-only md:ml-2">Searching...</span>
               </>
             ) : (
               <>
                 <Search className="h-4 w-4" />
-
               </>
             )}
           </Button>
@@ -728,7 +738,7 @@ export default function TimeLogsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-normal">Hours Today</CardTitle>
@@ -742,7 +752,9 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursToday.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">
+                  {Math.floor(summaryStats.hoursToday)}h {Math.round((summaryStats.hoursToday % 1) * 60)}m
+                </div>
                 <p className="text-xs text-muted-foreground">
                   of {user?.totalHoursPerMonth / 20} hours ({Math.round((summaryStats.hoursToday / user?.totalHoursPerMonth / 20) * 100)}%)
                 </p>
@@ -763,7 +775,9 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursWeek.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">
+                  {Math.floor(summaryStats.hoursWeek)}h {Math.round((summaryStats.hoursWeek % 1) * 60)}m
+                </div>
                 <p className="text-xs text-muted-foreground">
                   of {user?.totalHoursPerMonth / 4} hours ({Math.round((summaryStats.hoursWeek / user?.totalHoursPerMonth / 4) * 100)}%)
                 </p>
@@ -784,7 +798,9 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-semibold text-primary">{summaryStats.hoursMonth.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">
+                  {Math.floor(summaryStats.hoursMonth)}h {Math.round((summaryStats.hoursMonth % 1) * 60)}m
+                </div>
                 <p className="text-xs text-muted-foreground">
                   of {user?.totalHoursPerMonth} hours ({Math.round((summaryStats.hoursMonth / user?.totalHoursPerMonth) * 100)}%)
                 </p>
@@ -805,8 +821,31 @@ export default function TimeLogsPage() {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-semibold text-primary">{summaryStats.billableHours.toFixed(1)}</div>
+                <div className="text-2xl font-semibold text-primary">
+                  {Math.floor(summaryStats.billableHours)}h {Math.round((summaryStats.billableHours % 1) * 60)}m
+                </div>
                 <p className="text-xs text-muted-foreground">{Math.round(summaryStats.billableRate)}% billable rate</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-normal">Draft Logs</CardTitle>
+            <FileEdit className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-semibold text-primary">{summaryStats.draftCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  {Math.floor(summaryStats.draftHours)}h {Math.round((summaryStats.draftHours % 1) * 60)}m pending
+                </p>
               </>
             )}
           </CardContent>
@@ -890,25 +929,6 @@ export default function TimeLogsPage() {
               onChange={e => setEndDate(e.target.value)}
             />
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 bg-transparent"
-              onClick={handleApplyFilters}
-              disabled={isFiltering}
-            >
-              {isFiltering ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Applying...
-                </>
-              ) : (
-                <>
-                  <Filter className="h-4 w-4" />
-                  Apply Filters
-                </>
-              )}
-            </Button>
           </div>
 
         </div>
