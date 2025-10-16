@@ -82,11 +82,6 @@ export function storeAuthData(token: string, user: any): void {
   if (typeof window !== "undefined") {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
-    // Set cookies for middleware access
-    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}`;
-    document.cookie = `user=${encodeURIComponent(
-      JSON.stringify(user)
-    )}; path=/; max-age=${60 * 60 * 24 * 7}`;
   }
 }
 
