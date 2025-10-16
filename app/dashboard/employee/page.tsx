@@ -168,16 +168,16 @@ export default function EmployeeDashboard() {
   const hoursMonthCount = Math.floor(summaryStats.hoursMonth)
   const billableHoursCount = Math.floor(summaryStats.billableHours)
 
-  // Simple percentage calculations (could be enhanced with historical data)
-  const hoursTodayPercentage = 0 // Could calculate vs yesterday
-  const hoursWeekPercentage = 0 // Could calculate vs last week
-  const hoursMonthPercentage = 0 // Could calculate vs last month
+  // Calculate percentages based on expected hours
+  const expectedHoursToday = 8 // 8 hours per day
+  const expectedHoursWeek = 40 // 40 hours per week
+  const expectedHoursMonth = 160 // 160 hours per month (4 weeks * 40 hours)
+
+  const hoursTodayPercentage = expectedHoursToday > 0 ? Math.round((summaryStats.hoursToday / expectedHoursToday) * 100) : 0
+  const hoursWeekPercentage = expectedHoursWeek > 0 ? Math.round((summaryStats.hoursWeek / expectedHoursWeek) * 100) : 0
+  const hoursMonthPercentage = expectedHoursMonth > 0 ? Math.round((summaryStats.hoursMonth / expectedHoursMonth) * 100) : 0
   const billableRatePercentage = Math.round(summaryStats.billableRate)
 
-  // Debug output
-  if (typeof window !== 'undefined') {
-
-  }
 
 
 
@@ -339,9 +339,14 @@ export default function EmployeeDashboard() {
                       <span className={getPercentageColor(card.percentage, index)}>
                         {card.title === 'Billable Hours'
                           ? `${Math.round(summaryStats.billableRate)}% billable rate`
-                          : card.percentage > 0 ? '+' : ''
+                          : card.title === 'Hours Today'
+                            ? `of ${expectedHoursToday} hours (${hoursTodayPercentage}%)`
+                            : card.title === 'Hours This Week'
+                              ? `of ${expectedHoursWeek} hours (${hoursWeekPercentage}%)`
+                              : card.title === 'Hours This Month'
+                                ? `of ${expectedHoursMonth} hours (${hoursMonthPercentage}%)`
+                                : `${card.percentage}% from last period`
                         }
-                        {card.title !== 'Billable Hours' && card.percentage}% from last period
                       </span>
                     </div>
                   </CardContent>

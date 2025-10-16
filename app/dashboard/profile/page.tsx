@@ -108,7 +108,7 @@ export default function ProfilePage() {
                             <div className="text-muted-foreground mb-1">{user.jobTitle || "-"}</div>
                             <div className=" gap-2 text-sm text-muted-foreground mb-2">
                                 <span>Email: {user.email || "-"}</span> <br />
-                                <span>Phone: {user.phoneNumber || "-"}</span>
+                                <span>Phone: {user.phoneNumber ? `+${user.phoneNumber}` : "-"}</span>
                             </div>
                             {/* <Button variant="outline" size="sm">Edit Profile</Button> */}
                         </div>
@@ -184,7 +184,7 @@ export default function ProfilePage() {
                         <div className="flex-col md:flex-row gap-2 hidden md:flex items-stretch justify-stretch">
                             <div className="flex flex-1 flex-col gap-3 text-sm text-muted-foreground mb-2 bg-pale rounded p-6 ">
                                 <span className="flex items-center gap-2"><Mail size={15} /> {user.email || "-"}</span>
-                                <span className="flex items-center gap-2"><Phone size={15} /> {user.phoneNumber || "-"}</span>
+                                <span className="flex items-center gap-2"><Phone size={15} /> {user.phoneNumber ? `+${user.phoneNumber}` : "-"}</span>
                                 <span className="flex items-center gap-2"><MapPin size={15} />
                                     {userRole == "Consultancy" && <span>
                                         {user.address?.street + " " || "-"},
@@ -265,7 +265,7 @@ export default function ProfilePage() {
                                     <Mail size={15} /> {user.email || "-"}
                                 </span>
                                 <span className="flex items-center gap-2">
-                                    <Phone size={15} /> {user.phoneNumber || "-"}
+                                    <Phone size={15} /> {user.phoneNumber ? `+${user.phoneNumber}` : "-"}
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <MapPin size={15} />
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                                     <Mail size={15} /> {user.email || "-"}
                                 </span>
                                 <span className="flex items-center gap-2">
-                                    <Phone size={15} /> {user.phoneNumber || "-"}
+                                    <Phone size={15} /> {user.phoneNumber ? `+${user.phoneNumber}` : "-"}
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <MapPin size={15} />
@@ -367,7 +367,7 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><Label>Name</Label><div className="text-muted-foreground">{user.nextOfKin?.name || '-'}</div></div>
                         <div><Label>Relationship</Label><div className="text-muted-foreground">{user.nextOfKin?.relationship || '-'}</div></div>
-                        <div><Label>Phone</Label><div className="text-muted-foreground">{user.nextOfKin?.phoneNumber || '-'}</div></div>
+                        <div><Label>Phone</Label><div className="text-muted-foreground">{user.nextOfKin?.phoneNumber ? `+${user.nextOfKin.phoneNumber}` : '-'}</div></div>
                         <div><Label>Email</Label><div className="text-muted-foreground">{user.nextOfKin?.email || '-'}</div></div>
                     </div>
                 </CardContent>
