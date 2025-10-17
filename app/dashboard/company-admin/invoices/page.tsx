@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { useMemo } from "react"
 import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction, postRequest } from "@/services/api"
+import { toast } from "sonner"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
 import { format } from "date-fns"
@@ -713,12 +714,10 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
 
         // Prevent mixing different statuses that can't be batch processed together
         if (
-          (firstSelectedStatus === 'approved' && invoice.status !== 'approved') ||
-          (firstSelectedStatus !== 'approved' && invoice.status === 'approved') ||
-          (invoice.status === 'paid') ||
+          (firstSelectedStatus === 'paid') ||
           (currentlySelected.some(inv => inv.status === 'paid'))
         ) {
-          alert("Cannot select invoices with different statuses for batch operations. Please select invoices with the same status.")
+          alert("Cannot select paid invoices for batch operations.")
           return
         }
       }
@@ -745,7 +744,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       if (sortedInvoices.length > 0) {
         const firstStatus = sortedInvoices[0].status
         const compatibleInvoices = sortedInvoices.filter(invoice =>
-          invoice.status === firstStatus && invoice.status !== 'paid'
+          invoice.status !== 'paid'
         )
         const compatibleIds = new Set(compatibleInvoices.map(invoice => invoice.id))
         setSelectedInvoices(compatibleIds)
@@ -764,10 +763,6 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     let aValue: any, bValue: any
     switch (sortBy) {
-      case "invoiceNumber":
-        aValue = a.invoiceNumber || a.id
-        bValue = b.invoiceNumber || b.id
-        break
       case "employee":
         aValue = a.user?.fullName || ""
         bValue = b.user?.fullName || ""
@@ -785,8 +780,8 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
         bValue = b.status || ""
         break
       default:
-        aValue = a.invoiceNumber || a.id
-        bValue = b.invoiceNumber || b.id
+        aValue = a.id
+        bValue = b.id
     }
     if (aValue < bValue) return sortDir === "asc" ? -1 : 1
     if (aValue > bValue) return sortDir === "asc" ? 1 : -1
@@ -1029,14 +1024,12 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     try {
       // Table headers
       const headers = [
-        'Invoice Number',
         'Email',
         'Status',
         'Amount',
       ];
       // Build table rows from filteredInvoices
       const rows = filteredInvoices.map(inv => [
-        inv.invoiceNumber || inv.id || '-',
         inv.user?.email || '-',
         inv.status ? inv.status.charAt(0).toUpperCase() + inv.status.slice(1) : '-',
         (inv.amount != null && !isNaN(Number(inv.amount)))
@@ -1090,7 +1083,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   const handleApproveAll = async () => {
     // Prevent approval if any selected invoices are already approved
     if (hasApprovedInvoices) {
-      alert("Cannot approve invoices that are already approved. Please deselect approved invoices and try again.")
+      toast.error("Some selected invoices are already approved. Please deselect approved invoices and try again.")
       return
     }
 
@@ -1099,12 +1092,31 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     try {
       const data = await postRequest(`/company/invoices/approve/${authData.user.company.id}`, { invoiceIds: selectedIds })
       if (data) {
+        toast.success(`Successfully approved ${selectedIds.length} invoice${selectedIds.length > 1 ? 's' : ''}.`)
         fetchInvoicesWithRetry(1)
         setSelectedInvoices(new Set()) // Clear selection after successful approval
         setSelectAll(false)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn(err)
+
+      // Check if it's a fetch error with status code
+      if (err.message && typeof err.message === 'string') {
+        // Try to extract status code from error message or check if it's a network error
+        if (err.message.includes('403') || err.message.includes('Access denied')) {
+          toast.error("Access denied. Please check your permissions.")
+        } else if (err.message.includes('400') || err.message.includes('validation')) {
+          toast.error(err.message)
+        } else if (err.message.includes('500') || err.message.includes('server')) {
+          toast.error(err.message)
+        } else {
+          // For any other status codes (404, 501, 502, etc.), show not implemented message
+          toast.error("This feature has not yet been implemented by the developers.")
+        }
+      } else {
+        // For network errors or other issues
+        toast.error("This feature has not yet been implemented by the developers.")
+      }
     } finally {
       setLoading2(false)
     }
@@ -1113,7 +1125,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   const handleMarkAsPaid = async () => {
     // Prevent marking as paid if any selected invoices are already paid
     if (hasPaidInvoices) {
-      alert("Cannot mark invoices as paid that are already paid. Please deselect paid invoices and try again.")
+      toast.error("Some selected invoices are already paid. Please deselect paid invoices and try again.")
       return
     }
 
@@ -1122,12 +1134,31 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     try {
       const data = await postRequest(`/company/invoices/mark-paid/${authData.user.company.id}`, { invoiceIds: selectedIds })
       if (data) {
+        toast.success(`Successfully marked ${selectedIds.length} invoice${selectedIds.length > 1 ? 's' : ''} as paid.`)
         fetchInvoicesWithRetry(1)
         setSelectedInvoices(new Set()) // Clear selection after successful update
         setSelectAll(false)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn(err)
+
+      // Check if it's a fetch error with status code
+      if (err.message && typeof err.message === 'string') {
+        // Try to extract status code from error message or check if it's a network error
+        if (err.message.includes('403') || err.message.includes('Access denied')) {
+          toast.error("Access denied. Please check your permissions.")
+        } else if (err.message.includes('400') || err.message.includes('validation')) {
+          toast.error(err.message)
+        } else if (err.message.includes('500') || err.message.includes('server')) {
+          toast.error(err.message)
+        } else {
+          // For any other status codes (404, 501, 502, etc.), show not implemented message
+          toast.error("This feature has not yet been implemented by the developers.")
+        }
+      } else {
+        // For network errors or other issues
+        toast.error("This feature has not yet been implemented by the developers.")
+      }
     } finally {
       setLoading2(false)
     }
@@ -1249,7 +1280,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
               </Button>
             )}
 
-            {/* Show Mark as Paid button only if all selected invoices are approved */}
+            {/* Show Pay button only if all selected invoices are approved and not paid */}
             {allSelectedAreApproved && !hasPaidInvoices && (
               <Button
                 onClick={handleMarkAsPaid}
@@ -1258,7 +1289,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                 className="bg-green-600 hover:bg-green-700"
                 disabled={loading2}
               >
-                {loading2 ? "Updating..." : "Mark as Paid"} ({selectedInvoices.size})
+                {loading2 ? "Processing..." : "Pay"} ({selectedInvoices.size})
               </Button>
             )}
 
@@ -1286,13 +1317,6 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
                 onCheckedChange={handleSelectAll}
                 aria-label="Select all invoices"
               />
-            </TableHead>
-            <TableHead
-              className={`cursor-pointer select-none ${sortBy === "invoiceNumber" ? "text-primary font-semibold" : ""}`}
-              onClick={() => handleSort("invoiceNumber")}
-            >
-              Invoice Number
-              {sortArrow("invoiceNumber")}
             </TableHead>
             <TableHead
               className={`cursor-pointer select-none ${sortBy === "employee" ? "text-primary font-semibold" : ""}`}
@@ -1329,13 +1353,12 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
           {sortedInvoices.map((invoice) => (
             <TableRow key={invoice.id}>
               <TableCell>
-                {invoice.status != "approved" && <Checkbox
+                <Checkbox
                   checked={selectedInvoices.has(invoice.id)}
                   onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked === true)}
                   aria-label={`Select invoice ${invoice.invoiceNumber || invoice.id}`}
-                />}
+                />
               </TableCell>
-              <TableCell className="font-medium">{invoice.invoiceNumber || invoice.id}</TableCell>
               <TableCell>{invoice.user?.fullName || "-"}</TableCell>
               <TableCell>{invoice.startDate && invoice.endDate ? `${format(new Date(invoice.startDate), "MMM yyyy")}` : "-"}</TableCell>
               <TableCell>

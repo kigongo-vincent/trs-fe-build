@@ -12,8 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useEffect, useState, useMemo } from "react"
-import { fetchEmployeeTimeLogs, fetchEmployeeTimeLogsWithFilters, formatDurationString, formatDate, type TimeLog } from "@/services/employee"
+import { useEffect, useState, useMemo, useRef } from "react"
+import { fetchEmployeeTimeLogs, fetchEmployeeTimeLogsWithFilters, fetchEmployeeDashboard, formatDurationString, formatDate, type TimeLog, type EmployeeDashboardData } from "@/services/employee"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
@@ -28,6 +28,7 @@ import { generatePdf } from "@/utils/GeneratePDF"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
+  const [dashboardData, setDashboardData] = useState<EmployeeDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -75,6 +76,7 @@ export default function TimeLogsPage() {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isFiltering, setIsFiltering] = useState(false)
   const user = getAuthUser()
+  const isInitialMount = useRef(true)
 
   // Fetch time logs with filters
   const fetchTimeLogsWithFilters = async () => {
@@ -98,47 +100,33 @@ export default function TimeLogsPage() {
     }
   }
 
-  // Fetch time logs when projectFilter changes
+  // Fetch time logs when filters change (but not on initial mount)
   useEffect(() => {
-    if (projectFilter === "all") {
-      (async () => {
-        setLoading(true)
-        setError(null)
-        try {
-          const filters = {
-            startDate,
-            endDate,
-            status: statusFilter,
-            projectId: undefined
-          }
-          const data = await fetchEmployeeTimeLogsWithFilters(filters)
-          setTimeLogs(data)
-        } catch (err) {
-          setError("Failed to load time logs. Please try again.")
-        } finally {
-          setLoading(false)
-        }
-      })()
-    } else {
-      (async () => {
-        setLoading(true)
-        setError(null)
-        try {
-          const filters = {
-            startDate,
-            endDate,
-            status: statusFilter,
-            projectId: projectFilter
-          }
-          const data = await fetchEmployeeTimeLogsWithFilters(filters)
-          setTimeLogs(data)
-        } catch (err) {
-          setError("Failed to load time logs. Please try again.")
-        } finally {
-          setLoading(false)
-        }
-      })()
+    // Skip initial mount since we have a separate useEffect for that
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
     }
+
+    const fetchFilteredData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const filters = {
+          startDate,
+          endDate,
+          status: statusFilter,
+          projectId: projectFilter === "all" ? undefined : projectFilter
+        }
+        const data = await fetchEmployeeTimeLogsWithFilters(filters)
+        setTimeLogs(data)
+      } catch (err) {
+        setError("Failed to load time logs. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchFilteredData()
   }, [projectFilter, startDate, endDate, statusFilter])
 
   // Reset filters function
@@ -171,6 +159,33 @@ export default function TimeLogsPage() {
     }
   }
 
+  // Initial data fetch on component mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        // Fetch both dashboard data and time logs in parallel
+        const [dashboardData, timeLogsData] = await Promise.all([
+          fetchEmployeeDashboard(),
+          fetchEmployeeTimeLogsWithFilters({
+            startDate,
+            endDate,
+            status: statusFilter,
+            projectId: undefined
+          })
+        ])
+        setDashboardData(dashboardData)
+        setTimeLogs(timeLogsData)
+      } catch (err) {
+        setError("Failed to load data. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchInitialData()
+  }, []) // Only run once on mount
+
   useEffect(() => {
     const fetchProjectsList = async () => {
       setIsLoadingProjects(true)
@@ -188,53 +203,39 @@ export default function TimeLogsPage() {
     fetchProjectsList()
   }, [])
 
-  // Calculate summary statistics
+  // Calculate summary statistics using dashboard API data and draft stats from time logs
   useEffect(() => {
-    // recalculate summaryStats when timeLogs change
-    const today = new Date()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay())
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    if (dashboardData) {
+      // Use API data for main hours statistics
+      const hoursToday = dashboardData.hoursToday.count / 60 // Convert minutes to hours
+      const hoursWeek = dashboardData.hoursWeek.count / 60
+      const hoursMonth = dashboardData.hoursMonth.count / 60
 
-    let hoursToday = 0
-    let hoursWeek = 0
-    let hoursMonth = 0
-    let billableHours = 0
-    let draftCount = 0
-    let draftHours = 0
+      // Calculate billable hours from dashboard data
+      const billableHours = dashboardData.hoursMonth.count / 60 // Using month data as billable
 
-    timeLogs.forEach((log) => {
-      const logDate = new Date(log.createdAt)
-      const duration = Number.parseFloat(log.duration)
+      // Calculate draft statistics from time logs (only for drafts)
+      let draftCount = 0
+      let draftHours = 0
 
-      if (logDate.toDateString() === today.toDateString()) {
-        hoursToday += duration
-      }
-      if (logDate >= startOfWeek) {
-        hoursWeek += duration
-      }
-      if (logDate >= startOfMonth) {
-        hoursMonth += duration
-      }
-      if (log.status === "active") {
-        billableHours += duration
-      }
-      if (log.status === "draft") {
-        draftCount += 1
-        draftHours += duration
-      }
-    })
+      timeLogs.forEach((log) => {
+        if (log.status === "draft") {
+          draftCount += 1
+          draftHours += Number.parseFloat(log.duration)
+        }
+      })
 
-    setSummaryStats({
-      hoursToday: hoursToday / 60,
-      hoursWeek: hoursWeek / 60,
-      hoursMonth: hoursMonth / 60,
-      billableHours: billableHours / 60,
-      billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
-      draftCount: draftCount,
-      draftHours: draftHours / 60,
-    })
-  }, [timeLogs])
+      setSummaryStats({
+        hoursToday: hoursToday,
+        hoursWeek: hoursWeek,
+        hoursMonth: hoursMonth,
+        billableHours: billableHours,
+        billableRate: hoursMonth > 0 ? (billableHours / hoursMonth) * 100 : 0,
+        draftCount: draftCount,
+        draftHours: draftHours / 60,
+      })
+    }
+  }, [dashboardData, timeLogs])
 
   // Get unique projects for filter - this will be populated from API
   const uniqueProjects = useMemo(() => {
@@ -756,7 +757,7 @@ export default function TimeLogsPage() {
                   {Math.floor(summaryStats.hoursToday)}h {Math.round((summaryStats.hoursToday % 1) * 60)}m
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  of {user?.totalHoursPerMonth / 20} hours ({Math.round((summaryStats.hoursToday / user?.totalHoursPerMonth / 20) * 100)}%)
+                  {dashboardData?.hoursToday?.percentage || 0}% of target
                 </p>
               </>
             )}
@@ -779,7 +780,7 @@ export default function TimeLogsPage() {
                   {Math.floor(summaryStats.hoursWeek)}h {Math.round((summaryStats.hoursWeek % 1) * 60)}m
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  of {user?.totalHoursPerMonth / 4} hours ({Math.round((summaryStats.hoursWeek / user?.totalHoursPerMonth / 4) * 100)}%)
+                  {dashboardData?.hoursWeek?.percentage || 0}% of target
                 </p>
               </>
             )}
@@ -802,7 +803,7 @@ export default function TimeLogsPage() {
                   {Math.floor(summaryStats.hoursMonth)}h {Math.round((summaryStats.hoursMonth % 1) * 60)}m
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  of {user?.totalHoursPerMonth} hours ({Math.round((summaryStats.hoursMonth / user?.totalHoursPerMonth) * 100)}%)
+                  {dashboardData?.hoursMonth?.percentage || 0}% of target
                 </p>
               </>
             )}
