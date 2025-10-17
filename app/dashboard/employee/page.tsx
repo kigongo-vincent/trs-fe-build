@@ -92,53 +92,41 @@ export default function EmployeeDashboard() {
     loadDashboardData()
   }, [])
 
-  // Calculate summary statistics from time logs
+  // Calculate summary statistics from dashboard API data
   useEffect(() => {
-    // recalculate summaryStats when timeLogs change
-    const today = new Date()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay())
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    if (dashboardData) {
+      // Use API data for hours calculations
+      const hoursToday = dashboardData.hoursToday.count / 60 // Convert minutes to hours
+      const hoursWeek = dashboardData.hoursWeek.count / 60
+      const hoursMonth = dashboardData.hoursMonth.count / 60
 
-    let hoursToday = 0
-    let hoursWeek = 0
-    let hoursMonth = 0
-    let billableHours = 0
-    let draftCount = 0
-    let draftHours = 0
+      // Calculate billable hours from time logs (since this isn't in dashboard API)
+      let billableHours = 0
+      let draftCount = 0
+      let draftHours = 0
 
-    timeLogs.forEach((log) => {
-      const logDate = new Date(log.createdAt)
-      const duration = Number.parseFloat(log.duration)
+      timeLogs.forEach((log) => {
+        const duration = Number.parseFloat(log.duration)
+        if (log.status === "active") {
+          billableHours += duration
+        }
+        if (log.status === "draft") {
+          draftCount += 1
+          draftHours += duration
+        }
+      })
 
-      if (logDate.toDateString() === today.toDateString()) {
-        hoursToday += duration
-      }
-      if (logDate >= startOfWeek) {
-        hoursWeek += duration
-      }
-      if (logDate >= startOfMonth) {
-        hoursMonth += duration
-      }
-      if (log.status === "active") {
-        billableHours += duration
-      }
-      if (log.status === "draft") {
-        draftCount += 1
-        draftHours += duration
-      }
-    })
-
-    setSummaryStats({
-      hoursToday: hoursToday / 60,
-      hoursWeek: hoursWeek / 60,
-      hoursMonth: hoursMonth / 60,
-      billableHours: billableHours / 60,
-      billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
-      draftCount: draftCount,
-      draftHours: draftHours / 60,
-    })
-  }, [timeLogs])
+      setSummaryStats({
+        hoursToday: hoursToday,
+        hoursWeek: hoursWeek,
+        hoursMonth: hoursMonth,
+        billableHours: billableHours / 60,
+        billableRate: hoursMonth > 0 ? (billableHours / (hoursMonth * 60)) * 100 : 0,
+        draftCount: draftCount,
+        draftHours: draftHours / 60,
+      })
+    }
+  }, [dashboardData, timeLogs])
 
   const getPercentageIcon = (percentage: number, index?: number) => {
     if (percentage > 0) return <TrendingUp className={`h-4 w-4 ${index == 0 ? "" : "text-green-600"}`} />
@@ -161,21 +149,16 @@ export default function EmployeeDashboard() {
     return Math.round(((current - previous) / previous) * 100);
   }
 
-  // Calculate percentages for time-logs data
-  // For now, we'll use simple calculations - these could be enhanced with historical data
+  // Calculate percentages for time-logs data using API data
   const hoursTodayCount = Math.floor(summaryStats.hoursToday)
   const hoursWeekCount = Math.floor(summaryStats.hoursWeek)
   const hoursMonthCount = Math.floor(summaryStats.hoursMonth)
   const billableHoursCount = Math.floor(summaryStats.billableHours)
 
-  // Calculate percentages based on expected hours
-  const expectedHoursToday = 8 // 8 hours per day
-  const expectedHoursWeek = 40 // 40 hours per week
-  const expectedHoursMonth = 160 // 160 hours per month (4 weeks * 40 hours)
-
-  const hoursTodayPercentage = expectedHoursToday > 0 ? Math.round((summaryStats.hoursToday / expectedHoursToday) * 100) : 0
-  const hoursWeekPercentage = expectedHoursWeek > 0 ? Math.round((summaryStats.hoursWeek / expectedHoursWeek) * 100) : 0
-  const hoursMonthPercentage = expectedHoursMonth > 0 ? Math.round((summaryStats.hoursMonth / expectedHoursMonth) * 100) : 0
+  // Use API percentages when available, fallback to calculated percentages
+  const hoursTodayPercentage = dashboardData?.hoursToday?.percentage || 0
+  const hoursWeekPercentage = dashboardData?.hoursWeek?.percentage || 0
+  const hoursMonthPercentage = dashboardData?.hoursMonth?.percentage || 0
   const billableRatePercentage = Math.round(summaryStats.billableRate)
 
 
@@ -340,11 +323,11 @@ export default function EmployeeDashboard() {
                         {card.title === 'Billable Hours'
                           ? `${Math.round(summaryStats.billableRate)}% billable rate`
                           : card.title === 'Hours Today'
-                            ? `of ${expectedHoursToday} hours (${hoursTodayPercentage}%)`
+                            ? `${hoursTodayPercentage}% of target`
                             : card.title === 'Hours This Week'
-                              ? `of ${expectedHoursWeek} hours (${hoursWeekPercentage}%)`
+                              ? `${hoursWeekPercentage}% of target`
                               : card.title === 'Hours This Month'
-                                ? `of ${expectedHoursMonth} hours (${hoursMonthPercentage}%)`
+                                ? `${hoursMonthPercentage}% of target`
                                 : `${card.percentage}% from last period`
                         }
                       </span>
