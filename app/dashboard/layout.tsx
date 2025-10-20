@@ -79,7 +79,7 @@ export default function DashboardLayout({
 
     const requires = (path: string): string | null => {
       if (path.startsWith("/dashboard/super-admin")) return "Super Admin"
-      if (path.startsWith("/dashboard/company-admin")) return "Company Admin"
+      if (path.startsWith("/dashboard/company-admin")) return "Company Admin" // Board Members also have access
       if (path.startsWith("/dashboard/department-head")) return "Department Head"
       if (path.startsWith("/dashboard/employee") || path.startsWith("/dashboard/consultant")) return "Consultant"
       if (path.startsWith("/dashboard")) return null
@@ -88,6 +88,11 @@ export default function DashboardLayout({
 
     const requiredRole = requires(pathname || "")
     if (requiredRole && role !== requiredRole) {
+      // Special case: Board Members should have access to company-admin routes
+      if (pathname?.startsWith("/dashboard/company-admin") && role === "Board Member") {
+        // Allow Board Members to access company-admin routes
+        return
+      }
       router.replace(getDashboardPath())
     }
   }, [pathname, router])

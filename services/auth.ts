@@ -140,6 +140,8 @@ export function getDashboardPath(): string {
       return "/dashboard/super-admin";
     case "Company Admin":
       return "/dashboard/company-admin";
+    case "Board Member":
+      return "/dashboard/company-admin";
     case "Consultant":
       return "/dashboard/employee";
     default:
