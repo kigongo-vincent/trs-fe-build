@@ -64,6 +64,9 @@ export default function EmployeeDashboard() {
           case "Company Admin":
             router.replace("/dashboard/company-admin")
             break
+          case "Board Member":
+            router.replace("/dashboard/company-admin")
+            break
           default:
             router.replace("/dashboard/employee")
         }
