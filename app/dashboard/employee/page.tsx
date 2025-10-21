@@ -79,12 +79,12 @@ export default function EmployeeDashboard() {
       try {
         setLoading(true)
         setError(null)
-        const [dashboardData, timeLogsData] = await Promise.all([
+        const [dashboardData, timeLogsResult] = await Promise.all([
           fetchEmployeeDashboard(),
           fetchEmployeeTimeLogs()
         ])
         setDashboardData(dashboardData)
-        setTimeLogs(timeLogsData)
+        setTimeLogs(timeLogsResult.items)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data")
       } finally {
