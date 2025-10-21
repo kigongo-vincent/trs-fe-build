@@ -41,7 +41,7 @@ export function RetentionRateChart() {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis domain={[90, 100]} />
-        <Tooltip formatter={(value) => [`${value}%`, "Retention Rate"]} />
+        <Tooltip formatter={(value: number) => [`${value}%`, "Retention Rate"]} />
         <Legend />
         <Line type="monotone" dataKey="retention" stroke="#8884d8" activeDot={{ r: 8 }} />
       </LineChart>

@@ -126,7 +126,7 @@ export default function CompletedTasksPage() {
         startDate,
         endDate,
         status: "active", // Only show completed/active tasks, exclude drafts
-        project: projectFilter,
+        projectId: projectFilter,
       })
       // Apply client-side filtering as backup protection
       const filteredLogs = filterOutDrafts(logs)
@@ -448,7 +448,7 @@ export default function CompletedTasksPage() {
                     })
                   } else {
                     logs = await fetchEmployeeTimeLogsWithFilters({
-                      project: id,
+                      projectId: id,
                       startDate,
                       endDate,
                       status: "active" // Only show completed/active tasks, exclude drafts

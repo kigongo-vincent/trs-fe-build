@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { createProject } from "@/services/projects"
-import { getDepartments } from "@/services/departments"
+import { getDepartments, type Department } from "@/services/departments"
 import { getAllConsultants } from "@/services/consultants"
 import { getAuthData } from "@/services/auth"
 
@@ -40,13 +40,6 @@ const formSchema = z.object({
 })
 
 type FormData = z.infer<typeof formSchema>
-
-interface Department {
-  id: string
-  name: string
-  head: string
-  status: string
-}
 
 interface User {
   id: string
@@ -121,12 +114,7 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
       }
 
       const response = await getAllConsultants()
-      // Handle both paginated and non-paginated responses
-      if (response.data && response.data.items) {
-        setUsers(response.data.items || [])
-      } else {
-        setUsers(response.data || [])
-      }
+      setUsers(response.data || [])
     } catch (error) {
       console.error("Failed to fetch users:", error)
       toast.error("Failed to load users")

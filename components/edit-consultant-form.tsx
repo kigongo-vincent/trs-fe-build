@@ -96,7 +96,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                 }
                 const companyId = authData.user.company.id
                 const response = await getRequest(`/departments/company/${companyId}`)
-                setDepartments(response.data)
+                setDepartments((response as any).data)
             } catch (err: any) {
                 toast.error(err.message || "Failed to fetch departments. Please try again.")
             } finally {
@@ -329,10 +329,10 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                             <div className="space-y-2">
                                 <Label>Days to Come <span className="text-red-500">*</span></Label>
                                 <div className="px-2 py-1 flex flex-wrap items-center h-10 min-h-[40px] bg-transparent border border-[#e3e6ed] rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2" onClick={() => daysInputRef.current?.focus()} tabIndex={0}>
-                                    {formData.daysToCome.map((day) => (
+                                    {formData.daysToCome.map((day: string) => (
                                         <span key={day} className="flex items-center gap-2 rounded-md bg-pale dark:bg-[#23272f] px-3 py-0 h-8 mr-2 text-[#181c32] dark:text-[#f5f7fa] text-sm shadow-none border-none font-normal">
                                             {day}
-                                            <button type="button" className="ml-1 text-lg text-[#181c32] dark:text-[#f5f7fa] hover:text-red-500 focus:outline-none bg-transparent border-none p-0 cursor-pointer font-normal" aria-label={`Remove ${day}`} onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.filter((d) => d !== day) })) }}>×</button>
+                                            <button type="button" className="ml-1 text-lg text-[#181c32] dark:text-[#f5f7fa] hover:text-red-500 focus:outline-none bg-transparent border-none p-0 cursor-pointer font-normal" aria-label={`Remove ${day}`} onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.filter((d: string) => d !== day) })) }}>×</button>
                                         </span>
                                     ))}
                                     <input ref={daysInputRef} className="flex-1 min-w-[80px] h-8 border-none outline-none bg-transparent py-0 px-2 text-base" placeholder={formData.daysToCome.length === 0 ? "Type or select days..." : ""} value={daysInput} onChange={(e) => { setDaysInput(e.target.value); setDaysDropdownOpen(true); }} onFocus={() => setDaysDropdownOpen(true)} onBlur={() => setTimeout(() => setDaysDropdownOpen(false), 100)} onKeyDown={(e) => { if (e.key === "Backspace" && daysInput === "" && formData.daysToCome.length > 0) { setFormData((prev) => ({ ...prev, daysToCome: prev.daysToCome.slice(0, -1) })); } if ((e.key === "Enter" || e.key === ",") && daysInput.trim()) { e.preventDefault(); const val = daysInput.trim(); if (daysOfWeek.includes(val) && !formData.daysToCome.includes(val)) { setFormData((prev) => ({ ...prev, daysToCome: [...prev.daysToCome, val] })); setDaysInput(""); setDaysDropdownOpen(false); } } }} list="days-suggestions" />

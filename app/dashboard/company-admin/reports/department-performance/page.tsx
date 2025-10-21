@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { DateRangePicker } from "@/components/date-range-picker";
+import type { DateRange } from "react-day-picker";
 
 const initialData = [
     { department: "Engineering", head: "Jane Doe", employees: 12, inProgress: 2, completed: 4, hours: 320, unproductive: 2, progress: 75 },
@@ -20,7 +21,18 @@ const columns = [
     { key: "progress", label: "Average Progress (%)" },
 ];
 
-function sortData(data, sortBy, sortDir) {
+type DepartmentData = {
+    department: string;
+    head: string;
+    employees: number;
+    inProgress: number;
+    completed: number;
+    hours: number;
+    unproductive: number;
+    progress: number;
+};
+
+function sortData(data: DepartmentData[], sortBy: keyof DepartmentData, sortDir: "asc" | "desc") {
     return [...data].sort((a, b) => {
         if (a[sortBy] < b[sortBy]) return sortDir === "asc" ? -1 : 1;
         if (a[sortBy] > b[sortBy]) return sortDir === "asc" ? 1 : -1;
@@ -28,16 +40,16 @@ function sortData(data, sortBy, sortDir) {
     });
 }
 
-function formatDateRange(range) {
+function formatDateRange(range: DateRange | undefined) {
     if (!range || !range.from) return "All Time";
     if (!range.to) return `${range.from.toLocaleDateString()}`;
     return `${range.from.toLocaleDateString()} - ${range.to.toLocaleDateString()}`;
 }
 
 export default function DepartmentPerformanceReport() {
-    const [sortBy, setSortBy] = useState("department");
-    const [sortDir, setSortDir] = useState("asc");
-    const [dateRange, setDateRange] = useState(null);
+    const [sortBy, setSortBy] = useState<keyof DepartmentData>("department");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const sorted = sortData(initialData, sortBy, sortDir);
 
     // No date field in department, so just show all for now
@@ -45,7 +57,7 @@ export default function DepartmentPerformanceReport() {
     const totalDepartments = filtered.length;
     const avgProgress = totalDepartments ? Math.round(filtered.reduce((sum, row) => sum + row.progress, 0) / totalDepartments) : 0;
 
-    const handleSort = (col) => {
+    const handleSort = (col: keyof DepartmentData) => {
         if (sortBy === col) setSortDir(sortDir === "asc" ? "desc" : "asc");
         else { setSortBy(col); setSortDir("asc"); }
     };
@@ -68,7 +80,7 @@ export default function DepartmentPerformanceReport() {
                                 <th
                                     key={col.key}
                                     className="px-4 py-2 border cursor-pointer select-none"
-                                    onClick={() => handleSort(col.key)}
+                                    onClick={() => handleSort(col.key as keyof DepartmentData)}
                                 >
                                     {col.label}
                                     {sortBy === col.key && (
@@ -82,7 +94,7 @@ export default function DepartmentPerformanceReport() {
                         {filtered.map((row, i) => (
                             <tr key={i} className="even:bg-gray-50">
                                 {columns.map(col => (
-                                    <td key={col.key} className="px-4 py-2 border">{row[col.key]}</td>
+                                    <td key={col.key} className="px-4 py-2 border">{row[col.key as keyof DepartmentData]}</td>
                                 ))}
                             </tr>
                         ))}

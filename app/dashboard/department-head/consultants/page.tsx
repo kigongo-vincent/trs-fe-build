@@ -15,13 +15,15 @@ import { ConsultantsByDepartmentChart } from "@/components/consultants-by-depart
 import Link from "next/link"
 import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
 import {
+  getAllConsultants,
+  type Consultant,
+  type ConsultantDashboardData,
+  getConsultantDashboard,
   type DepartmentSummary,
   getConsultantsSummary,
-  getConsultantDashboard,
   formatMinutesToHours,
   getDayName,
   getTrendIndicator,
-  type ConsultantDashboardData,
   updateConsultantStatus,
   getConsultantLogsByRange,
 } from "@/services/consultants"
@@ -147,7 +149,7 @@ export default function ConsultantsPage() {
         // Fetch department summary (if still needed)
         const authData = getAuthData()
         if (authData?.companyId) {
-          const summaryResponse = await getConsultantsSummary(authData.companyId)
+          const summaryResponse = await getConsultantsSummary()
           if (summaryResponse.status === 200) {
             setDepartmentSummary(summaryResponse.data)
           }
@@ -462,7 +464,7 @@ export default function ConsultantsPage() {
                           <div className="flex items-center gap-3">
                             <Avatar>
                               <AvatarImage
-                                src={consultant?.profileImage || "/placeholder.svg"}
+                                src="/placeholder.svg"
                                 alt={consultant?.fullName || "User"}
                               />
                               <AvatarFallback>

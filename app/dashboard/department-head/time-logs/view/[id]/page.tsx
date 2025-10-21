@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,8 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import type { Task } from "@/services/tasks"
 
-export default function TaskViewPage({ params }: { params: { id: string } }) {
+export default function TaskViewPage() {
+  const params = useParams()
   const [task, setTask] = useState<Task | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 

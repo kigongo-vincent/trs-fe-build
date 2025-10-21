@@ -1,6 +1,6 @@
 export const S3_CORS_ENABLE = false;
 
-export const imageToBase64 = async (url) => {
+export const imageToBase64 = async (url: string): Promise<string> => {
   if (!url) return "";
 
   // Ensure we're in browser environment
@@ -35,6 +35,10 @@ export const imageToBase64 = async (url) => {
     img.onload = () => {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Failed to get canvas context"));
+        return;
+      }
       canvas.width = img.width;
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
@@ -54,7 +58,7 @@ export const imageToBase64 = async (url) => {
   });
 };
 
-const generateDynamicHtmlContent = async (content) => {
+const generateDynamicHtmlContent = async (content: string): Promise<string> => {
   try {
     return `
         <!DOCTYPE html>
@@ -126,7 +130,7 @@ const generateDynamicHtmlContent = async (content) => {
   }
 };
 
-export const generatePdf = async (content) => {
+export const generatePdf = async (content: string): Promise<void> => {
   // Ensure we're in browser environment
   if (typeof window === "undefined") {
     console.error("PDF generation is only available in browser environment");

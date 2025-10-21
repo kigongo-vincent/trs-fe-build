@@ -60,7 +60,7 @@ export default function CompanyAdminDashboard() {
           throw new Error("Company ID not found")
         }
 
-        const response: CompanySummaryResponse = await getCompanySummary(authData.user.company.id)
+        const response = await getCompanySummary(authData.user.company.id) as CompanySummaryResponse
         setSummaryData(response.data)
       } catch (err) {
         console.error("Failed to fetch company summary:", err)

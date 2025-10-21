@@ -36,7 +36,7 @@ export function RevenueByPackageChart() {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" />
         <YAxis />
-        <Tooltip formatter={(value) => [`$${value}`, "Revenue"]} />
+        <Tooltip formatter={(value: number) => [`$${value}`, "Revenue"]} />
         <Legend />
         <Bar dataKey="revenue" fill="#8884d8" name="Revenue" />
       </BarChart>

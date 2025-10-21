@@ -38,8 +38,8 @@ export function TaskDistributionChart() {
           throw new Error("Company ID not found")
         }
 
-        const response: HoursByProjectResponse = await getHoursByProject(authData.user.company.id)
-        
+        const response = await getHoursByProject(authData.user.company.id) as HoursByProjectResponse
+
         // Transform data for the bar chart
         const transformedData: ChartData[] = response.data.map(item => ({
           name: item.project,
@@ -86,31 +86,31 @@ export function TaskDistributionChart() {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
-                                         <CartesianGrid strokeDasharray="3 3" />
-       
-        <XAxis 
-          dataKey="name" 
-          stroke="#888888" 
-          fontSize={12} 
-          tickLine={false} 
+        <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis
+          dataKey="name"
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
           axisLine={false}
           angle={-45}
           textAnchor="end"
           height={80}
           interval={0}
         />
-        <YAxis 
-          stroke="#888888" 
-          fontSize={12} 
-          tickLine={false} 
-          axisLine={false} 
+        <YAxis
+          stroke="#888888"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
           tickFormatter={(value) => `${value}h`}
         />
-        <Bar 
-          dataKey="total" 
-          fill="currentColor" 
-          radius={[4, 4, 0, 0]} 
-          className="fill-primary" 
+        <Bar
+          dataKey="total"
+          fill="currentColor"
+          radius={[4, 4, 0, 0]}
+          className="fill-primary"
         />
       </BarChart>
     </ResponsiveContainer>
