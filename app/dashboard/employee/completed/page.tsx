@@ -23,6 +23,8 @@ import {
   LinkIcon,
   Loader2,
   MoveRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { CompletedTasksChart } from "@/components/completed-tasks-chart"
 import { Badge } from "@/components/ui/badge"
@@ -54,7 +56,6 @@ export default function CompletedTasksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [completionData, setCompletionData] = useState<TaskCompletionData | null>(null)
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
-  const [filteredTimeLogs, setFilteredTimeLogs] = useState<TimeLog[]>([])
   const [isSearchLoading, setIsSearchLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isTimeLogsLoading, setIsTimeLogsLoading] = useState(true)
@@ -63,6 +64,39 @@ export default function CompletedTasksPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [projectFilter, setProjectFilter] = useState("all")
   const [projectLoading, setProjectLoading] = useState(false)
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  })
+  const [isChangingLimit, setIsChangingLimit] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
+
+  // Pagination handlers
+  const handlePageChange = async (page: number) => {
+    setIsNavigating(true)
+    setPagination(prev => ({ ...prev, page }))
+    try {
+      await fetchTimeLogsWithFilters(page, pagination.limit)
+    } finally {
+      setIsNavigating(false)
+    }
+  }
+
+  const handleLimitChange = async (limit: number) => {
+    setIsChangingLimit(true)
+    setPagination(prev => ({ ...prev, limit, page: 1 }))
+    try {
+      await fetchTimeLogsWithFilters(1, limit)
+    } finally {
+      setIsChangingLimit(false)
+    }
+  }
 
   // Date range state
   const defaultRange = getDefaultDateRange()
@@ -90,28 +124,33 @@ export default function CompletedTasksPage() {
     loadCompletionData()
   }, [])
 
+  // Fetch time logs with filters and pagination
+  const fetchTimeLogsWithFilters = async (page: number = 1, limit: number = 20) => {
+    setIsTimeLogsLoading(true)
+    try {
+      setError(null)
+      const startDate = formatDateForAPI(dateRange.from)
+      const endDate = formatDateForAPI(dateRange.to)
+      const result = await fetchEmployeeTimeLogsWithFilters({
+        startDate,
+        endDate,
+        status: "active", // Only show completed/active tasks, exclude drafts
+        page,
+        limit
+      })
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
+    } catch (err) {
+      console.error("Error loading time logs:", err)
+      setError("Failed to load time logs. Please try again.")
+    } finally {
+      setIsTimeLogsLoading(false)
+    }
+  }
+
   // Load time logs based on date range
   useEffect(() => {
-    const loadTimeLogs = async () => {
-      try {
-        setIsTimeLogsLoading(true)
-        const startDate = formatDateForAPI(dateRange.from)
-        const endDate = formatDateForAPI(dateRange.to)
-        const data = await fetchEmployeeTimeLogsWithFilters({
-          startDate,
-          endDate,
-          status: "active" // Only show completed/active tasks, exclude drafts
-        })
-        setTimeLogs(data)
-      } catch (err) {
-        console.error("Error loading time logs:", err)
-        setError("Failed to load time logs. Please try again.")
-      } finally {
-        setIsTimeLogsLoading(false)
-      }
-    }
-
-    loadTimeLogs()
+    fetchTimeLogsWithFilters(pagination.page, pagination.limit)
   }, [dateRange])
 
   // Search handler to fetch from server
@@ -121,33 +160,23 @@ export default function CompletedTasksPage() {
     try {
       const startDate = formatDateForAPI(dateRange.from)
       const endDate = formatDateForAPI(dateRange.to)
-      const logs = await fetchEmployeeTimeLogsWithFilters({
+      const logsResult = await fetchEmployeeTimeLogsWithFilters({
         search: searchTerm,
         startDate,
         endDate,
         status: "active", // Only show completed/active tasks, exclude drafts
-        project: projectFilter,
+        projectId: projectFilter !== "all" ? projectFilter : undefined,
+        page: pagination.page,
+        limit: pagination.limit
       })
-      // Apply client-side filtering as backup protection
-      const filteredLogs = filterOutDrafts(logs)
-      setFilteredTimeLogs(filteredLogs)
+      setTimeLogs(logsResult.items)
+      setPagination(logsResult.pagination)
     } catch (err) {
       setError("Failed to search time logs. Please try again.")
     } finally {
       setIsSearchLoading(false)
     }
   }
-
-  // Client-side filter to exclude drafts (backup protection)
-  const filterOutDrafts = (logs: TimeLog[]) => {
-    return logs.filter(log => log.status !== 'draft')
-  }
-
-  // Initial load: set filteredTimeLogs to all timeLogs (excluding drafts)
-  useEffect(() => {
-    const filteredLogs = filterOutDrafts(timeLogs)
-    setFilteredTimeLogs(filteredLogs)
-  }, [timeLogs])
 
   const handleViewTask = (task: TimeLog) => {
     setSelectedTask(task)
@@ -437,26 +466,29 @@ export default function CompletedTasksPage() {
                 setProjectLoading(true)
                 setError(null)
                 try {
-                  let logs
+                  let logsResult
                   const startDate = formatDateForAPI(dateRange.from)
                   const endDate = formatDateForAPI(dateRange.to)
                   if (id === "all") {
-                    logs = await fetchEmployeeTimeLogsWithFilters({
+                    logsResult = await fetchEmployeeTimeLogsWithFilters({
                       startDate,
                       endDate,
-                      status: "active" // Only show completed/active tasks, exclude drafts
+                      status: "active", // Only show completed/active tasks, exclude drafts
+                      page: pagination.page,
+                      limit: pagination.limit
                     })
                   } else {
-                    logs = await fetchEmployeeTimeLogsWithFilters({
-                      project: id,
+                    logsResult = await fetchEmployeeTimeLogsWithFilters({
+                      projectId: id,
                       startDate,
                       endDate,
-                      status: "active" // Only show completed/active tasks, exclude drafts
+                      status: "active", // Only show completed/active tasks, exclude drafts
+                      page: pagination.page,
+                      limit: pagination.limit
                     })
                   }
-                  // Apply client-side filtering as backup protection
-                  const filteredLogs = filterOutDrafts(logs)
-                  setFilteredTimeLogs(filteredLogs)
+                  setTimeLogs(logsResult.items)
+                  setPagination(logsResult.pagination)
                 } catch (err) {
                   setError("Failed to filter by project. Please try again.")
                 } finally {
@@ -485,7 +517,7 @@ export default function CompletedTasksPage() {
         <CardHeader>
           <CardTitle className="text-xl text-gradient">Time Logs</CardTitle>
           <CardDescription>
-            Showing {filteredTimeLogs.length} of {timeLogs.length} time logs
+            Showing {timeLogs.length} completed time logs (Page {pagination.page} of {pagination.totalPages})
           </CardDescription>
         </CardHeader>
         <CardContent className="">
@@ -501,7 +533,7 @@ export default function CompletedTasksPage() {
                 </div>
               ))}
             </div>
-          ) : filteredTimeLogs.length === 0 ? (
+          ) : timeLogs.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No time logs found for the selected criteria.</p>
             </div>
@@ -518,42 +550,175 @@ export default function CompletedTasksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTimeLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div className="font-medium">{log.title}</div>
-                        {/* <div className="text-sm text-muted-foreground truncate max-w-[200px]">{log.description}</div> */}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="min-w-max">{log.project}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        {formatDurationString(log.duration)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getStatusBadgeColor(log.status)}>
-                        {log.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(log.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleViewTask(log)}>
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {isNavigating || isChangingLimit ? (
+                  // Show skeleton loading when navigating or changing limit
+                  Array.from({ length: pagination.limit }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  timeLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <div className="font-medium">{log.title}</div>
+                          {/* <div className="text-sm text-muted-foreground truncate max-w-[200px]">{log.description}</div> */}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="min-w-max">{log.project}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          {formatDurationString(log.duration)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={getStatusBadgeColor(log.status)}>
+                          {log.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDate(log.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => handleViewTask(log)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      {timeLogs.length > 0 && (
+        <div className="flex items-center justify-between px-6 py-4 border-t">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-muted-foreground">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <p className="text-sm font-medium text-foreground">Items per page:</p>
+              <div className="flex items-center space-x-2">
+                <Select
+                  value={pagination.limit.toString()}
+                  onValueChange={(value) => handleLimitChange(parseInt(value))}
+                  disabled={isChangingLimit || isNavigating}
+                >
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isChangingLimit && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={!pagination.hasPrev || isChangingLimit || isNavigating}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <div className="flex items-center space-x-1">
+              {(() => {
+                const totalPages = pagination.totalPages;
+                const currentPage = pagination.page;
+                const pages = [];
+
+                if (totalPages <= 7) {
+                  // Show all pages if 7 or fewer
+                  for (let i = 1; i <= totalPages; i++) {
+                    pages.push(i);
+                  }
+                } else {
+                  // Show smart pagination
+                  if (currentPage <= 4) {
+                    // Show first 5 pages + ... + last page
+                    for (let i = 1; i <= 5; i++) {
+                      pages.push(i);
+                    }
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 3) {
+                    // Show first page + ... + last 5 pages
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = totalPages - 4; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show first + ... + current-1, current, current+1 + ... + last
+                    pages.push(1);
+                    pages.push('...');
+                    pages.push(currentPage - 1);
+                    pages.push(currentPage);
+                    pages.push(currentPage + 1);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+
+                return pages.map((page, index) => {
+                  if (page === '...') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="text-muted-foreground px-2">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <Button
+                      key={page}
+                      variant={pagination.page === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(page as number)}
+                      disabled={isChangingLimit || isNavigating}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  );
+                });
+              })()}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={!pagination.hasNext || isChangingLimit || isNavigating}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Task Details Dialog */}
 

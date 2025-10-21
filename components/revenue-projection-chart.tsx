@@ -44,7 +44,7 @@ export function RevenueProjectionChart() {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="month" />
         <YAxis />
-        <Tooltip formatter={(value) => (value ? [`$${value}`, "Revenue"] : ["", ""])} />
+        <Tooltip formatter={(value: number | null) => (value ? [`$${value}`, "Revenue"] : ["", ""])} />
         <Legend />
         <ReferenceLine x="Jun" stroke="#666" label="Current" />
         <Line type="monotone" dataKey="revenue" stroke="#8884d8" activeDot={{ r: 8 }} name="Actual Revenue" />

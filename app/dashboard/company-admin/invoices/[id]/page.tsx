@@ -7,13 +7,13 @@ import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface InvoicePageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export default function InvoicePage({ params }: InvoicePageProps) {
-  const { id } = params
+export default async function InvoicePage({ params }: InvoicePageProps) {
+  const { id } = await params
 
   // In a real application, you would fetch the invoice data based on the ID
   // For now, we'll use mock data

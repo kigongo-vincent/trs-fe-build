@@ -15,7 +15,7 @@ export const MotionBlock = ({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.6, delay, ease: appleEase }}
+        transition={{ duration: 0.6, delay, ease: appleEase as any }}
     >
         {children}
     </motion.div>

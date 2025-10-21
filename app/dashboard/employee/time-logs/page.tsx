@@ -5,13 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Clock, Download, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight, RefreshCcw, FileEdit } from "lucide-react"
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { CalendarIcon, Clock, Download, Plus, Search, Paperclip, Eye, Type, Trash, Pencil, Loader2, X, Upload, FileText, MoveRight, RefreshCcw, FileEdit, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { TimeLogsChart } from "@/components/time-logs-chart"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useEffect, useState, useMemo, useRef } from "react"
 import { fetchEmployeeTimeLogs, fetchEmployeeTimeLogsWithFilters, fetchEmployeeDashboard, formatDurationString, formatDate, type TimeLog, type EmployeeDashboardData } from "@/services/employee"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -28,6 +29,14 @@ import { generatePdf } from "@/utils/GeneratePDF"
 
 export default function TimeLogsPage() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  })
   const [dashboardData, setDashboardData] = useState<EmployeeDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,11 +84,110 @@ export default function TimeLogsPage() {
   })
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isFiltering, setIsFiltering] = useState(false)
+  const [isChangingLimit, setIsChangingLimit] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
   const user = getAuthUser()
   const isInitialMount = useRef(true)
 
+  // Handle pagination
+  const handlePageChange = async (page: number) => {
+    setIsNavigating(true)
+    setPagination(prev => ({ ...prev, page }))
+    try {
+      await fetchTimeLogsWithFilters(page, pagination.limit)
+    } finally {
+      setIsNavigating(false)
+    }
+  }
+
+  const handleLimitChange = async (limit: number) => {
+    setIsChangingLimit(true)
+    setPagination(prev => ({ ...prev, limit, page: 1 }))
+    try {
+      await fetchTimeLogsWithFilters(1, limit)
+    } finally {
+      setIsChangingLimit(false)
+    }
+  }
+
+  // Generate pagination items
+  const generatePaginationItems = () => {
+    const items = []
+    const { page, totalPages } = pagination
+
+    // Previous button
+    items.push(
+      <PaginationItem key="prev">
+        <PaginationPrevious
+          onClick={() => handlePageChange(page - 1)}
+          className={!pagination.hasPrev ? "pointer-events-none opacity-50" : "cursor-pointer"}
+        />
+      </PaginationItem>
+    )
+
+    // Page numbers
+    const startPage = Math.max(1, page - 2)
+    const endPage = Math.min(totalPages, page + 2)
+
+    if (startPage > 1) {
+      items.push(
+        <PaginationItem key={1}>
+          <PaginationLink onClick={() => handlePageChange(1)}>1</PaginationLink>
+        </PaginationItem>
+      )
+      if (startPage > 2) {
+        items.push(
+          <PaginationItem key="ellipsis1">
+            <span className="px-3 py-2">...</span>
+          </PaginationItem>
+        )
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            onClick={() => handlePageChange(i)}
+            isActive={i === page}
+            className="cursor-pointer"
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      )
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        items.push(
+          <PaginationItem key="ellipsis2">
+            <span className="px-3 py-2">...</span>
+          </PaginationItem>
+        )
+      }
+      items.push(
+        <PaginationItem key={totalPages}>
+          <PaginationLink onClick={() => handlePageChange(totalPages)}>{totalPages}</PaginationLink>
+        </PaginationItem>
+      )
+    }
+
+    // Next button
+    items.push(
+      <PaginationItem key="next">
+        <PaginationNext
+          onClick={() => handlePageChange(page + 1)}
+          className={!pagination.hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+        />
+      </PaginationItem>
+    )
+
+    return items
+  }
+
   // Fetch time logs with filters
-  const fetchTimeLogsWithFilters = async () => {
+  const fetchTimeLogsWithFilters = async (page: number = 1, limit: number = 20) => {
     setIsFiltering(true)
     try {
       setError(null)
@@ -88,10 +196,13 @@ export default function TimeLogsPage() {
         startDate,
         endDate,
         status: statusFilter,
-        projectId: projectFilter !== "all" ? projectFilter : undefined
+        projectId: projectFilter !== "all" ? projectFilter : undefined,
+        page,
+        limit
       }
-      const data = await fetchEmployeeTimeLogsWithFilters(filters)
-      setTimeLogs(data)
+      const result = await fetchEmployeeTimeLogsWithFilters(filters)
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
     } catch (err) {
       console.error("Error fetching time logs with filters:", err)
       setError("Failed to fetch time logs. Please try again.")
@@ -116,10 +227,13 @@ export default function TimeLogsPage() {
           startDate,
           endDate,
           status: statusFilter,
-          projectId: projectFilter === "all" ? undefined : projectFilter
+          projectId: projectFilter === "all" ? undefined : projectFilter,
+          page: pagination.page,
+          limit: pagination.limit
         }
-        const data = await fetchEmployeeTimeLogsWithFilters(filters)
-        setTimeLogs(data)
+        const result = await fetchEmployeeTimeLogsWithFilters(filters)
+        setTimeLogs(result.items)
+        setPagination(result.pagination)
       } catch (err) {
         setError("Failed to load time logs. Please try again.")
       } finally {
@@ -147,10 +261,13 @@ export default function TimeLogsPage() {
         startDate: today.toISOString().split("T")[0],
         endDate: tomorrow.toISOString().split("T")[0],
         status: "all",
-        projectId: undefined
+        projectId: undefined,
+        page: 1,
+        limit: pagination.limit
       }
-      const data = await fetchEmployeeTimeLogsWithFilters(filters)
-      setTimeLogs(data)
+      const result = await fetchEmployeeTimeLogsWithFilters(filters)
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
     } catch (err) {
       console.error("Error loading time logs:", err)
       setError("Failed to load time logs. Please try again.")
@@ -166,17 +283,20 @@ export default function TimeLogsPage() {
       setError(null)
       try {
         // Fetch both dashboard data and time logs in parallel
-        const [dashboardData, timeLogsData] = await Promise.all([
+        const [dashboardData, timeLogsResult] = await Promise.all([
           fetchEmployeeDashboard(),
           fetchEmployeeTimeLogsWithFilters({
             startDate,
             endDate,
             status: statusFilter,
-            projectId: undefined
+            projectId: undefined,
+            page: 1,
+            limit: pagination.limit
           })
         ])
         setDashboardData(dashboardData)
-        setTimeLogs(timeLogsData)
+        setTimeLogs(timeLogsResult.items)
+        setPagination(timeLogsResult.pagination)
       } catch (err) {
         setError("Failed to load data. Please try again.")
       } finally {
@@ -635,8 +755,9 @@ export default function TimeLogsPage() {
       })
       toast.success("Time log updated successfully!")
       setLoading(true)
-      const data = await fetchEmployeeTimeLogs()
-      setTimeLogs(data)
+      const result = await fetchEmployeeTimeLogs({ page: pagination.page, limit: pagination.limit })
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
       setIsEditDialogOpen(false)
       setEditTimeLog(null)
     } catch (err) {
@@ -654,8 +775,9 @@ export default function TimeLogsPage() {
       await putRequest(`/consultants/time-logs/${logId}`, { status: 'active' })
       toast.success('Draft published successfully!')
       setLoading(true)
-      const data = await fetchEmployeeTimeLogs()
-      setTimeLogs(data)
+      const result = await fetchEmployeeTimeLogs({ page: pagination.page, limit: pagination.limit })
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
       setPublishDialogOpen(false)
       setPublishLogId(null)
     } catch (err) {
@@ -674,8 +796,9 @@ export default function TimeLogsPage() {
       await Promise.all(draftLogs.map(log => putRequest(`/consultants/time-logs/${log.id}`, { status: 'active' })))
       toast.success('All drafts published successfully!')
       setLoading(true)
-      const data = await fetchEmployeeTimeLogs()
-      setTimeLogs(data)
+      const result = await fetchEmployeeTimeLogs({ page: pagination.page, limit: pagination.limit })
+      setTimeLogs(result.items)
+      setPagination(result.pagination)
       setPublishAllDialogOpen(false)
     } catch (err) {
       toast.error((err as Error)?.message || 'Failed to publish all drafts')
@@ -951,6 +1074,8 @@ export default function TimeLogsPage() {
             </SelectContent>
           </Select>
 
+          {/* Pagination Info Display */}
+
           <Button
             variant="outline"
             size="sm"
@@ -1055,85 +1180,223 @@ export default function TimeLogsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTimeLogs.map((log) => {
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell>{formatDate(log.createdAt)}</TableCell>
-                      <TableCell className="">
-                        <div>
-                          <div className="">{log.title}</div>
-                          <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                            {log.description.replace(/<[^>]*>/g, '').substring(0, 100)}
-                            {log.description.length > 100 && '...'}
-                          </div>
+                {isNavigating || isChangingLimit ? (
+                  // Show skeleton loading when navigating or changing limit
+                  Array.from({ length: pagination.limit }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-48" />
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="min-w-max">{log.project}</Badge>
-                      </TableCell>
-                      <TableCell>{formatDurationString(log.duration)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            log.status === "active"
-                              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                              : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
-                          }
-                        >
-                          {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right flex items-center justify-end">
-                        <Button
-                          variant="ghost"
-                          className="hover:bg-gray-200/50"
-
-                          size="icon"
-                          onClick={() => handleViewDetails(log)}
-                          aria-label="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {log.status === "draft" && (
-                          <>
-                            <Button
-                              className="hover:bg-gray-200/50"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
-                              aria-label="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:bg-destructive/10"
-                              onClick={() => { setDeleteDialogOpen(true); setDeleteTimeLogId(log.id); }}
-                              aria-label="Delete"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="hover:bg-gray-200/50"
-
-                              onClick={() => { setPublishDialogOpen(true); setPublishLogId(log.id); }}
-                              aria-label="Publish"
-                              disabled={isPublishing || loading}
-                            >
-                              {isPublishing && publishLogId === log.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                            </Button>
-                          </>
-                        )}
-                      </TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                     </TableRow>
-                  )
-                })}
+                  ))
+                ) : (
+                  filteredTimeLogs.map((log) => {
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell>{formatDate(log.createdAt)}</TableCell>
+                        <TableCell className="">
+                          <div>
+                            <div className="">{log.title}</div>
+                            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+                              {log.description.replace(/<[^>]*>/g, '').substring(0, 100)}
+                              {log.description.length > 100 && '...'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="min-w-max">{log.project}</Badge>
+                        </TableCell>
+                        <TableCell>{formatDurationString(log.duration)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              log.status === "active"
+                                ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                            }
+                          >
+                            {log.status.charAt(0).toUpperCase() + log.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right flex items-center justify-end">
+                          <Button
+                            variant="ghost"
+                            className="hover:bg-gray-200/50"
+
+                            size="icon"
+                            onClick={() => handleViewDetails(log)}
+                            aria-label="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {log.status === "draft" && (
+                            <>
+                              <Button
+                                className="hover:bg-gray-200/50"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => { setEditTimeLog(log); setIsEditDialogOpen(true); }}
+                                aria-label="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => { setDeleteDialogOpen(true); setDeleteTimeLogId(log.id); }}
+                                aria-label="Delete"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-gray-200/50"
+
+                                onClick={() => { setPublishDialogOpen(true); setPublishLogId(log.id); }}
+                                aria-label="Publish"
+                                disabled={isPublishing || loading}
+                              >
+                                {isPublishing && publishLogId === log.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                              </Button>
+                            </>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination Controls */}
+          {timeLogs.length > 0 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <p className="text-sm font-medium text-foreground">Items per page:</p>
+                  <div className="flex items-center space-x-2">
+                    <Select
+                      value={pagination.limit.toString()}
+                      onValueChange={(value) => handleLimitChange(parseInt(value))}
+                      disabled={isChangingLimit || isNavigating}
+                    >
+                      <SelectTrigger className="w-20 h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {isChangingLimit && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={!pagination.hasPrev || isChangingLimit || isNavigating}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <div className="flex items-center space-x-1">
+                  {(() => {
+                    const totalPages = pagination.totalPages;
+                    const currentPage = pagination.page;
+                    const pages = [];
+
+                    if (totalPages <= 7) {
+                      // Show all pages if 7 or fewer
+                      for (let i = 1; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      // Show smart pagination
+                      if (currentPage <= 4) {
+                        // Show first 5 pages + ... + last page
+                        for (let i = 1; i <= 5; i++) {
+                          pages.push(i);
+                        }
+                        pages.push('...');
+                        pages.push(totalPages);
+                      } else if (currentPage >= totalPages - 3) {
+                        // Show first page + ... + last 5 pages
+                        pages.push(1);
+                        pages.push('...');
+                        for (let i = totalPages - 4; i <= totalPages; i++) {
+                          pages.push(i);
+                        }
+                      } else {
+                        // Show first + ... + current-1, current, current+1 + ... + last
+                        pages.push(1);
+                        pages.push('...');
+                        pages.push(currentPage - 1);
+                        pages.push(currentPage);
+                        pages.push(currentPage + 1);
+                        pages.push('...');
+                        pages.push(totalPages);
+                      }
+                    }
+
+                    return pages.map((page, index) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`ellipsis-${index}`} className="text-muted-foreground px-2">
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <Button
+                          key={page}
+                          variant={pagination.page === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page as number)}
+                          disabled={isChangingLimit || isNavigating}
+                          className="w-8 h-8 p-0"
+                        >
+                          {page}
+                        </Button>
+                      );
+                    });
+                  })()}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={!pagination.hasNext || isChangingLimit || isNavigating}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -1309,8 +1572,9 @@ export default function TimeLogsPage() {
                   await deleteRequest(`/consultants/time-logs/${deleteTimeLogId}`)
                   toast.success("Time log deleted successfully")
                   // Refresh time logs
-                  const data = await fetchEmployeeTimeLogs()
-                  setTimeLogs(data)
+                  const result = await fetchEmployeeTimeLogs({ page: pagination.page, limit: pagination.limit })
+                  setTimeLogs(result.items)
+                  setPagination(result.pagination)
                   setDeleteDialogOpen(false)
                   setDeleteTimeLogId(null)
                 } catch (err: any) {

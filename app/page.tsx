@@ -81,7 +81,7 @@ export default function Home() {
       const user = response.data.user;
       if (user.departmentHead && user.departmentHead.name) {
         router.push("/dashboard/department-head");
-      } else if (user.departmentHeadId) {
+      } else if (user.departmentHead) {
         router.push("/dashboard/department-head");
       } else {
         const roleName = user.role.name;

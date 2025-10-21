@@ -47,12 +47,7 @@ export default function EditDepartmentPage() {
                 const response = await getAllConsultants()
 
                 if (response.status === 200) {
-                    // Handle both paginated and non-paginated responses
-                    if (response.data && response.data.items) {
-                        setConsultants(response.data.items)
-                    } else {
-                        setConsultants(response.data || [])
-                    }
+                    setConsultants(response.data || [])
                 } else {
                     toast.error("Failed to fetch consultants")
                 }
@@ -153,7 +148,7 @@ export default function EditDepartmentPage() {
                 toast.success("Department updated successfully!")
                 router.push("/dashboard/company-admin/departments")
             } else {
-                toast.error(response.message || response.data?.message || "Failed to update department")
+                toast.error(response.message || "Failed to update department")
             }
         } catch (error: any) {
             console.error("Error updating department:", error)

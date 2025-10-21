@@ -36,11 +36,18 @@ export default function CompanyAdminDashboard() {
   const [isTasksLoading, setIsTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [allTasks, setAllTasks] = useState<Task[]>([])
+  const [dashboardTitle, setDashboardTitle] = useState<string>("Company Admin Dashboard")
   const router = useRouter()
 
   useEffect(() => {
     // No authentication or role check, always allow access
   }, [router])
+
+  useEffect(() => {
+    // Set dashboard title based on user role after component mounts
+    const userRole = getUserRole()
+    setDashboardTitle(userRole === "Board Member" ? "Board Member Dashboard" : "Company Admin Dashboard")
+  }, [])
 
   useEffect(() => {
     const fetchSummaryData = async () => {
@@ -53,7 +60,7 @@ export default function CompanyAdminDashboard() {
           throw new Error("Company ID not found")
         }
 
-        const response: CompanySummaryResponse = await getCompanySummary(authData.user.company.id)
+        const response = await getCompanySummary(authData.user.company.id) as CompanySummaryResponse
         setSummaryData(response.data)
       } catch (err) {
         console.error("Failed to fetch company summary:", err)
@@ -128,8 +135,6 @@ export default function CompanyAdminDashboard() {
     )
   }
 
-  const userRole = getUserRole();
-  const dashboardTitle = userRole === "Board Member" ? "Board Member Dashboard" : "Company Admin Dashboard";
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -230,16 +235,16 @@ export default function CompanyAdminDashboard() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsContent value="overview" className="space-y-4">
 
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle className=" text-xl font-medium">Hours by Project</CardTitle>
-                <CardDescription>Hours tracked per project</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TaskDistributionChart />
-              </CardContent>
-            </Card>
-    
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle className=" text-xl font-medium">Hours by Project</CardTitle>
+              <CardDescription>Hours tracked per project</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TaskDistributionChart />
+            </CardContent>
+          </Card>
+
         </TabsContent>
       </Tabs>
     </div>

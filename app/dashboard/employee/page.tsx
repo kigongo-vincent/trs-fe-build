@@ -64,6 +64,9 @@ export default function EmployeeDashboard() {
           case "Company Admin":
             router.replace("/dashboard/company-admin")
             break
+          case "Board Member":
+            router.replace("/dashboard/company-admin")
+            break
           default:
             router.replace("/dashboard/employee")
         }
@@ -76,12 +79,12 @@ export default function EmployeeDashboard() {
       try {
         setLoading(true)
         setError(null)
-        const [dashboardData, timeLogsData] = await Promise.all([
+        const [dashboardData, timeLogsResult] = await Promise.all([
           fetchEmployeeDashboard(),
           fetchEmployeeTimeLogs()
         ])
         setDashboardData(dashboardData)
-        setTimeLogs(timeLogsData)
+        setTimeLogs(timeLogsResult.items)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard data")
       } finally {

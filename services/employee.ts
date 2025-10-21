@@ -79,6 +79,22 @@ export interface TimeLogsResponse {
   data: TimeLog[];
 }
 
+export interface PaginatedTimeLogsResponse {
+  status: number;
+  message: string;
+  data: {
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    items: TimeLog[];
+  };
+}
+
 // Types for Task Completion API Response
 export interface CompletionData {
   count: number;
@@ -203,12 +219,26 @@ export async function fetchEmployeeDashboard(): Promise<EmployeeDashboardData> {
 }
 
 // Fetch employee time logs
-export async function fetchEmployeeTimeLogs(): Promise<TimeLog[]> {
+export async function fetchEmployeeTimeLogs(params?: {
+  page?: number;
+  limit?: number;
+}): Promise<{ items: TimeLog[]; pagination: any }> {
   try {
-    const result: TimeLogsResponse = await getRequest(
-      "/consultants/time-logs/"
-    );
-    return result.data;
+    let url = "/consultants/time-logs/";
+    if (params) {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append("page", params.page.toString());
+      if (params.limit) queryParams.append("limit", params.limit.toString());
+      if (queryParams.toString()) {
+        url += `?${queryParams.toString()}`;
+      }
+    }
+
+    const result: PaginatedTimeLogsResponse = await getRequest(url);
+    return {
+      items: result.data.items,
+      pagination: result.data.pagination,
+    };
   } catch (error) {
     console.error("Error fetching employee time logs:", error);
     throw error;
@@ -217,15 +247,31 @@ export async function fetchEmployeeTimeLogs(): Promise<TimeLog[]> {
 
 // Fetch employee time logs with search
 export async function fetchEmployeeTimeLogsWithSearch(
-  query?: string
-): Promise<TimeLog[]> {
+  query?: string,
+  params?: {
+    page?: number;
+    limit?: number;
+  }
+): Promise<{ items: TimeLog[]; pagination: any }> {
   try {
     let url = "/consultants/time-logs/";
+    const queryParams = new URLSearchParams();
+
     if (query && query.trim()) {
-      url += `?search=${encodeURIComponent(query.trim())}`;
+      queryParams.append("search", query.trim());
     }
-    const result: TimeLogsResponse = await getRequest(url);
-    return result.data;
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    if (queryParams.toString()) {
+      url += `?${queryParams.toString()}`;
+    }
+
+    const result: PaginatedTimeLogsResponse = await getRequest(url);
+    return {
+      items: result.data.items,
+      pagination: result.data.pagination,
+    };
   } catch (error) {
     console.error("Error fetching employee time logs with search:", error);
     throw error;
@@ -239,7 +285,9 @@ export async function fetchEmployeeTimeLogsWithFilters(filters: {
   endDate?: string;
   status?: string;
   projectId?: string;
-}): Promise<TimeLog[]> {
+  page?: number;
+  limit?: number;
+}): Promise<{ items: TimeLog[]; pagination: any }> {
   try {
     let url = "/consultants/time-logs/";
     const params = new URLSearchParams();
@@ -259,13 +307,22 @@ export async function fetchEmployeeTimeLogsWithFilters(filters: {
     if (filters.projectId && filters.projectId !== "all") {
       params.append("projectId", filters.projectId);
     }
+    if (filters.page) {
+      params.append("page", filters.page.toString());
+    }
+    if (filters.limit) {
+      params.append("limit", filters.limit.toString());
+    }
 
     if (params.toString()) {
       url += `?${params.toString()}`;
     }
 
-    const result: TimeLogsResponse = await getRequest(url);
-    return result.data;
+    const result: PaginatedTimeLogsResponse = await getRequest(url);
+    return {
+      items: result.data.items,
+      pagination: result.data.pagination,
+    };
   } catch (error) {
     console.error("Error fetching employee time logs with filters:", error);
     throw error;
@@ -275,13 +332,29 @@ export async function fetchEmployeeTimeLogsWithFilters(filters: {
 // Fetch employee time logs by date range
 export async function fetchEmployeeTimeLogsByRange(
   startDate: string,
-  endDate: string
-): Promise<TimeLog[]> {
+  endDate: string,
+  params?: {
+    page?: number;
+    limit?: number;
+  }
+): Promise<{ items: TimeLog[]; pagination: any }> {
   try {
-    const result: TimeLogsResponse = await getRequest(
-      `/consultants/time-logs/range?startDate=${startDate}&endDate=${endDate}`
-    );
-    return result.data;
+    let url = `/consultants/time-logs/range?startDate=${startDate}&endDate=${endDate}`;
+
+    if (params) {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append("page", params.page.toString());
+      if (params.limit) queryParams.append("limit", params.limit.toString());
+      if (queryParams.toString()) {
+        url += `&${queryParams.toString()}`;
+      }
+    }
+
+    const result: PaginatedTimeLogsResponse = await getRequest(url);
+    return {
+      items: result.data.items,
+      pagination: result.data.pagination,
+    };
   } catch (error) {
     console.error("Error fetching employee time logs by range:", error);
     throw error;

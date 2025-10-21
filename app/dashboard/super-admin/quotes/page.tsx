@@ -282,7 +282,6 @@ export default function QuotesPage() {
                                                 <Switch
                                                     checked={field.value}
                                                     onCheckedChange={field.onChange}
-                                                    disabled={isSubmitting}
                                                 />
                                             </FormControl>
                                         </FormItem>
@@ -506,7 +505,6 @@ export default function QuotesPage() {
                                         <Switch
                                             checked={field.value}
                                             onCheckedChange={field.onChange}
-                                            disabled={isEditSubmitting}
                                         />
                                     </FormControl>
                                 </FormItem>

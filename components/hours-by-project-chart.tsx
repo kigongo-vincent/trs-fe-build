@@ -54,7 +54,7 @@ export function HoursByProjectChart() {
           throw new Error("Company ID not found")
         }
 
-        const response: HoursByProjectResponse = await getHoursByProject(authData.user.company.id)
+        const response = await getHoursByProject(authData.user.company.id) as HoursByProjectResponse
 
         // Calculate total minutes for percentage calculation
         const totalMinutes = response.data.reduce((sum, item) => sum + item.totalMinutes, 0)

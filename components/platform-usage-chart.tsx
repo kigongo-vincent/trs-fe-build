@@ -41,7 +41,7 @@ export function PlatformUsageChart() {
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis type="number" domain={[0, 100]} />
         <YAxis dataKey="name" type="category" />
-        <Tooltip formatter={(value) => [`${value}%`, "Usage"]} />
+        <Tooltip formatter={(value: number) => [`${value}%`, "Usage"]} />
         <Legend />
         <Bar dataKey="usage" fill="#8884d8" name="Usage %" />
       </BarChart>

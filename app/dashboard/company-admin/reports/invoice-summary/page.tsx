@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { DateRangePicker } from "@/components/date-range-picker";
+import type { DateRange } from "react-day-picker";
 
 const initialData = [
     { invoice: "INV-001", employee: "Alice Smith", department: "Engineering", amount: 1200, status: "Paid", due: "2024-06-10", paid: "2024-06-09", reviewer: "John Smith", approver: "Jane Doe", processed: "2024-06-08" },
@@ -22,7 +23,20 @@ const columns = [
     { key: "processed", label: "Processed At" },
 ];
 
-function sortData(data, sortBy, sortDir) {
+type InvoiceData = {
+    invoice: string;
+    employee: string;
+    department: string;
+    amount: number;
+    status: string;
+    due: string;
+    paid: string;
+    reviewer: string;
+    approver: string;
+    processed: string;
+};
+
+function sortData(data: InvoiceData[], sortBy: keyof InvoiceData, sortDir: "asc" | "desc") {
     return [...data].sort((a, b) => {
         if (a[sortBy] < b[sortBy]) return sortDir === "asc" ? -1 : 1;
         if (a[sortBy] > b[sortBy]) return sortDir === "asc" ? 1 : -1;
@@ -30,31 +44,31 @@ function sortData(data, sortBy, sortDir) {
     });
 }
 
-function formatDateRange(range) {
+function formatDateRange(range: DateRange | undefined) {
     if (!range || !range.from) return "All Time";
     if (!range.to) return `${range.from.toLocaleDateString()}`;
     return `${range.from.toLocaleDateString()} - ${range.to.toLocaleDateString()}`;
 }
 
 export default function InvoiceSummaryReport() {
-    const [sortBy, setSortBy] = useState("due");
-    const [sortDir, setSortDir] = useState("asc");
-    const [dateRange, setDateRange] = useState(null);
+    const [sortBy, setSortBy] = useState<keyof InvoiceData>("due");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const sorted = sortData(initialData, sortBy, sortDir);
 
     // Filter by due date if selected
     const filtered = dateRange && dateRange.from ?
         sorted.filter(row => {
             const d = new Date(row.due);
-            const from = dateRange.from;
-            const to = dateRange.to || dateRange.from;
+            const from = dateRange.from!;
+            const to = dateRange.to || dateRange.from!;
             return d >= from && d <= to;
         }) : sorted;
 
     const totalInvoices = filtered.length;
     const totalAmount = filtered.reduce((sum, row) => sum + row.amount, 0);
 
-    const handleSort = (col) => {
+    const handleSort = (col: keyof InvoiceData) => {
         if (sortBy === col) setSortDir(sortDir === "asc" ? "desc" : "asc");
         else { setSortBy(col); setSortDir("asc"); }
     };
@@ -77,7 +91,7 @@ export default function InvoiceSummaryReport() {
                                 <th
                                     key={col.key}
                                     className="px-4 py-2 border cursor-pointer select-none"
-                                    onClick={() => handleSort(col.key)}
+                                    onClick={() => handleSort(col.key as keyof InvoiceData)}
                                 >
                                     {col.label}
                                     {sortBy === col.key && (
@@ -91,7 +105,7 @@ export default function InvoiceSummaryReport() {
                         {filtered.map((row, i) => (
                             <tr key={i} className="even:bg-gray-50">
                                 {columns.map(col => (
-                                    <td key={col.key} className="px-4 py-2 border">{row[col.key]}</td>
+                                    <td key={col.key} className="px-4 py-2 border">{row[col.key as keyof InvoiceData]}</td>
                                 ))}
                             </tr>
                         ))}

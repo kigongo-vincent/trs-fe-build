@@ -32,12 +32,7 @@ export default function CompanyDetailsPage({ params }: { params: Promise<{ id: s
     ])
       .then(([companyData, consultantsData, summaryData]) => {
         setCompany(companyData.data)
-        // Handle both paginated and non-paginated responses
-        if (consultantsData.data && consultantsData.data.items) {
-          setConsultants(consultantsData.data.items)
-        } else {
-          setConsultants(consultantsData.data || [])
-        }
+        setConsultants(consultantsData.data || [])
         setSummary((summaryData as any).data)
         setLoading(false)
       })

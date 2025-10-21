@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon, FileText, Download, PhoneCall, PhoneIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
+import { Eye, Plus, Search, Users, Mail, TrendingUp, TrendingDown, Minus, Clock, Calendar, User, Filter, Edit, UserCheck, UserX, SearchIcon, FileText, Download, PhoneCall, PhoneIcon, MapPin, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
@@ -151,12 +152,105 @@ export default function ConsultantsPage() {
   const [statusAction, setStatusAction] = useState<'activate' | 'deactivate' | 'on-leave' | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isChangingLimit, setIsChangingLimit] = useState(false)
   // Removed recent activity logs state
 
   // Get company ID from auth data
   const authData = getAuthData();
   const companyId = authData?.user?.company?.id;
   const companyCurrency = authData?.user?.company?.currency
+
+  // Handle pagination
+  const handlePageChange = async (page: number) => {
+    setPagination(prev => ({ ...prev, page }))
+    await fetchConsultants(page, pagination.limit)
+  }
+
+  const handleLimitChange = async (limit: number) => {
+    setIsChangingLimit(true)
+    setPagination(prev => ({ ...prev, limit, page: 1 }))
+    try {
+      await fetchConsultants(1, limit)
+    } finally {
+      setIsChangingLimit(false)
+    }
+  }
+
+  // Generate pagination items
+  const generatePaginationItems = () => {
+    const items = []
+    const { page, totalPages } = pagination
+
+    // Previous button
+    items.push(
+      <PaginationItem key="prev">
+        <PaginationPrevious
+          onClick={() => handlePageChange(page - 1)}
+          className={!pagination.hasPrev ? "pointer-events-none opacity-50" : "cursor-pointer"}
+        />
+      </PaginationItem>
+    )
+
+    // Page numbers
+    const startPage = Math.max(1, page - 2)
+    const endPage = Math.min(totalPages, page + 2)
+
+    if (startPage > 1) {
+      items.push(
+        <PaginationItem key={1}>
+          <PaginationLink onClick={() => handlePageChange(1)}>1</PaginationLink>
+        </PaginationItem>
+      )
+      if (startPage > 2) {
+        items.push(
+          <PaginationItem key="ellipsis1">
+            <span className="px-3 py-2">...</span>
+          </PaginationItem>
+        )
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      items.push(
+        <PaginationItem key={i}>
+          <PaginationLink
+            onClick={() => handlePageChange(i)}
+            isActive={i === page}
+            className="cursor-pointer"
+          >
+            {i}
+          </PaginationLink>
+        </PaginationItem>
+      )
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        items.push(
+          <PaginationItem key="ellipsis2">
+            <span className="px-3 py-2">...</span>
+          </PaginationItem>
+        )
+      }
+      items.push(
+        <PaginationItem key={totalPages}>
+          <PaginationLink onClick={() => handlePageChange(totalPages)}>{totalPages}</PaginationLink>
+        </PaginationItem>
+      )
+    }
+
+    // Next button
+    items.push(
+      <PaginationItem key="next">
+        <PaginationNext
+          onClick={() => handlePageChange(page + 1)}
+          className={!pagination.hasNext ? "pointer-events-none opacity-50" : "cursor-pointer"}
+        />
+      </PaginationItem>
+    )
+
+    return items
+  }
 
   // Function to fetch tasks by date range from API
   const fetchTasksByDateRange = async (startDate: Date, endDate: Date) => {
@@ -426,7 +520,31 @@ export default function ConsultantsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-medium tracking-tight ">Consultants</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Items per page selector */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">Show:</span>
+            <Select
+              value={pagination.limit.toString()}
+              onValueChange={(value) => handleLimitChange(parseInt(value))}
+              disabled={isChangingLimit}
+            >
+              <SelectTrigger className="w-20 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            {isChangingLimit && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
           {userRole !== "Board Member" && (
             <Button asChild>
               <Link href="/dashboard/company-admin/consultants/add">
@@ -575,6 +693,20 @@ export default function ConsultantsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Pagination Info Display */}
+          {filteredConsultants.length > 0 && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-white/50 rounded-md border">
+              <span className="text-sm font-medium text-foreground">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-sm text-muted-foreground">
+                {pagination.total} total consultants
+              </span>
+            </div>
+          )}
+
           <Button onClick={() => fetchConsultants(1)} disabled={listLoading}>
             {listLoading ? <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span> : null}
             Filter
@@ -720,113 +852,79 @@ export default function ConsultantsPage() {
 
         {/* Pagination Controls */}
         <div className="flex items-center justify-between px-6 py-4 border-t">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Show</span>
-            <Select
-              value={pagination.limit.toString()}
-              onValueChange={(value) => {
-                const newLimit = parseInt(value);
-                setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-                fetchConsultants(1, newLimit);
-              }}
-              disabled={listLoading}
-            >
-              <SelectTrigger className="w-20 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">per page</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchConsultants(pagination.page - 1)}
-              disabled={!pagination.hasPrev || listLoading}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <div className="flex items-center space-x-1">
-              {(() => {
-                const totalPages = pagination.totalPages;
-                const currentPage = pagination.page;
-                const pages = [];
-
-                if (totalPages <= 7) {
-                  // Show all pages if 7 or fewer
-                  for (let i = 1; i <= totalPages; i++) {
-                    pages.push(i);
-                  }
-                } else {
-                  // Show smart pagination
-                  if (currentPage <= 4) {
-                    // Show first 5 pages + ... + last page
-                    for (let i = 1; i <= 5; i++) {
-                      pages.push(i);
-                    }
-                    pages.push('...');
-                    pages.push(totalPages);
-                  } else if (currentPage >= totalPages - 3) {
-                    // Show first page + ... + last 5 pages
-                    pages.push(1);
-                    pages.push('...');
-                    for (let i = totalPages - 4; i <= totalPages; i++) {
-                      pages.push(i);
-                    }
-                  } else {
-                    // Show first + ... + current-1, current, current+1 + ... + last
-                    pages.push(1);
-                    pages.push('...');
-                    pages.push(currentPage - 1);
-                    pages.push(currentPage);
-                    pages.push(currentPage + 1);
-                    pages.push('...');
-                    pages.push(totalPages);
-                  }
-                }
-
-                return pages.map((page, index) => {
-                  if (page === '...') {
-                    return (
-                      <span key={`ellipsis-${index}`} className="text-muted-foreground px-2">
-                        ...
-                      </span>
-                    );
-                  }
-
-                  return (
-                    <Button
-                      key={page}
-                      variant={pagination.page === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => fetchConsultants(page as number)}
-                      disabled={listLoading}
-                      className="w-8 h-8 p-0"
-                    >
-                      {page}
-                    </Button>
-                  );
-                });
-              })()}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-muted-foreground">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+              </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchConsultants(pagination.page + 1)}
-              disabled={!pagination.hasNext || listLoading}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+            <div className="flex items-center space-x-3">
+              <p className="text-sm font-medium text-foreground">Items per page:</p>
+              <div className="flex items-center space-x-2">
+                <Select
+                  value={pagination.limit.toString()}
+                  onValueChange={(value) => handleLimitChange(parseInt(value))}
+                  disabled={isChangingLimit}
+                >
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="flex items-center space-x-1">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="500"
+                    placeholder="Custom"
+                    className="w-16 h-8 text-sm"
+                    disabled={isChangingLimit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const value = parseInt((e.target as HTMLInputElement).value)
+                        if (value && value >= 1 && value <= 500) {
+                          handleLimitChange(value)
+                            ; (e.target as HTMLInputElement).value = ''
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2"
+                    disabled={isChangingLimit}
+                    onClick={(e) => {
+                      const input = (e.target as HTMLElement).parentElement?.querySelector('input') as HTMLInputElement
+                      const value = parseInt(input.value)
+                      if (value && value >= 1 && value <= 500) {
+                        handleLimitChange(value)
+                        input.value = ''
+                      }
+                    }}
+                  >
+                    {isChangingLimit ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      'Set'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
+          <Pagination>
+            <PaginationContent>
+              {generatePaginationItems()}
+            </PaginationContent>
+          </Pagination>
         </div>
       </Card>
 
