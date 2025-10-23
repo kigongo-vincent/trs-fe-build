@@ -82,6 +82,7 @@ export default function DashboardLayout({
       if (path.startsWith("/dashboard/company-admin")) return "Company Admin" // Board Members also have access
       if (path.startsWith("/dashboard/department-head")) return "Department Head"
       if (path.startsWith("/dashboard/employee") || path.startsWith("/dashboard/consultant")) return "Consultant"
+      if (path.startsWith("/dashboard/freelancer")) return "Freelancer"
       if (path.startsWith("/dashboard")) return null
       return null
     }
@@ -122,7 +123,7 @@ export default function DashboardLayout({
           ?
           ""
           :
-          userRole?.toLowerCase()?.includes("consultan")
+          (userRole?.toLowerCase()?.includes("consultan") || userRole === "Freelancer")
             ?
             <motion.header
               animate={{ opacity: 1 }}

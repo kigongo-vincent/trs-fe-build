@@ -9,49 +9,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { createDepartment } from "@/services/departments"
-import { getAllConsultants, type Consultant } from "@/services/consultants"
+import { ConsultantSearchableSelect } from "@/components/ui/consultant-searchable-select"
 import { getAuthData } from "@/services/auth"
 import { toast } from "sonner"
 
 export default function CreateDepartmentPage() {
     const router = useRouter()
     const [loading, setLoading] = useState(false)
-    const [consultants, setConsultants] = useState<Consultant[]>([])
-    const [consultantsLoading, setConsultantsLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: "",
         head: "",
         description: ""
     })
-
-    // Fetch consultants on component mount
-    useEffect(() => {
-        const fetchConsultants = async () => {
-            try {
-                setConsultantsLoading(true)
-                const authData = getAuthData()
-                if (!authData?.user?.company?.id) {
-                    toast.error("Company information not found. Please log in again.")
-                    return
-                }
-
-                const response = await getAllConsultants()
-
-                if (response.status === 200) {
-                    setConsultants(response.data || [])
-                } else {
-                    toast.error("Failed to fetch consultants")
-                }
-            } catch (error) {
-                console.error("Error fetching consultants:", error)
-                toast.error("An error occurred while fetching consultants")
-            } finally {
-                setConsultantsLoading(false)
-            }
-        }
-
-        fetchConsultants()
-    }, [])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -150,28 +119,12 @@ export default function CreateDepartmentPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="head">Department Head</Label>
-                            <Select
+                            <ConsultantSearchableSelect
                                 value={formData.head}
                                 onValueChange={handleHeadChange}
-                                disabled={loading || consultantsLoading}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={
-                                        consultantsLoading
-                                            ? "Loading consultants..."
-                                            : consultants.length === 0
-                                                ? "No consultants available"
-                                                : "Select department head (optional)"
-                                    } />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {consultants.map((consultant) => (
-                                        <SelectItem key={consultant.id} value={consultant.id}>
-                                            {consultant.fullName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Search and select department head (optional)"
+                                disabled={loading}
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -196,7 +149,7 @@ export default function CreateDepartmentPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={loading || consultantsLoading}>
+                            <Button type="submit" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Create Department
                             </Button>

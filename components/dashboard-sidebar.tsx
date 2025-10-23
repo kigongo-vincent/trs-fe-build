@@ -17,6 +17,8 @@ import {
   User,
   LayoutList,
   MessageSquare,
+  Settings,
+  Timer,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -41,6 +43,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
     admin: true,
     management: true,
     consultant: true,
+    freelancer: true,
     analytics: true,
     reports: true,
     profile: false,
@@ -76,6 +79,7 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
   const shouldShowCompanyAdmin = userRole === "Company Admin" || userRole === "Board Member"
   const shouldShowConsultant = userRole === "Consultant" || userRole === "Employee"
   const shouldShowDepartmentAdmin = userRole === "Department Admin"
+  const shouldShowFreelancer = userRole === "Freelancer"
 
 
   const isProfileActive = pathname.startsWith("/dashboard/profile")
@@ -514,6 +518,101 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                     >
                       <Receipt className="h-4 w-4" />
                       <span>Invoices</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Freelancer Section */}
+          {shouldShowFreelancer && (
+            <>
+              <div className="px-3 py-2">
+                <div className="space-y-1">
+                  <Link
+                    href="/dashboard/freelancer"
+                    onClick={handleLinkClick}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                      isActive("/dashboard/freelancer", true) && "bg-gray-800 text-primary font-semibold",
+                    )}
+                  >
+                    <Home className="h-4 w-4" />
+                    <span>Overview</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="px-3 py-2">
+                <div
+                  className="flex items-center justify-between py-2 cursor-pointer"
+                  onClick={() => toggleGroup("freelancer")}
+                >
+                  <h3 className="text-sm font-medium">Freelancer</h3>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground transition-transform",
+                      expandedGroups.freelancer && "rotate-180",
+                    )}
+                  />
+                </div>
+                {expandedGroups.freelancer && (
+                  <div className="mt-1 space-y-1">
+                    <Link
+                      href="/dashboard/freelancer/companies"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                        isActive("/dashboard/freelancer/companies") && "bg-gray-800 text-primary font-semibold",
+                      )}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Companies</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/freelancer/projects"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                        isActive("/dashboard/freelancer/projects") && "bg-gray-800 text-primary font-semibold",
+                      )}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>Projects</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/freelancer/time-logs"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                        isActive("/dashboard/freelancer/time-logs") && "bg-gray-800 text-primary font-semibold",
+                      )}
+                    >
+                      <Timer className="h-4 w-4" />
+                      <span>Time Logs</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/freelancer/invoices"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                        isActive("/dashboard/freelancer/invoices") && "bg-gray-800 text-primary font-semibold",
+                      )}
+                    >
+                      <Receipt className="h-4 w-4" />
+                      <span>Invoices</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/freelancer/settings"
+                      onClick={handleLinkClick}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                        isActive("/dashboard/freelancer/settings") && "bg-gray-800 text-primary font-semibold",
+                      )}
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
                     </Link>
                   </div>
                 )}
