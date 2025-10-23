@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { CalendarIcon, Download, Eye, Filter, Search, Calendar, Building2, Mail, Phone, MapPin, Info, FileText, Loader2 } from "lucide-react"
+import { CalendarIcon, Download, Eye, Filter, Calendar, Building2, Mail, Phone, MapPin, Info, FileText, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
@@ -42,7 +42,7 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<ConsultantInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "processing" | "all">("all")
-  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [isInvoicesLoading, setIsInvoicesLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<ConsultantInvoiceListItem | null>(null)
@@ -84,9 +84,18 @@ export default function InvoicesPage() {
 
 
 
-  const fetchInvoices = async (searchQuery?: string, status?: "pending" | "paid" | "processing" | "all") => {
+  const fetchInvoices = async (dateRange?: DateRange, status?: "pending" | "paid" | "processing" | "all") => {
     try {
-      const invoicesResult = await fetchConsultantInvoices(searchQuery, status);
+      // Convert date range to startDate and endDate parameters
+      let startDate: string | undefined = undefined;
+      let endDate: string | undefined = undefined;
+
+      if (dateRange?.from && dateRange?.to) {
+        startDate = dateRange.from.toISOString().split('T')[0];
+        endDate = dateRange.to.toISOString().split('T')[0];
+      }
+
+      const invoicesResult = await fetchConsultantInvoices(undefined, status, startDate, endDate);
       setInvoices(Array.isArray(invoicesResult) ? invoicesResult : []);
       return invoicesResult;
     } catch (error) {
@@ -109,7 +118,7 @@ export default function InvoicesPage() {
         setMonthlySummaryData(Array.isArray(monthlySummaryResult) ? monthlySummaryResult : []);
 
         // Initial fetch of invoices with current filters
-        await fetchInvoices(searchQuery, statusFilter);
+        await fetchInvoices(dateRange, statusFilter);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -179,13 +188,13 @@ export default function InvoicesPage() {
     return userCurrency;
   }
 
-  async function handleSearch() {
+  async function handleDateRangeFilter() {
     setIsInvoicesLoading(true);
     try {
-      await fetchInvoices(searchQuery, statusFilter);
+      await fetchInvoices(dateRange, statusFilter);
     } catch (error) {
-      console.error("Error searching invoices:", error);
-      toast.error("Failed to search invoices");
+      console.error("Error filtering invoices:", error);
+      toast.error("Failed to filter invoices");
     } finally {
       setIsInvoicesLoading(false);
     }
@@ -195,7 +204,7 @@ export default function InvoicesPage() {
     setIsInvoicesLoading(true);
     try {
       setStatusFilter(value);
-      await fetchInvoices(searchQuery, value);
+      await fetchInvoices(dateRange, value);
       setInvoices(invoices)
     } catch (error) {
       console.log(error)
@@ -597,35 +606,15 @@ export default function InvoicesPage() {
       </Card>
 
 
-      <div className="flex bg-paper p-4 rounded-lg flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="p-2  bg-pale gap-3 md:min-w-[20vw] rounded flex items-center ">
-          <div />
-          <input
-            value={searchQuery}
-            placeholder="Search invoices..."
-
-            onChange={(e) => { setSearchQuery(e.target.value) }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleSearch()
-              }
-            }}
-            type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
-          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={handleSearch}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-
-              </>
-            )}
-          </Button>
+      <div className="flex bg-paper p-4 rounded-lg flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">Filter by Date Range</label>
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            className="w-full"
+          />
         </div>
-
 
         <div className="flex flex-row items-center gap-2">
           <Select value={statusFilter} onValueChange={(value: "pending" | "paid" | "processing" | "all") => {
@@ -641,6 +630,23 @@ export default function InvoicesPage() {
               <SelectItem value="processing">Processing</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            className="bg-gray-900 hover:bg-gray-600"
+            onClick={handleDateRangeFilter}
+            disabled={isInvoicesLoading}
+          >
+            {isInvoicesLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only md:not-sr-only md:ml-2">Filtering...</span>
+              </>
+            ) : (
+              <>
+                <Filter className="h-4 w-4" />
+                <span className="sr-only md:not-sr-only md:ml-2">Apply Filter</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

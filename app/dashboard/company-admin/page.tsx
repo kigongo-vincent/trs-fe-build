@@ -88,8 +88,16 @@ export default function CompanyAdminDashboard() {
     const fetchAll = async () => {
       try {
         const res = await fetchAllTasks()
-        setAllTasks(res.data)
-      } catch { }
+        if (res.data && res.data.items && Array.isArray(res.data.items)) {
+          setAllTasks(res.data.items)
+        } else {
+          console.error("Invalid response structure from fetchAllTasks:", res)
+          setAllTasks([])
+        }
+      } catch (err) {
+        console.error("Failed to fetch all tasks:", err)
+        setAllTasks([])
+      }
     }
 
     fetchSummaryData()
@@ -110,12 +118,12 @@ export default function CompanyAdminDashboard() {
   }
 
   const statusCounts = {
-    inProgress: allTasks.filter(t => t.status === "in_progress").length,
-    pending: allTasks.filter(t => t.status === "pending").length,
-    completed: allTasks.filter(t => t.status === "completed").length,
-    overdue: allTasks.filter(t => t.status === "overdue").length,
+    inProgress: Array.isArray(allTasks) ? allTasks.filter(t => t.status === "in_progress").length : 0,
+    pending: Array.isArray(allTasks) ? allTasks.filter(t => t.status === "pending").length : 0,
+    completed: Array.isArray(allTasks) ? allTasks.filter(t => t.status === "completed").length : 0,
+    overdue: Array.isArray(allTasks) ? allTasks.filter(t => t.status === "overdue").length : 0,
   }
-  const total = allTasks.length
+  const total = Array.isArray(allTasks) ? allTasks.length : 0
 
   if (error) {
     const userRole = getUserRole();

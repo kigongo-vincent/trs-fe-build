@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { createProject } from "@/services/projects"
 import { getDepartments, type Department } from "@/services/departments"
-import { getAllConsultants } from "@/services/consultants"
+import { ConsultantSearchableSelect } from "@/components/ui/consultant-searchable-select"
 import { getAuthData } from "@/services/auth"
 
 const formSchema = z.object({
@@ -41,13 +41,6 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-interface User {
-  id: string
-  fullName: string
-  email: string
-  status: string
-}
-
 interface NewProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -57,9 +50,7 @@ interface NewProjectDialogProps {
 export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
-  const [users, setUsers] = useState<User[]>([])
   const [loadingDepartments, setLoadingDepartments] = useState(false)
-  const [loadingUsers, setLoadingUsers] = useState(false)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -77,11 +68,10 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
     return today.toISOString().split("T")[0]
   }
 
-  // Fetch departments and users when dialog opens
+  // Fetch departments when dialog opens
   useEffect(() => {
     if (open) {
       fetchDepartments()
-      fetchUsers()
     }
   }, [open])
 
@@ -101,25 +91,6 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
       toast.error("Failed to load departments")
     } finally {
       setLoadingDepartments(false)
-    }
-  }
-
-  const fetchUsers = async () => {
-    setLoadingUsers(true)
-    try {
-      const authData = getAuthData()
-      if (!authData?.user?.company?.id) {
-        toast.error("Company information not found. Please log in again.")
-        return
-      }
-
-      const response = await getAllConsultants()
-      setUsers(response.data || [])
-    } catch (error) {
-      console.error("Failed to fetch users:", error)
-      toast.error("Failed to load users")
-    } finally {
-      setLoadingUsers(false)
     }
   }
 
@@ -223,27 +194,14 @@ export function NewProjectDialog({ open, onOpenChange, onSuccess }: NewProjectDi
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Project Lead</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={isSubmitting || loadingUsers}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={loadingUsers ? "Loading users..." : "Select project lead"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {users.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          <div className="flex flex-col">
-                            <span>{user.fullName}</span>
-                            <span className="text-xs text-muted-foreground">{user.email}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <ConsultantSearchableSelect
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Search and select project lead"
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

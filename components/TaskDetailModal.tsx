@@ -84,7 +84,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose,
                                                 return <Badge variant='outline'>{task.status}</Badge>;
                                         }
                                     })()}
-                                    {task.project && <Badge variant="secondary">{task.project}</Badge>}
+                                    {task.project && <Badge variant="secondary">{task.project.name}</Badge>}
                                 </div>
                             </CardTitle>
                             <CardDescription className="flex flex-wrap gap-4 mt-2 text-sm items-center">

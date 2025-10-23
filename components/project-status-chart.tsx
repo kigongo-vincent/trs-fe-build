@@ -10,7 +10,7 @@ interface ProjectStatusChartProps {
   onHoldProjects: number
 }
 
-const COLORS = [GRAPH_PRIMARY_COLOR, "#10b981", "#f59e0b"]
+const COLORS = ["#F6931B", "#111827", "#6b7280"]
 
 export function ProjectStatusChart({
   totalProjects,

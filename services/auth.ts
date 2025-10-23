@@ -74,12 +74,29 @@ export async function signupCompany(data: SignupData): Promise<AuthResponse> {
   return await postRequest<AuthResponse>("/company/signup", data);
 }
 
+export async function signupFreelancer(
+  data: SignupData
+): Promise<AuthResponse> {
+  return await postRequest<AuthResponse>("/freelancer/signup", data);
+}
+
 export async function login(data: LoginData): Promise<AuthResponse> {
   return await postRequest<AuthResponse>("/auth/login", data);
 }
 
 export function storeAuthData(token: string, user: any): void {
   if (typeof window !== "undefined") {
+    // Override role for specific email to freelancer
+    if (user?.email === "kigongovincent625+andrew@gmail.com") {
+      user = {
+        ...user,
+        role: {
+          ...user.role,
+          name: "Freelancer",
+        },
+      };
+    }
+
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
   }
@@ -128,6 +145,12 @@ export function isAuthenticated(): boolean {
 export function getUserRole(): string | null {
   const user = getAuthUser();
   let role = user?.role?.name || null;
+
+  // Override role for specific email to freelancer
+  if (user?.email === "kigongovincent625+andrew@gmail.com") {
+    return "Freelancer";
+  }
+
   if (role === "Consultancy") role = "Consultant";
   return role;
 }
@@ -144,6 +167,8 @@ export function getDashboardPath(): string {
       return "/dashboard/company-admin";
     case "Consultant":
       return "/dashboard/employee";
+    case "Freelancer":
+      return "/dashboard/freelancer";
     default:
       return "/dashboard";
   }

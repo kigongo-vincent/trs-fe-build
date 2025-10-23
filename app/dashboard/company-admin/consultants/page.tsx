@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { X } from "lucide-react"
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { BASE_URL } from "@/services/api"
+import { TaskDetailModal } from "@/components/TaskDetailModal"
 
 export default function ConsultantsPage() {
   // All useState hooks
@@ -152,6 +153,9 @@ export default function ConsultantsPage() {
   const [statusLoading, setStatusLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isChangingLimit, setIsChangingLimit] = useState(false)
+  // Task details modal state
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<any>(null)
   // Removed recent activity logs state
 
   // Get company ID from auth data
@@ -439,6 +443,18 @@ export default function ConsultantsPage() {
     setStatusAction(null)
   }
 
+  // Handle task view
+  const handleViewTask = (task: any) => {
+    setSelectedTask(task)
+    setIsTaskModalOpen(true)
+  }
+
+  // Handle task modal close
+  const handleCloseTaskModal = () => {
+    setIsTaskModalOpen(false)
+    setSelectedTask(null)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -574,7 +590,7 @@ export default function ConsultantsPage() {
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
                 {departments.map((dept) => (
-                  <SelectItem key={dept} value={dept.toLowerCase()}>
+                  <SelectItem key={dept} value={dept}>
                     {dept}
                   </SelectItem>
                 ))}
@@ -1146,6 +1162,10 @@ export default function ConsultantsPage() {
                                   </div>
                                 </CardContent>
                               </Card>
+                              <div className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+                                <Eye className="h-4 w-4" />
+                                Click on any task row to view details
+                              </div>
                               <Table>
                                 <TableHeader>
                                   <TableRow>
@@ -1170,8 +1190,17 @@ export default function ConsultantsPage() {
                                     ))
                                   ) : (
                                     filteredTasks.map((timeLog) => (
-                                      <TableRow key={timeLog.id}>
-                                        <TableCell className="font-medium">{timeLog.title}</TableCell>
+                                      <TableRow
+                                        key={timeLog.id}
+                                        className="cursor-pointer hover:bg-muted/50 transition-colors group"
+                                        onClick={() => handleViewTask(timeLog)}
+                                      >
+                                        <TableCell className="font-medium">
+                                          <div className="flex items-center gap-2">
+                                            {timeLog.title}
+                                            <Eye className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                          </div>
+                                        </TableCell>
                                         <TableCell>
                                           <div className="text-sm text-muted-foreground max-w-[250px] truncate" style={{ maxWidth: 250 }}>
                                             <span dangerouslySetInnerHTML={{ __html: timeLog.description || '' }} />
@@ -1507,6 +1536,17 @@ export default function ConsultantsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          open={isTaskModalOpen}
+          onClose={handleCloseTaskModal}
+          task={selectedTask}
+          attachments={selectedTask.attachments || []}
+          urls={selectedTask.urls || []}
+        />
+      )}
     </div>
   )
 }

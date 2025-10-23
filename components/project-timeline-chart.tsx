@@ -7,9 +7,10 @@ interface Project {
   id: string
   name: string
   progress: number
-  department: {
+  department?: {
     name: string
   }
+  companyName?: string
 }
 
 interface ProjectTimelineChartProps {
@@ -23,7 +24,7 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
       displayName: project.name.length > 20 ? project.name.substring(0, 20) + "..." : project.name,
       fullName: project.name,
       progress: project.progress,
-      department: project.department.name,
+      department: project.department?.name || project.companyName || 'Unknown',
     }))
     .sort((a, b) => b.progress - a.progress) // Sort by progress descending
 
@@ -56,7 +57,7 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
             borderRadius: "6px",
           }}
         />
-        <Bar dataKey="progress" fill="rgb(200,200,200)" radius={[0, 4, 4, 0]} name="Progress" />
+        <Bar dataKey="progress" fill="#F6931B" radius={[0, 4, 4, 0]} name="Progress" />
       </BarChart>
     </ResponsiveContainer>
   )

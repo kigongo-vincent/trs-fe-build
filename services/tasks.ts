@@ -62,7 +62,15 @@ export interface Task {
 export interface AllTasksResponse {
   status: number;
   message: string;
-  data: Task[];
+  data: {
+    items: Task[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
 }
 
 export interface UpdateTaskPayload {
@@ -99,6 +107,8 @@ export async function fetchTasksByDepartment(): Promise<TasksByDepartmentRespons
 }
 
 export async function fetchAllTasks(params?: {
+  page?: number;
+  limit?: number;
   search?: string;
   departmentId?: string;
   projectId?: string;
@@ -113,6 +123,8 @@ export async function fetchAllTasks(params?: {
   let query = "";
   if (params) {
     const q = new URLSearchParams();
+    if (params.page !== undefined) q.append("page", String(params.page));
+    if (params.limit !== undefined) q.append("limit", String(params.limit));
     if (params.search) q.append("search", params.search);
     if (params.departmentId) q.append("departmentId", params.departmentId);
     if (params.projectId) q.append("projectId", params.projectId);

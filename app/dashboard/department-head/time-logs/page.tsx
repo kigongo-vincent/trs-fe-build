@@ -115,8 +115,8 @@ export default function TasksPage() {
     setIsTasksLoading(true);
     try {
       const response = await fetchAllTasks({ search: searchTerm });
-      setTasks(response.data);
-      setFilteredTasks(response.data);
+      setTasks(response.data.items);
+      setFilteredTasks(response.data.items);
       setFilters({ department: "all", project: "all", duration: "all" }); // Reset filters
     } catch (err) {
       toast.error("Failed to search tasks. Please try again.");
@@ -141,8 +141,8 @@ export default function TasksPage() {
         duration_min,
         duration_max,
       });
-      setTasks(response.data);
-      setFilteredTasks(response.data);
+      setTasks(response.data.items);
+      setFilteredTasks(response.data.items);
       setSearchTerm(""); // Reset search
     } catch (err) {
       toast.error("Failed to filter tasks. Please try again.");
@@ -177,8 +177,8 @@ export default function TasksPage() {
     try {
       setIsTasksLoading(true);
       const response = await fetchAllTasks();
-      setTasks(response.data);
-      setFilteredTasks(response.data);
+      setTasks(response.data.items);
+      setFilteredTasks(response.data.items);
     } catch (err) {
       console.error("Failed to fetch tasks:", err);
       if (err instanceof Error && err.message.includes("overloaded")) {
@@ -844,8 +844,8 @@ export default function TasksPage() {
             // Refresh tasks
             setIsTasksLoading(true)
             const response = await fetchAllTasks()
-            setTasks(response.data)
-            setFilteredTasks(response.data)
+            setTasks(response.data.items)
+            setFilteredTasks(response.data.items)
             setIsTasksLoading(false)
           }}
           projects={projectsList}
@@ -878,8 +878,8 @@ export default function TasksPage() {
                   toast.success("Task deleted successfully")
                   // Refresh tasks
                   const response = await fetchAllTasks()
-                  setTasks(response.data)
-                  setFilteredTasks(response.data)
+                  setTasks(response.data.items)
+                  setFilteredTasks(response.data.items)
                   // Refresh summary
                   setIsLoading(true)
                   setError(null)

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X, Trash, Download } from "lucide-react"
+import { Clock, Eye, Search, Calendar, User, Building2, FolderOpen, X, Trash, Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskStatusChart } from "@/components/task-status-chart"
 import { TasksByDepartmentChart } from "@/components/tasks-by-department-chart"
@@ -48,6 +48,16 @@ export default function TasksPage() {
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  });
 
   // Add state to store file sizes
   const [fileSizes, setFileSizes] = useState<{ [url: string]: number }>({});
@@ -109,46 +119,89 @@ export default function TasksPage() {
     toast("Filters cleared");
   };
 
-  // --- Handlers for search and filters ---
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  // Handle pagination
+  const handlePageChange = async (page: number) => {
+    setPagination(prev => ({ ...prev, page }))
+    await fetchTasks(page, pagination.limit)
+  }
+
+  const handleLimitChange = async (limit: number) => {
+    setPagination(prev => ({ ...prev, limit, page: 1 }))
+    await fetchTasks(1, limit)
+  }
+
+  // Fetch tasks with pagination and filters
+  const fetchTasks = async (page: number = 1, limit?: number) => {
     setIsTasksLoading(true);
     try {
-      const response = await fetchAllTasks({ search: searchTerm });
-      setTasks(response.data);
-      setFilteredTasks(response.data);
-      setFilters({ department: "all", project: "all", duration: "all" }); // Reset filters
-    } catch (err) {
-      toast.error("Failed to search tasks. Please try again.");
+      const params: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        departmentId?: string;
+        projectId?: string;
+        duration_min?: number;
+        duration_max?: number;
+      } = {
+        page,
+        limit: limit || pagination.limit
+      };
+
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (filters.department !== "all") params.departmentId = filters.department;
+      if (filters.project !== "all") params.projectId = filters.project;
+
+      // Handle duration filters
+      const selectedDuration = durationOptions.find(opt => opt.value === filters.duration);
+      if (selectedDuration && selectedDuration.value !== "all") {
+        params.duration_min = selectedDuration.min !== undefined ? selectedDuration.min * 60 : undefined;
+        params.duration_max = selectedDuration.max !== undefined ? selectedDuration.max * 60 : undefined;
+      }
+
+      const result = await fetchAllTasks(params);
+      if (result.status !== 200) throw new Error(result.message || "Failed to fetch tasks");
+
+      // Handle paginated response structure
+      setTasks(result.data.items);
+      setFilteredTasks(result.data.items);
+      setPagination({
+        page: result.data.pagination.page,
+        limit: result.data.pagination.limit,
+        total: result.data.pagination.total,
+        totalPages: result.data.pagination.totalPages,
+        hasNext: result.data.pagination.page < result.data.pagination.totalPages,
+        hasPrev: result.data.pagination.page > 1
+      });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to fetch tasks");
+      setTasks([]);
+      setFilteredTasks([]);
+      setPagination({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+      });
     } finally {
       setIsTasksLoading(false);
     }
   };
 
+  // --- Handlers for search and filters ---
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setFilters({ department: "all", project: "all", duration: "all" }); // Reset filters
+    setPagination(prev => ({ ...prev, page: 1 }));
+    await fetchTasks(1);
+  };
+
   const handleApplyFilters = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setIsTasksLoading(true);
-    let duration_min, duration_max;
-    const selectedDuration = durationOptions.find(opt => opt.value === filters.duration);
-    if (selectedDuration && selectedDuration.value !== "all") {
-      duration_min = selectedDuration.min !== undefined ? selectedDuration.min * 60 : undefined;
-      duration_max = selectedDuration.max !== undefined ? selectedDuration.max * 60 : undefined;
-    }
-    try {
-      const response = await fetchAllTasks({
-        departmentId: filters.department !== "all" ? filters.department : undefined,
-        projectId: filters.project !== "all" ? filters.project : undefined,
-        duration_min,
-        duration_max,
-      });
-      setTasks(response.data);
-      setFilteredTasks(response.data);
-      setSearchTerm(""); // Reset search
-    } catch (err) {
-      toast.error("Failed to filter tasks. Please try again.");
-    } finally {
-      setIsTasksLoading(false);
-    }
+    setSearchTerm(""); // Reset search
+    setPagination(prev => ({ ...prev, page: 1 }));
+    await fetchTasks(1);
   };
 
   const isAnyFilterSet = Object.entries(filters).some(
@@ -174,21 +227,7 @@ export default function TasksPage() {
   };
 
   const loadAllTasks = async () => {
-    try {
-      setIsTasksLoading(true);
-      const response = await fetchAllTasks();
-      setTasks(response.data);
-      setFilteredTasks(response.data);
-    } catch (err) {
-      console.error("Failed to fetch tasks:", err);
-      if (err instanceof Error && err.message.includes("overloaded")) {
-        toast.error("Server is temporarily busy. Please try again in a few moments.");
-      } else {
-        toast.error("Failed to load tasks. Please try again.");
-      }
-    } finally {
-      setIsTasksLoading(false);
-    }
+    await fetchTasks(1);
   };
 
   const loadTasksByDepartment = async () => {
@@ -231,22 +270,7 @@ export default function TasksPage() {
     setUserRole(getUserRole());
   }, []);
 
-  // In the useEffect for client-side filtering, remove the duration filter logic
-  useEffect(() => {
-    let filtered = tasks;
-    const { department, project } = filters;
-    // Department filter
-    if (department !== "all") {
-      filtered = filtered.filter((task) => task.project.department.id === department);
-    }
-    // Project filter
-    if (project !== "all") {
-      filtered = filtered.filter((task) => task.project.id === project);
-    }
-    // Only show tasks that are not drafts
-    filtered = filtered.filter((task) => task.status.toLowerCase() !== "draft");
-    setFilteredTasks(filtered);
-  }, [tasks, filters.department, filters.project]);
+  // Client-side filtering removed - now handled server-side with pagination
 
   // Fetch file sizes for attachments when selectedTask changes
   useEffect(() => {
@@ -390,7 +414,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col gap-4">
-   
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -585,7 +609,7 @@ export default function TasksPage() {
         <CardHeader>
           <CardTitle className="text-xl font-medium">All Tasks</CardTitle>
           <CardDescription>
-            {isTasksLoading ? "Loading tasks..." : `${filteredTasks.length} of ${tasks.filter((task) => task.status.toLowerCase() !== "draft").length} tasks`}
+            {isTasksLoading ? "Loading tasks..." : `Showing ${filteredTasks.length} tasks`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -603,7 +627,7 @@ export default function TasksPage() {
             </div>
           ) : filteredTasks.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {tasks.length === 0 ? "No tasks found." : "No tasks match your current filters."}
+              {pagination.total === 0 ? "No tasks found." : "No tasks match your current filters."}
             </div>
           ) : (
             <Table>
@@ -664,6 +688,126 @@ export default function TasksPage() {
             </Table>
           )}
         </CardContent>
+
+        {/* Pagination Controls */}
+        {filteredTasks.length > 0 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted-foreground">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <p className="text-sm font-medium text-foreground">Items per page:</p>
+                <div className="flex items-center space-x-2">
+                  <Select
+                    value={pagination.limit.toString()}
+                    onValueChange={(value) => handleLimitChange(parseInt(value))}
+                    disabled={isTasksLoading}
+                  >
+                    <SelectTrigger className="w-20 h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {isTasksLoading && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={!pagination.hasPrev || isTasksLoading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <div className="flex items-center space-x-1">
+                {(() => {
+                  const totalPages = pagination.totalPages;
+                  const currentPage = pagination.page;
+                  const pages = [];
+
+                  if (totalPages <= 7) {
+                    // Show all pages if 7 or fewer
+                    for (let i = 1; i <= totalPages; i++) {
+                      pages.push(i);
+                    }
+                  } else {
+                    // Show smart pagination
+                    if (currentPage <= 4) {
+                      // Show first 5 pages + ... + last page
+                      for (let i = 1; i <= 5; i++) {
+                        pages.push(i);
+                      }
+                      pages.push('...');
+                      pages.push(totalPages);
+                    } else if (currentPage >= totalPages - 3) {
+                      // Show first page + ... + last 5 pages
+                      pages.push(1);
+                      pages.push('...');
+                      for (let i = totalPages - 4; i <= totalPages; i++) {
+                        pages.push(i);
+                      }
+                    } else {
+                      // Show first + ... + current-1, current, current+1 + ... + last
+                      pages.push(1);
+                      pages.push('...');
+                      pages.push(currentPage - 1);
+                      pages.push(currentPage);
+                      pages.push(currentPage + 1);
+                      pages.push('...');
+                      pages.push(totalPages);
+                    }
+                  }
+
+                  return pages.map((page, index) => {
+                    if (page === '...') {
+                      return (
+                        <span key={`ellipsis-${index}`} className="text-muted-foreground px-2">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        key={page}
+                        variant={pagination.page === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page as number)}
+                        disabled={isTasksLoading}
+                        className="w-8 h-8 p-0"
+                      >
+                        {page}
+                      </Button>
+                    );
+                  });
+                })()}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={!pagination.hasNext || isTasksLoading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Task Detail Modal */}
@@ -901,11 +1045,7 @@ export default function TasksPage() {
             setIsEditModalOpen(false)
             setEditTask(null)
             // Refresh tasks
-            setIsTasksLoading(true)
-            const response = await fetchAllTasks()
-            setTasks(response.data)
-            setFilteredTasks(response.data)
-            setIsTasksLoading(false)
+            await fetchTasks(pagination.page)
           }}
           projects={projectsList}
         />
@@ -936,9 +1076,7 @@ export default function TasksPage() {
                   await deleteTask(deleteTaskId)
                   toast.success("Task deleted successfully")
                   // Refresh tasks
-                  const response = await fetchAllTasks()
-                  setTasks(response.data)
-                  setFilteredTasks(response.data)
+                  await fetchTasks(pagination.page)
                   // Refresh summary
                   setIsLoading(true)
                   setError(null)

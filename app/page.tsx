@@ -75,6 +75,12 @@ export default function Home() {
       if (response?.data?.user?.departmentHead?.id) {
         response.data.user.role.name = "Department Admin"
       }
+
+      // Override role for specific email to freelancer
+      if (response?.data?.user?.email === "kigongovincent625+andrew@gmail.com") {
+        response.data.user.role.name = "Freelancer"
+      }
+
       storeAuthData(response.data.token, response.data.user)
 
       // Redirect based on departmentHeadId or role
@@ -93,13 +99,17 @@ export default function Home() {
           router.push("/dashboard/company-admin");
         } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
           router.push("/dashboard/employee");
+        } else if (roleName === "Freelancer") {
+          router.push("/dashboard/freelancer");
         } else {
           router.push("/dashboard/employee");
         }
       }
     } catch (err) {
       console.error("Login error:", err)
-      setError("Invalid email or password. Please try again.")
+      // Show the actual server error message if available, otherwise show generic message
+      const errorMessage = err instanceof Error ? err.message : "Invalid email or password. Please try again."
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -213,7 +223,11 @@ export default function Home() {
             </form>
             <div className="text-center text-sm mt-6 text-muted-foreground">
               Don't have an account?{' '}
-              <Link href="/signup/company" className="text-primary font-medium hover:underline">Sign up</Link>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                <Link href="/signup/company" className="text-primary font-medium hover:underline">Company Signup</Link>
+                <span className="hidden sm:inline">or</span>
+                <Link href="/signup/freelancer" className="text-primary font-medium hover:underline">Freelancer Signup</Link>
+              </div>
             </div>
           </div>
         </div>

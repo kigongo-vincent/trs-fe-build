@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { updateDepartment } from "@/services/departments"
-import { getAllConsultants, type Consultant } from "@/services/consultants"
+import { ConsultantSearchableSelect } from "@/components/ui/consultant-searchable-select"
 import { getAuthData } from "@/services/auth"
 import { toast } from "sonner"
 
@@ -18,8 +18,6 @@ export default function EditDepartmentPage() {
     const params = useParams()
     const searchParams = useSearchParams()
     const [loading, setLoading] = useState(false)
-    const [consultants, setConsultants] = useState<Consultant[]>([])
-    const [consultantsLoading, setConsultantsLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: "",
         head: "",
@@ -33,72 +31,16 @@ export default function EditDepartmentPage() {
     const departmentHead = searchParams.get('head')
     const departmentDescription = searchParams.get('description')
 
-    // Fetch consultants on component mount
+    // Initialize form data from URL params
     useEffect(() => {
-        const fetchConsultants = async () => {
-            try {
-                setConsultantsLoading(true)
-                const authData = getAuthData()
-                if (!authData?.user?.company?.id) {
-                    toast.error("Company information not found. Please log in again.")
-                    return
-                }
-
-                const response = await getAllConsultants()
-
-                if (response.status === 200) {
-                    setConsultants(response.data || [])
-                } else {
-                    toast.error("Failed to fetch consultants")
-                }
-            } catch (error) {
-                console.error("Error fetching consultants:", error)
-                toast.error("An error occurred while fetching consultants")
-            } finally {
-                setConsultantsLoading(false)
-            }
-        }
-
-        fetchConsultants()
-    }, [])
-
-    // Initialize form data from URL params and consultants
-    useEffect(() => {
-        if (departmentName && departmentHead && consultants.length > 0) {
-            // First, check if departmentHead is already a consultant ID
-            const isAlreadyId = consultants.some(consultant => consultant.id === departmentHead)
-
-            let headValue = departmentHead
-
-            if (!isAlreadyId) {
-                // Find the consultant whose fullName matches the department head
-                const matchingConsultant = consultants.find(
-                    consultant => consultant.fullName === departmentHead
-                )
-
-                if (matchingConsultant) {
-                    headValue = matchingConsultant.id
-                }
-            }
-
+        if (departmentName) {
             setFormData({
                 name: departmentName,
-                head: headValue,
+                head: departmentHead || "",
                 description: departmentDescription || ""
             })
         }
-    }, [departmentName, departmentHead, departmentDescription, consultants])
-
-    // If departmentName exists but departmentHead is missing, prefill name and description, leave head empty
-    useEffect(() => {
-        if (departmentName && consultants.length > 0 && !departmentHead) {
-            setFormData({
-                name: departmentName,
-                head: "",
-                description: departmentDescription || ""
-            });
-        }
-    }, [departmentName, departmentDescription, departmentHead, consultants]);
+    }, [departmentName, departmentHead, departmentDescription])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
@@ -221,28 +163,12 @@ export default function EditDepartmentPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="head">Department Head</Label>
-                            <Select
+                            <ConsultantSearchableSelect
                                 value={formData.head}
                                 onValueChange={handleHeadChange}
-                                disabled={loading || consultantsLoading}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={
-                                        consultantsLoading
-                                            ? "Loading consultants..."
-                                            : consultants.length === 0
-                                                ? "No consultants available"
-                                                : "Select department head (optional)"
-                                    } />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {consultants.map((consultant) => (
-                                        <SelectItem key={consultant.id} value={consultant.id}>
-                                            {consultant.fullName}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Search and select department head (optional)"
+                                disabled={loading}
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -267,7 +193,7 @@ export default function EditDepartmentPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={loading || consultantsLoading}>
+                            <Button type="submit" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Update Department
                             </Button>

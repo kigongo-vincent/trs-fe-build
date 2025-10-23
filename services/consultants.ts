@@ -282,19 +282,30 @@ export async function fetchConsultantInvoiceSummary(): Promise<
 
 export async function fetchConsultantInvoices(
   query?: string | undefined,
-  status?: "pending" | "paid" | "processing" | "all"
+  status?: "pending" | "paid" | "processing" | "all",
+  startDate?: string,
+  endDate?: string
 ): Promise<ConsultantInvoiceListItem[]> {
   let url = "/invoices/consultant/list";
+  const params = new URLSearchParams();
 
   if (query && query?.length > 0) {
-    url += `?search=${query}`;
+    params.append("search", query);
   }
 
-  if (status && status.length > 0) {
-    if (status != "all") {
-      url += `?status=${status}`;
-    }
+  if (startDate && endDate) {
+    params.append("startDate", startDate);
+    params.append("endDate", endDate);
   }
+
+  if (status && status.length > 0 && status !== "all") {
+    params.append("status", status);
+  }
+
+  if (params.toString()) {
+    url += `?${params.toString()}`;
+  }
+
   const result: ConsultantInvoiceListResponse = await getRequest(url);
   return result.data;
 }
