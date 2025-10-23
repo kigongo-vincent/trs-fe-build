@@ -54,12 +54,23 @@ export function HoursLoggedChart({ data = defaultData, xAxisLabel = 'Date', yAxi
       </div>
     );
   }
+
+  // Calculate dynamic domain based on data
+  const maxValue = Math.max(...data.map(item => item.hours));
+  const minValue = Math.min(...data.map(item => item.hours));
+  const padding = Math.max(1, Math.ceil(maxValue * 0.1)); // 10% padding, minimum 1, rounded up
+  const domain = [Math.max(0, Math.floor(minValue - padding)), Math.ceil(maxValue + padding)];
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }} />
-        <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+        <YAxis
+          label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }}
+          domain={domain}
+          tickFormatter={(value) => Math.round(value).toString()}
+        />
         <Tooltip formatter={(value) => [`${value} hours`, "Hours Logged"]} />
         <Legend />
         <Area type="monotone" dataKey="hours" stroke={GRAPH_PRIMARY_COLOR} fill={GRAPH_PRIMARY_COLOR} fillOpacity={0.2} />
