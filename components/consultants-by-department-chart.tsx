@@ -1,7 +1,8 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
 import type { DepartmentSummary } from "@/services/consultants"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface ConsultantsByDepartmentChartProps {
   departmentSummary?: DepartmentSummary[]
@@ -17,6 +18,9 @@ export function ConsultantsByDepartmentChart({ departmentSummary = [] }: Consult
 
   // Sort by count (descending)
   data.sort((a, b) => b.count - a.count)
+
+  // Get color variations for all bars
+  const colors = getChartColorVariations(data.length)
 
   return (
     <ResponsiveContainer width="100%" height={350}>
@@ -59,7 +63,11 @@ export function ConsultantsByDepartmentChart({ departmentSummary = [] }: Consult
             return null
           }}
         />
-        <Bar dataKey="count" fill="currentColor" radius={[4, 4, 0, 0]} className="fill-primary" />
+        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

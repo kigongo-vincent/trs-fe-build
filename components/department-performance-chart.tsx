@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
+import { getChartColorVariations } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const defaultData = [
@@ -37,6 +37,9 @@ export function DepartmentPerformanceChart({ data = defaultData, xAxisLabel = 'D
   const padding = Math.max(1, Math.ceil(maxValue * 0.1)); // 10% padding, minimum 1, rounded up
   const domain = [Math.max(0, Math.floor(minValue - padding)), Math.ceil(maxValue + padding)];
 
+  // Get color variations for all bars
+  const colors = getChartColorVariations(data.length);
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
@@ -48,7 +51,11 @@ export function DepartmentPerformanceChart({ data = defaultData, xAxisLabel = 'D
           tickFormatter={(value) => Math.round(value).toString()}
         />
         <Tooltip formatter={(value, name) => [`${value} hours`, "Hours Logged"]} />
-        <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} name="Hours Logged" />
+        <Bar dataKey="hours" radius={[4, 4, 0, 0]} name="Hours Logged">
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

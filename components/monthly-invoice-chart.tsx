@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface SingleSeriesProps {
   data: Array<{
@@ -37,16 +37,59 @@ export function MonthlyInvoiceChart({ data, multiSeries }: MonthlyInvoiceChartPr
     return existingData || { month, totalAmount: 0, currency: "USD" }
   })
 
-  // Colors: very pale pastel shades of provided primary rgb(246, 147, 27)
-  const baseRgb: [number, number, number] = [246, 147, 27]
-  // Opacity decreases by 30% per series: 1.0, 0.7, 0.49, ... (min clamp 0.06)
-  const seriesCount = 8
-  const alphas = Array.from({ length: seriesCount }, (_, i) => Math.max(0.06, Math.pow(0.7, i)))
-  const defaultColors = alphas.map(a => `rgba(${baseRgb[0]}, ${baseRgb[1]}, ${baseRgb[2]}, ${a})`)
+  // Get color variations for multi-series (one color per currency)
+  const currencyColors = multiSeries?.currencies
+    ? getChartColorVariations(multiSeries.currencies.length)
+    : []
+
+  // Get color variations for single-series (one color per month)
+  const monthlyColors = getChartColorVariations(filledData.length)
 
   // Multi-series: we'll always render both left and right axes to avoid id mismatches
   const hasRightAxis = true
   const hasLeftAxis = true
+
+  // Custom tooltip formatter to format currency with commas
+  const formatCurrencyValue = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value
+    if (isNaN(numValue)) return '0'
+    return numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-md">
+          <p className="font-medium mb-2">{label}</p>
+          {multiSeries ? (
+            <div className="space-y-1">
+              {payload.map((entry: any, index: number) => {
+                const currencyCode = entry.dataKey || 'USD'
+                const formattedValue = formatCurrencyValue(entry.value || 0)
+                return (
+                  <p key={index} className="text-sm" style={{ color: entry.color }}>
+                    {`${currencyCode}: ${formattedValue}`}
+                  </p>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-sm">
+                Amount: <span className="font-semibold">{formatCurrencyValue(payload[0]?.value || 0)}</span>
+              </p>
+              {payload[0]?.payload?.currency && (
+                <p className="text-xs text-muted-foreground">
+                  Currency: {payload[0].payload.currency}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="w-full" style={{ minHeight: "50vh", height: "50vh" }}>
@@ -62,18 +105,24 @@ export function MonthlyInvoiceChart({ data, multiSeries }: MonthlyInvoiceChartPr
           ) : (
             <YAxis />
           )}
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
           {multiSeries && <Legend />}
           {multiSeries
             ? (multiSeries.currencies || []).map((code, idx) => (
               <Bar
                 key={code}
                 dataKey={code}
-                fill={(multiSeries.colors && multiSeries.colors[idx]) || defaultColors[idx % defaultColors.length]}
+                fill={(multiSeries.colors && multiSeries.colors[idx]) || currencyColors[idx]}
                 yAxisId={code.toUpperCase() === 'UGX' ? 'right' : 'left'}
               />
             ))
-            : <Bar dataKey="totalAmount" fill={GRAPH_PRIMARY_COLOR} />}
+            : (
+              <Bar dataKey="totalAmount" radius={[4, 4, 0, 0]}>
+                {filledData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={monthlyColors[index]} />
+                ))}
+              </Bar>
+            )}
         </BarChart>
       </ResponsiveContainer>
     </div>

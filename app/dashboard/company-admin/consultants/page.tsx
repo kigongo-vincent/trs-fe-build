@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ConsultantsByDepartmentChart } from "@/components/consultants-by-department-chart"
 import Link from "next/link"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { getChartColorVariations } from "@/lib/utils"
 import {
   type Consultant,
   type DepartmentSummary,
@@ -31,7 +31,7 @@ import {
 import { formatDurationString } from "@/services/employee"
 import { useState, useEffect } from "react"
 import { getAuthData, getUserRole } from "@/services/auth"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
 import { EditConsultantForm } from "@/components/edit-consultant-form"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -481,7 +481,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl text-primary font-bold">{totalConsultants}</div>
+                <div className="text-2xl text-gradient font-medium">{totalConsultants}</div>
                 {newHires > 0 && <p className="text-xs text-muted-foreground">+{newHires} from last month</p>}
               </>
             )}
@@ -497,7 +497,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{activeConsultants}</div>
+                <div className="text-2xl text-gradient font-medium">{activeConsultants}</div>
                 <p className="text-xs text-muted-foreground">
                   {totalConsultants > 0
                     ? `${Math.round((activeConsultants / totalConsultants) * 100)}% of total consultants`
@@ -517,7 +517,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{onLeaveConsultants}</div>
+                <div className="text-2xl  text-gradient font-medium">{onLeaveConsultants}</div>
                 <p className="text-xs text-muted-foreground">
                   {totalConsultants > 0
                     ? `${Math.round((onLeaveConsultants / totalConsultants) * 100)}% of total consultants`
@@ -537,7 +537,7 @@ export default function ConsultantsPage() {
               <Skeleton className="h-8 w-20" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-primary">{newHires}</div>
+                <div className="text-2xl text-gradient font-medium">{newHires}</div>
                 <p className="text-xs text-muted-foreground">In the last 30 days</p>
               </>
             )}
@@ -884,16 +884,16 @@ export default function ConsultantsPage() {
               className="relative w-screen h-screen bg-pale flex flex-col overflow-y-auto !rounded-none border-0 shadow-2xl"
               style={{ maxWidth: '100vw', maxHeight: '100vh' }}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between bg-paper border-b px-8 py-4">
+              <div className="sticky top-0 z-10 flex items-center justify-between bg-primary text-white border-b px-8 py-4">
                 <DialogHeader className="flex flex-row items-center gap-4 w-full">
-                  <DialogTitle className="flex items-center gap-2  font-nomal text-base">
+                  <DialogTitle className="flex items-center gap-2 font-normal text-base text-white">
                     {/* <User className="h-6 w-6" /> */}
                     {selectedConsultant?.fullName || "Consultant"}
                   </DialogTitle>
                 </DialogHeader>
                 <button
                   onClick={handleCloseModal}
-                  className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+                  className="ml-auto rounded-sm p-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 text-white"
                 >
                   <span className="sr-only">Close</span>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
@@ -904,12 +904,52 @@ export default function ConsultantsPage() {
               {/* Sidebar + Main Content Layout */}
               <div className="flex flex-1 w-full h-[calc(100vh-80px)] px-0">
                 {/* Sidebar Navigation */}
-                <div className="w-56 min-w-[180px]  bg-paper flex flex-col py-8 gap-2 text-base">
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'overview' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('overview')}>Overview</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'logs' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('logs')}>Logs by Range</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'personal' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('personal')}>Personal</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'nextOfKin' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('nextOfKin')}>Next of Kin</button>
-                  <button className={`mx-3 text-left px-4 py-2 rounded transition-colors ${modalSection === 'bank' ? 'bg-primary/10 text-primary' : 'hover:bg-gray-200/50'}`} style={{ fontSize: '14px' }} onClick={() => setModalSection('bank')}>Bank Details</button>
+                <div className="w-56 min-w-[180px] bg-gray-900 flex flex-col py-8 gap-2 text-gray-300">
+                  <button
+                    className={`mx-3 text-left px-4 py-2 rounded transition-colors text-sm font-medium ${modalSection === 'overview'
+                      ? 'bg-gray-800 text-primary font-semibold'
+                      : 'hover:bg-gray-700'
+                      }`}
+                    onClick={() => setModalSection('overview')}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    className={`mx-3 text-left px-4 py-2 rounded transition-colors text-sm font-medium ${modalSection === 'logs'
+                      ? 'bg-gray-800 text-primary font-semibold'
+                      : 'hover:bg-gray-700'
+                      }`}
+                    onClick={() => setModalSection('logs')}
+                  >
+                    Logs by Range
+                  </button>
+                  <button
+                    className={`mx-3 text-left px-4 py-2 rounded transition-colors text-sm font-medium ${modalSection === 'personal'
+                      ? 'bg-gray-800 text-primary font-semibold'
+                      : 'hover:bg-gray-700'
+                      }`}
+                    onClick={() => setModalSection('personal')}
+                  >
+                    Personal
+                  </button>
+                  <button
+                    className={`mx-3 text-left px-4 py-2 rounded transition-colors text-sm font-medium ${modalSection === 'nextOfKin'
+                      ? 'bg-gray-800 text-primary font-semibold'
+                      : 'hover:bg-gray-700'
+                      }`}
+                    onClick={() => setModalSection('nextOfKin')}
+                  >
+                    Next of Kin
+                  </button>
+                  <button
+                    className={`mx-3 text-left px-4 py-2 rounded transition-colors text-sm font-medium ${modalSection === 'bank'
+                      ? 'bg-gray-800 text-primary font-semibold'
+                      : 'hover:bg-gray-700'
+                      }`}
+                    onClick={() => setModalSection('bank')}
+                  >
+                    Bank Details
+                  </button>
                 </div>
                 {/* Main Content - only this is scrollable */}
                 <div className="flex-1 py-8 md:py-12 bg-pale px-8 overflow-y-auto h-full pb-0">
@@ -1017,7 +1057,14 @@ export default function ConsultantsPage() {
                                     formatter={(value: number) => [`${value.toFixed(1)}h`, "Hours"]}
                                     labelFormatter={(label) => `${label}`}
                                   />
-                                  <Bar dataKey="hours" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} />
+                                  <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                                    {(() => {
+                                      const colors = getChartColorVariations(chartData.length);
+                                      return chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={colors[index]} />
+                                      ));
+                                    })()}
+                                  </Bar>
                                 </BarChart>
                               </ResponsiveContainer>
                             ) : (
@@ -1260,10 +1307,13 @@ export default function ConsultantsPage() {
                     </div>
                   )}
                   {modalSection === 'personal' && (
-                    <div className="flex flex-col gap-8">
-                      {/* Profile Section - All Personal Info Merged */}
+                    <div className="flex flex-col gap-6">
+                      {/* Profile/Basic Info Card */}
                       <Card className="w-full">
-                        <CardContent className="pt-8 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-medium">Profile Information</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-6 flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-8">
                           <Avatar className="h-28 w-28 mx-auto md:mx-0">
                             <AvatarImage
                               src={selectedConsultant?.profileImage || "/placeholder.svg"}
@@ -1276,27 +1326,27 @@ export default function ConsultantsPage() {
                                 .join("")}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="flex-1 flex flex-col gap-2">
-                            <h2 className="text-2xl text-gradient font-medium">{selectedConsultant?.fullName || '-'}</h2>
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <Badge>{selectedConsultant?.department?.name || "-"}</Badge>
-                              <span className="text-base text-muted-foreground">{selectedConsultant?.jobTitle || selectedConsultant?.role?.name || "-"}</span>
+                          <div className="flex-1 flex flex-col gap-4">
+                            <div>
+                              <h2 className="text-2xl text-gradient font-medium">{selectedConsultant?.fullName || '-'}</h2>
+                              <div className="flex flex-wrap gap-2 items-center mt-2">
+                                <Badge>{selectedConsultant?.department?.name || "-"}</Badge>
+                                <span className="text-base text-muted-foreground">{selectedConsultant?.jobTitle || selectedConsultant?.role?.name || "-"}</span>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-4 mt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="flex items-center gap-2">
                                 <Mail className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{selectedConsultant?.email || "-"}</span>
                               </div>
-                              <div><div className="text-muted-foreground text-sm flex items-center space-x-2">
-                                <PhoneIcon size={14} className="mr-2" />
-                                {(selectedConsultant as any)?.phoneNumber || '-'}</div></div>
-
+                              <div className="flex items-center gap-2">
+                                <PhoneIcon className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm">{(selectedConsultant as any)?.phoneNumber || '-'}</span>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">{selectedConsultant?.role?.name || "-"}</span>
                               </div>
-                            </div>
-                            <div className="flex flex-wrap gap-4 mt-2">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-muted-foreground">Status:</span>
                                 <Badge
@@ -1316,97 +1366,142 @@ export default function ConsultantsPage() {
                                     : selectedConsultant?.status || "-"}
                                 </Badge>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center space-x-3 mx-4"><Label>Born: </Label><div className="text-muted-foreground text-sm">{(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString() : '-'}</div></div>
-                                <span className="text-sm text-muted-foreground">Joined:</span>
-                                <span className="text-sm">{selectedConsultant?.createdAt ? new Date(selectedConsultant.createdAt).toLocaleDateString() : "-"}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Personal Details Card */}
+                      <Card className="w-full">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-medium">Personal Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label>Date of Birth</Label>
+                              <div className="text-muted-foreground mt-1">
+                                {(selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth
+                                  ? new Date((selectedConsultant as any)?.dateOfBirth || (selectedConsultant as any)?.date_of_birth).toLocaleDateString()
+                                  : '-'}
                               </div>
                             </div>
-
-                            <div className="xl:col-span-2 flex items-center space-x-2 mt-2"><MapPin className="text-red-500" size={15} /><div className="text-muted-foreground text-sm whitespace-pre-line">{(selectedConsultant as any)?.address ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}` : '-'}</div></div>
-
-
-                            {/* IDs Section */}
-                            <div className="flex flex-col gap-2 mt-4">
-                              <Label>IDs</Label>
-                              <div className="space-y-2">
-                                {Array.isArray((selectedConsultant as any)?.attachments) && (selectedConsultant as any).attachments.length > 0 ? (
-                                  (selectedConsultant as any).attachments.map((att: { url: string; name: string }, idx: number) => (
-                                    <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
-                                      <div className="flex-shrink-0">
-                                        <FileText className="h-5 w-5 text-red-500" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
-                                      </div>
-                                      <a
-                                        href={att.url}
-                                        download={att.name}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2">
-                                          <FileText className="h-4 w-4" />
-                                          View
-                                        </Button>
-                                      </a>
-                                      <a
-                                        href={att.url}
-                                        download={att.name}
-                                        rel="noopener noreferrer"
-                                      >
-                                        <Button variant="outline" size="sm" className="flex items-center gap-2 ml-2">
-                                          <Download className="h-4 w-4" />
-                                          Download
-                                        </Button>
-                                      </a>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-muted-foreground text-sm">No attachments found.</div>
-                                )}
+                            <div>
+                              <Label>Joined Date</Label>
+                              <div className="text-muted-foreground mt-1">
+                                {selectedConsultant?.createdAt ? new Date(selectedConsultant.createdAt).toLocaleDateString() : "-"}
                               </div>
                             </div>
-                            {/* End IDs Section */}
-                            <div className="flex flex-col gap-2 mt-4">
-                              {/* Gross Pay with visual hierarchy (no outside label) */}
-                              <div className="w-full">
-                                <Card className="bg-primary/10 border-primary/20 shadow-none mb-2">
-                                  <CardContent className="py-4 flex flex-col items-center">
-                                    <span className="text-3xl font-extrabold text-primary">
-                                      {(() => {
-                                        let grossPay = (selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay;
-                                        let currency = (selectedConsultant as any)?.currency;
-                                        if (!currency) currency = companyCurrency;
-                                        if (!grossPay || isNaN(Number(grossPay))) return '-';
-                                        // Format with commas
-                                        const formattedGrossPay = Number(grossPay).toLocaleString();
-                                        return `${currency} ${formattedGrossPay}`;
-                                      })()}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground mt-1">Monthly Gross Pay</span>
-                                  </CardContent>
+                            <div className="md:col-span-2">
+                              <Label>Address</Label>
+                              <div className="flex items-start gap-2 mt-1">
+                                <MapPin className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <div className="text-muted-foreground text-sm">
+                                  {(selectedConsultant as any)?.address
+                                    ? `${(selectedConsultant as any).address.street || ''}${(selectedConsultant as any).address.city ? ', ' + (selectedConsultant as any).address.city : ''}${(selectedConsultant as any).address.state ? ', ' + (selectedConsultant as any).address.state : ''}${(selectedConsultant as any).address.country ? ', ' + (selectedConsultant as any).address.country : ''}${(selectedConsultant as any).address.postalCode ? ', ' + (selectedConsultant as any).address.postalCode : ''}`
+                                    : '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Financial Information Card */}
+                      <Card className="w-full">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-medium">Financial Information</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-6">
+                          <div className="w-full">
+                            <Card className="bg-primary/10 border-primary/20 shadow-none">
+                              <CardContent className="py-6 flex flex-col items-center">
+                                <span className="text-3xl font-extrabold text-primary">
+                                  {(() => {
+                                    let grossPay = (selectedConsultant as any)?.grossPay || (selectedConsultant as any)?.gross_pay;
+                                    let currency = (selectedConsultant as any)?.currency;
+                                    if (!currency) currency = companyCurrency;
+                                    if (!grossPay || isNaN(Number(grossPay))) return '-';
+                                    const formattedGrossPay = Number(grossPay).toLocaleString();
+                                    return `${currency} ${formattedGrossPay}`;
+                                  })()}
+                                </span>
+                                <span className="text-sm text-muted-foreground mt-2">Monthly Gross Pay</span>
+                                <span className="text-xs text-muted-foreground mt-1 text-center">If no currency is set, the company currency is used by default.</span>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Office Schedule Card */}
+                      <Card className="w-full">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-medium">Office Schedule</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-6">
+                          <Label className="mb-3 block">Office Days</Label>
+                          <div className="flex flex-row gap-2 flex-wrap">
+                            {(() => {
+                              let days: string[] = [];
+                              if (Array.isArray((selectedConsultant as any)?.days_to_come)) days = (selectedConsultant as any).days_to_come;
+                              else if ((selectedConsultant as any)?.days_to_come) days = JSON.parse((selectedConsultant as any).days_to_come);
+                              else if ((selectedConsultant as any)?.officeDays) days = (selectedConsultant as any).officeDays;
+                              if (!days || days.length === 0) return <span className="text-muted-foreground">-</span>;
+                              return days.map((day: string, idx: number) => (
+                                <Card key={idx} className="px-3 py-1 border shadow-none text-sm font-medium rounded-full">
+                                  <CardContent className="p-0 flex items-center justify-center">{day}</CardContent>
                                 </Card>
-                                <span className="text-xs text-muted-foreground block text-center mt-1">If no currency is set,the company currency is used by default.</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-col gap-2 mt-4">
-                              <Label>Office Days</Label>
-                              <div className="flex flex-row gap-2 flex-wrap">
-                                {(() => {
-                                  let days: string[] = [];
-                                  if (Array.isArray((selectedConsultant as any)?.days_to_come)) days = (selectedConsultant as any).days_to_come;
-                                  else if ((selectedConsultant as any)?.days_to_come) days = JSON.parse((selectedConsultant as any).days_to_come);
-                                  else if ((selectedConsultant as any)?.officeDays) days = (selectedConsultant as any).officeDays;
-                                  if (!days || days.length === 0) return <span className="text-muted-foreground">-</span>;
-                                  return days.map((day: string, idx: number) => (
-                                    <Card key={idx} className="px-3 py-1 border shadow-none text-sm font-medium rounded-full">
-                                      <CardContent className="p-0 flex items-center justify-center">{day}</CardContent>
-                                    </Card>
-                                  ));
-                                })()}
-                              </div>
-                            </div>
+                              ));
+                            })()}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* IDs/Attachments Card */}
+                      <Card className="w-full">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-medium">ID Documents</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 pb-6">
+                          <div className="space-y-2">
+                            {Array.isArray((selectedConsultant as any)?.attachments) && (selectedConsultant as any).attachments.length > 0 ? (
+                              (selectedConsultant as any).attachments.map((att: { url: string; name: string }, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 p-3 border rounded shadow-sm bg-muted/10">
+                                  <div className="flex-shrink-0">
+                                    <FileText className="h-5 w-5 text-red-500" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium truncate">{att.name || `Attachment ${idx + 1}`}</div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <a
+                                      href={att.url}
+                                      download={att.name}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        View
+                                      </Button>
+                                    </a>
+                                    <a
+                                      href={att.url}
+                                      download={att.name}
+                                      rel="noopener noreferrer"
+                                    >
+                                      <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                        <Download className="h-4 w-4" />
+                                        Download
+                                      </Button>
+                                    </a>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-muted-foreground text-sm">No attachments found.</div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>

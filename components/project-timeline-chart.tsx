@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface Project {
   id: string
@@ -39,6 +39,9 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
     )
   }
 
+  // Get color variations for all bars
+  const colors = getChartColorVariations(chartData.length);
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
@@ -57,7 +60,11 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
             borderRadius: "6px",
           }}
         />
-        <Bar dataKey="progress" fill="#F6931B" radius={[0, 4, 4, 0]} name="Progress" />
+        <Bar dataKey="progress" radius={[0, 4, 4, 0]} name="Progress">
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

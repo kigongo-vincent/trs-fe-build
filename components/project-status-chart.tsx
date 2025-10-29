@@ -1,7 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface ProjectStatusChartProps {
   totalProjects: number
@@ -9,8 +9,6 @@ interface ProjectStatusChartProps {
   completedProjects: number
   onHoldProjects: number
 }
-
-const COLORS = ["#F6931B", "#111827", "#6b7280"]
 
 export function ProjectStatusChart({
   totalProjects,
@@ -24,6 +22,9 @@ export function ProjectStatusChart({
     { name: "Completed", value: completedProjects },
     { name: "On Hold", value: onHoldProjects },
   ].filter((item) => item.value > 0) // Only show segments with data
+
+  // Get color variations for pie chart segments
+  const colors = getChartColorVariations(data.length);
 
   // Show empty state if no projects
   if (totalProjects === 0) {
@@ -48,7 +49,7 @@ export function ProjectStatusChart({
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
         >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={colors[index]} />
           ))}
         </Pie>
         <Tooltip

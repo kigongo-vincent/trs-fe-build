@@ -25,6 +25,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
 import { useState, useEffect, Suspense } from "react"
 import { getUserRole } from "@/services/auth"
 
@@ -627,12 +628,20 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                 href="/dashboard/settings"
                 onClick={handleLinkClick}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
+                  "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
                   isActive("/dashboard/settings") && "bg-gray-800 text-primary font-semibold",
                 )}
               >
-                <Cog className="h-4 w-4" />
-                <span>Settings</span>
+                <div className="flex items-center gap-3">
+                  <Cog className="h-4 w-4" />
+                  <span>Settings</span>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="ml-2 text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20"
+                >
+                  New
+                </Badge>
               </Link>
               {/* Collapsible Profile Menu */}
               <div>

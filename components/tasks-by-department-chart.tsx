@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface TasksByDepartmentChartProps {
   data: Array<{
@@ -28,6 +28,9 @@ export function TasksByDepartmentChart({ data }: TasksByDepartmentChartProps) {
     )
   }
 
+  // Get color variations for all bars
+  const colors = getChartColorVariations(chartData.length);
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
@@ -50,7 +53,11 @@ export function TasksByDepartmentChart({ data }: TasksByDepartmentChartProps) {
           axisLine={false}
         />
         <Tooltip formatter={(value) => [`${value} tasks`, "Count"]} />
-        <Bar dataKey="tasks" fill={GRAPH_PRIMARY_COLOR} radius={[4, 4, 0, 0]} name="Tasks" />
+        <Bar dataKey="tasks" radius={[4, 4, 0, 0]} name="Tasks">
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )

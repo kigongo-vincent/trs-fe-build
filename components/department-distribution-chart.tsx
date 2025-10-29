@@ -1,6 +1,7 @@
 "use client"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, type TooltipProps } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, type TooltipProps, Cell } from "recharts"
 import { Card } from "@/components/ui/card"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface User {
   id: string
@@ -88,7 +89,14 @@ export function DepartmentDistributionChart({ departments }: DepartmentDistribut
           />
           <YAxis />
           {/* <Tooltip content={<CustomTooltip />} /> */}
-          <Bar dataKey="employees" fill="orange" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="employees" radius={[4, 4, 0, 0]}>
+            {(() => {
+              const colors = getChartColorVariations(chartData.length);
+              return chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={colors[index]} />
+              ));
+            })()}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

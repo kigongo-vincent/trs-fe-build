@@ -266,8 +266,9 @@ export default function CompanyAdminPackagesPage() {
     return (
         <div className="flex p-8 bg-white rounded-lg flex-col gap-8">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight mb-2 flex items-center gap-2 text-primary">
-                    <Package className="h-6 w-6" /> Packages
+                <h1 className="text-xl font-medium tracking-tight mb-2 flex items-center gap-2 ">
+                    {/* <Package className="h-6 w-6" />  */}
+                    Packages
                 </h1>
                 <p className="text-muted-foreground mb-4">View available packages and upgrade your plan.</p>
             </div>
