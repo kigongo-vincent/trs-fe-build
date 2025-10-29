@@ -5,6 +5,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recha
 import { Skeleton } from "@/components/ui/skeleton"
 import { getHoursByProject } from "@/services/api"
 import { getAuthData } from "@/services/auth"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface HoursByProjectData {
   project: string
@@ -22,21 +23,7 @@ interface ChartData {
   value: number
   hours: string
   percentage: number
-  fill: string
 }
-
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82CA9D",
-  "#FFC658",
-  "#FF7C7C",
-  "#8DD1E1",
-  "#D084D0",
-]
 
 export function HoursByProjectChart() {
   const [chartData, setChartData] = useState<ChartData[]>([])
@@ -59,13 +46,12 @@ export function HoursByProjectChart() {
         // Calculate total minutes for percentage calculation
         const totalMinutes = response.data.reduce((sum, item) => sum + item.totalMinutes, 0)
 
-        // Transform data for the chart
-        const transformedData: ChartData[] = response.data.map((item, index) => ({
+        // Transform data for the chart (without fill, will use color variations)
+        const transformedData: ChartData[] = response.data.map((item) => ({
           name: item.project,
           value: item.totalMinutes,
           hours: formatMinutes(item.totalMinutes),
           percentage: totalMinutes > 0 ? Math.round((item.totalMinutes / totalMinutes) * 100) : 0,
-          fill: COLORS[index % COLORS.length],
         }))
 
         setChartData(transformedData)
@@ -142,11 +128,14 @@ export function HoursByProjectChart() {
   }
 
   const CustomLegend = ({ payload }: any) => {
+    // Get color variations to match the pie chart
+    const colors = getChartColorVariations(chartData.length);
+
     return (
       <div className="flex flex-wrap gap-2 justify-center mt-4">
         {payload?.map((entry: any, index: number) => (
           <div key={index} className="flex items-center gap-1 text-sm">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[index] || entry.color }} />
             <span className="text-muted-foreground truncate max-w-[120px]">
               {entry.value} ({chartData[index]?.percentage}%)
             </span>
@@ -189,6 +178,9 @@ export function HoursByProjectChart() {
     )
   }
 
+  // Get color variations for pie chart segments
+  const colors = getChartColorVariations(chartData.length);
+
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={350}>
@@ -205,7 +197,7 @@ export function HoursByProjectChart() {
             labelLine={false}
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.fill} />
+              <Cell key={`cell-${index}`} fill={colors[index]} />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />

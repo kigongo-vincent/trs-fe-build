@@ -307,6 +307,22 @@ export default function TasksPage() {
     return `${minutes}m`
   }
 
+  const formatTotalLogs = (minutes: number) => {
+    const hours = minutes / 60
+    if (hours < 24) {
+      // Less than a day, show in hours
+      return { value: hours.toFixed(1), unit: hours === 1 ? "hour" : "hours" }
+    } else if (hours < 730) {
+      // Less than a month (~30.4 days), show in days
+      const days = hours / 24
+      return { value: days.toFixed(1), unit: days === 1 ? "day" : "days" }
+    } else {
+      // One month or more, show in months
+      const months = hours / 730 // ~30.4 days per month
+      return { value: months.toFixed(1), unit: months === 1 ? "month" : "months" }
+    }
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -486,7 +502,7 @@ export default function TasksPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Logs</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -497,10 +513,22 @@ export default function TasksPage() {
               </div>
             ) : (
               <>
-                <div className="text-xl font-medium text-gradient">{summaryData?.totalHours ? (summaryData.totalHours / 60)?.toFixed(2) : 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {summaryData?.totalHours === 1 ? "hour" : "hours"} logged
-                </p>
+                {summaryData?.totalHours ? (() => {
+                  const formatted = formatTotalLogs(summaryData.totalHours)
+                  return (
+                    <>
+                      <div className="text-xl font-medium text-gradient">{formatted.value}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {formatted.unit} logged
+                      </p>
+                    </>
+                  )
+                })() : (
+                  <>
+                    <div className="text-xl font-medium text-gradient">0</div>
+                    <p className="text-xs text-muted-foreground">hours logged</p>
+                  </>
+                )}
               </>
             )}
           </CardContent>

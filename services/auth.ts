@@ -99,6 +99,9 @@ export function storeAuthData(token: string, user: any): void {
 
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
+
+    // Dispatch event to notify components (e.g., confetti) that user data is available
+    window.dispatchEvent(new Event("userDataUpdated"));
   }
 }
 

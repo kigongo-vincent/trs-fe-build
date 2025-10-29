@@ -16,10 +16,9 @@ export function MainNav({ light }: { light?: boolean }) {
           {
             light
               ?
-
-              <Image height={10} width={150} src="https://trs-v1.netlify.app/assets/icons/logo.svg" alt="TRS" priority />
+              <img className="h-[45px] w-max" src={"https://trs-v1.netlify.app/assets/icons/logo.svg"} alt="TRS" />
               :
-              <Image className="h-[35px] w-max" src={LogoPrimary} alt="TRS" priority />
+              <Image className="h-[32px] w-max" src={LogoPrimary} alt="TRS" priority />
           }
         </span>
       </Link>

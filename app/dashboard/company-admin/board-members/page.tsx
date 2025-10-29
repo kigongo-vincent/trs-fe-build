@@ -176,8 +176,9 @@ export default function BoardMembersPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-primary">
-                    <Users className="h-6 w-6" /> Evaluators
+                <h1 className="text-xl font-medium tracking-tight flex items-center gap-2 ">
+                    {/* <Users className="h-6 w-6" /> */}
+                    Evaluators
                 </h1>
                 <Button onClick={() => setIsCreateOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" /> Add evaluator

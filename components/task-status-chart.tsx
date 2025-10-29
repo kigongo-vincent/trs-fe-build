@@ -1,7 +1,7 @@
 "use client"
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
-import { GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface TaskStatusChartProps {
   activeTasks: number
@@ -25,7 +25,8 @@ export function TaskStatusChart({ activeTasks, draftTasks }: TaskStatusChartProp
     { name: "Draft", value: draftTasks },
   ].filter((item) => item.value > 0) // Only show segments with data
 
-  const COLORS = [GRAPH_PRIMARY_COLOR, `hsl(var(--chart-2))`]
+  // Get color variations for pie chart segments
+  const colors = getChartColorVariations(data.length);
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -41,7 +42,7 @@ export function TaskStatusChart({ activeTasks, draftTasks }: TaskStatusChartProp
           label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
         >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={colors[index]} />
           ))}
         </Pie>
         <Tooltip formatter={(value) => [`${value} tasks`, "Count"]} />

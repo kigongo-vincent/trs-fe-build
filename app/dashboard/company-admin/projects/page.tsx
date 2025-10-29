@@ -284,7 +284,7 @@ export default function ProjectsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl ">Project Status</CardTitle>
+            <CardTitle className="text-xl font-medium">Project Status</CardTitle>
             <CardDescription>Distribution of projects by status</CardDescription>
           </CardHeader>
           <CardContent>
@@ -319,7 +319,7 @@ export default function ProjectsPage() {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center bg-paper p-4 rounded md:justify-between">
         <div className="flex w-full max-w-sm items-center space-x-2">
           <Input
             type="text"
@@ -328,7 +328,7 @@ export default function ProjectsPage() {
             value={searchQuery}
             onChange={handleSearch}
           />
-         
+
         </div>
         <div className="flex flex-row items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -397,7 +397,7 @@ export default function ProjectsPage() {
                     <TableCell>{formatDate(project.deadline)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
+                        <div className="h-2 w-24 rounded-full bg-gray-200 overflow-hidden">
                           <div
                             className="h-full bg-primary rounded-full"
                             style={{ width: `${project.progress}%` }}

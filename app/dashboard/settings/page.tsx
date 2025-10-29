@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import dynamic from "next/dynamic"
 import "react-phone-input-2/lib/style.css"
-import { Camera, Image, Smartphone, X } from "lucide-react"
+import { Camera, Image, Smartphone, X, Circle, Images } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 import Cropper from "react-easy-crop"
@@ -195,8 +195,10 @@ export default function SettingsPage() {
 
   // Camera/Device selection modal states
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showFullPageCamera, setShowFullPageCamera] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const [fullPageVideoRef, setFullPageVideoRef] = useState<HTMLVideoElement | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isStartingCamera, setIsStartingCamera] = useState(false);
 
@@ -308,13 +310,29 @@ export default function SettingsPage() {
     };
   }, [cameraStream]);
 
+  // Prevent body scroll when full page camera is open
+  useEffect(() => {
+    if (showFullPageCamera) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showFullPageCamera]);
+
   // Handle video element setup when camera stream is available
   useEffect(() => {
     if (cameraStream && videoRef) {
       videoRef.srcObject = cameraStream;
       videoRef.play().catch(console.error);
     }
-  }, [cameraStream, videoRef]);
+    if (cameraStream && fullPageVideoRef) {
+      fullPageVideoRef.srcObject = cameraStream;
+      fullPageVideoRef.play().catch(console.error);
+    }
+  }, [cameraStream, videoRef, fullPageVideoRef]);
 
   // Load company info for Company Admin and user preferences
   useEffect(() => {
@@ -520,20 +538,24 @@ export default function SettingsPage() {
   };
 
   // Camera functionality
-  const startCamera = async () => {
+  const startCamera = async (fullPage = false) => {
     setIsStartingCamera(true);
     try {
       // Request camera with more flexible constraints
       const constraints = {
         video: {
           facingMode: { ideal: 'user' },
-          width: { min: 320, ideal: 640, max: 1280 },
-          height: { min: 240, ideal: 480, max: 720 }
+          width: { min: 320, ideal: 1280, max: 1920 },
+          height: { min: 240, ideal: 720, max: 1080 }
         }
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
+
+      if (fullPage) {
+        setShowFullPageCamera(true);
+      }
 
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -552,21 +574,23 @@ export default function SettingsPage() {
     }
   };
 
-  const capturePhoto = () => {
-    if (!videoRef) return;
+  const capturePhoto = (useFullPageVideo = false) => {
+    const videoElement = useFullPageVideo ? fullPageVideoRef : videoRef;
+    if (!videoElement) return;
 
     setIsCapturing(true);
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
 
-    canvas.width = videoRef.videoWidth;
-    canvas.height = videoRef.videoHeight;
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
 
-    context?.drawImage(videoRef, 0, 0);
+    context?.drawImage(videoElement, 0, 0);
 
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
     setCropImage(imageDataUrl);
     setShowCameraModal(false);
+    setShowFullPageCamera(false);
     setShowCropperModal(true);
     stopCamera();
     setIsCapturing(false);
@@ -580,6 +604,17 @@ export default function SettingsPage() {
   const handleCloseCameraModal = () => {
     setShowCameraModal(false);
     stopCamera();
+  };
+
+  const handleCloseFullPageCamera = () => {
+    setShowFullPageCamera(false);
+    stopCamera();
+  };
+
+  const handleOpenGallery = () => {
+    setShowFullPageCamera(false);
+    stopCamera();
+    fileInputRef.current?.click();
   };
 
   const handleProfileUpdate = async () => {
@@ -1071,8 +1106,11 @@ export default function SettingsPage() {
                   <Button
                     size="sm"
                     className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-primary hover:bg-primary/90 p-0"
-                    onClick={() => setShowCameraModal(true)}
-                    disabled={isUpdatingProfile}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      startCamera(true);
+                    }}
+                    disabled={isUpdatingProfile || isStartingCamera}
                   >
                     <Camera className="w-4 h-4" />
                   </Button>
@@ -1518,7 +1556,10 @@ export default function SettingsPage() {
           {!cameraStream ? (
             <div className="flex flex-col  gap-4 py-4">
               <Button
-                onClick={startCamera}
+                onClick={(e) => {
+                  e.preventDefault();
+                  startCamera(false);
+                }}
                 className="flex items-center justify-center gap-3 h-12 text-base"
                 variant="outline"
                 disabled={isStartingCamera}
@@ -1568,7 +1609,10 @@ export default function SettingsPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  onClick={capturePhoto}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    capturePhoto(false);
+                  }}
                   disabled={isCapturing}
                   className="flex-1"
                 >
@@ -1586,6 +1630,78 @@ export default function SettingsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Full Page Camera View */}
+      {showFullPageCamera && (
+        <div className="fixed inset-0 z-[100] bg-black">
+          {/* Video Element - Full Screen */}
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            <video
+              ref={setFullPageVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+              onLoadedMetadata={() => {
+                if (fullPageVideoRef) {
+                  fullPageVideoRef.play().catch(console.error);
+                }
+              }}
+              onCanPlay={() => {
+                if (fullPageVideoRef) {
+                  fullPageVideoRef.play().catch(console.error);
+                }
+              }}
+            />
+          </div>
+
+          {/* Bottom Controls - Instagram Style */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pb-6 pt-12 px-6 safe-area-bottom">
+            <div className="flex items-center justify-between max-w-md mx-auto gap-4">
+              {/* Gallery Button */}
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleOpenGallery();
+                }}
+                size="lg"
+                variant="ghost"
+                className="rounded-full w-12 h-12 sm:w-14 sm:h-14 p-0 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 transition-all"
+                aria-label="Open gallery"
+              >
+                <Images className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </Button>
+
+              {/* Capture Button - Large Circle */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  capturePhoto(true);
+                }}
+                disabled={isCapturing}
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white border-4 border-white/40 shadow-2xl hover:scale-110 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/30"
+                aria-label="Capture photo"
+              >
+                <div className="w-full h-full rounded-full bg-white"></div>
+              </button>
+
+              {/* Cancel Button */}
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleCloseFullPageCamera();
+                }}
+                size="lg"
+                variant="ghost"
+                className="rounded-full w-12 h-12 sm:w-14 sm:h-14 p-0 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 transition-all"
+                aria-label="Cancel"
+              >
+                <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Cropper Modal */}
       <Dialog open={showCropperModal} onOpenChange={setShowCropperModal}>

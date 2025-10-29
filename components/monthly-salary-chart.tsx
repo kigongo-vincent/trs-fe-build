@@ -1,7 +1,7 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { formatCurrency, GRAPH_PRIMARY_COLOR } from "@/lib/utils"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
+import { getChartColorVariations } from "@/lib/utils"
 import { getAuthData } from "@/services/auth"
 
 
@@ -28,6 +28,9 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
     currency: userCurrency
   }))
 
+  // Get color variations for all bars
+  const colors = getChartColorVariations(chartData.length);
+
   const xKey = "month"
 
 
@@ -53,9 +56,11 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
             tickFormatter={(value) => `${value}`}
           />
           <Tooltip
-            formatter={(_value: number, _name: string, props: any) => {
+            formatter={(value: number, _name: string, props: any) => {
               const currency = props.payload && props.payload.currency ? props.payload.currency.toUpperCase() : 'USD';
-              return [`${formatCurrency(props?.value, currency)}`, 'Amount'];
+              const numValue = typeof value === 'string' ? parseFloat(value) : value;
+              const formattedValue = isNaN(numValue) ? '0' : numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              return [`${currency} ${formattedValue}`, 'Amount'];
             }}
             cursor={{ fill: '#f4f4f4' }}
             contentStyle={{
@@ -64,10 +69,12 @@ export function MonthlySalaryChart({ data }: MonthlySalaryChartProps) {
           />
           <Bar
             dataKey="amount"
-            fill="currentColor"
             radius={[4, 4, 0, 0]}
-            className="fill-primary"
-          />
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={colors[index]} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -1,10 +1,11 @@
 "use client"
 
-import { Bar, BarChart, CartesianAxis, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianAxis, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Cell } from "recharts"
 import { useEffect, useState } from "react"
 import { getHoursByProject } from "@/services/api"
 import { getAuthData } from "@/services/auth"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getChartColorVariations } from "@/lib/utils"
 
 interface HoursByProjectData {
   project: string
@@ -83,6 +84,9 @@ export function TaskDistributionChart() {
     )
   }
 
+  // Get color variations for all bars
+  const colors = getChartColorVariations(chartData.length);
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={chartData}>
@@ -108,10 +112,12 @@ export function TaskDistributionChart() {
         />
         <Bar
           dataKey="total"
-          fill="currentColor"
           radius={[4, 4, 0, 0]}
-          className="fill-primary"
-        />
+        >
+          {chartData.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={colors[index]} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
