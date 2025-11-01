@@ -172,3 +172,257 @@ export const generatePdf = async (content) => {
     }
   }
 };
+
+// Generate PDF as blob instead of downloading
+export const generatePdfAsBlob = async (content) => {
+  // Ensure we're in browser environment
+  if (typeof window === "undefined") {
+    throw new Error("PDF generation is only available in browser environment");
+  }
+
+  try {
+    const html2pdf = (await import("html2pdf.js")).default;
+    // Generate the dynamic HTML content with Tailwind styling
+    const htmlContent = await generateDynamicHtmlContent(content);
+
+    // Create a temporary iframe to render the full HTML document
+    // This is necessary because html2pdf needs a properly rendered DOM
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    iframe.style.width = '210mm';
+    iframe.style.height = '297mm';
+    document.body.appendChild(iframe);
+    
+    // Wait for iframe to load
+    await new Promise((resolve) => {
+      iframe.onload = () => {
+        // Add small delay to ensure content is fully rendered
+        setTimeout(() => resolve(), 100);
+      };
+      iframe.srcdoc = htmlContent;
+    });
+    
+    // Get the content document
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      document.body.removeChild(iframe);
+      throw new Error('Failed to access iframe document');
+    }
+    
+    // Wait for images to load - ensure they're fully loaded
+    await new Promise((resolve) => {
+      // First, wait a bit for iframe to render
+      setTimeout(() => {
+        const images = iframeDoc.querySelectorAll('img');
+        if (images.length === 0) {
+          resolve();
+          return;
+        }
+        
+        let loadedCount = 0;
+        const totalImages = images.length;
+        const timeout = setTimeout(() => {
+          // Resolve after timeout even if not all images loaded
+          console.log(`Image loading timeout after 8s, ${loadedCount}/${totalImages} loaded`);
+          resolve();
+        }, 8000); // 8 second timeout
+        
+        const checkComplete = () => {
+          loadedCount++;
+          if (loadedCount === totalImages) {
+            clearTimeout(timeout);
+            console.log('All images loaded, waiting 500ms for rendering');
+            setTimeout(() => resolve(), 500); // Longer delay after all images load
+          }
+        };
+        
+        images.forEach((img, index) => {
+          const isBase64 = img.src && img.src.startsWith('data:');
+          
+          // Base64 images should be immediately available
+          if (isBase64) {
+            console.log(`Image ${index} is base64, checking load status`);
+            // For base64, they're embedded so check immediately
+            // Wait a bit for browser to process the data URL
+            setTimeout(() => {
+              if (img.complete || img.naturalHeight > 0 || img.readyState === 'complete') {
+                console.log(`Base64 image ${index} ready (complete: ${img.complete}, height: ${img.naturalHeight})`);
+                checkComplete();
+              } else {
+                // Set up load handlers as backup
+                img.onload = () => {
+                  console.log(`Base64 image ${index} loaded via event`);
+                  checkComplete();
+                };
+                img.onerror = () => {
+                  console.error(`Base64 image ${index} failed to load`);
+                  checkComplete(); // Continue even if fails
+                };
+                // Force a check after a short delay
+                setTimeout(() => {
+                  if (img.naturalHeight > 0 || img.complete) {
+                    checkComplete();
+                  }
+                }, 100);
+              }
+            }, 100);
+          } else {
+            // Regular URL images
+            console.log(`Image ${index} is URL: ${img.src}`);
+            // Set crossOrigin for CORS
+            img.crossOrigin = 'anonymous';
+            
+            if (img.complete && img.naturalHeight !== 0) {
+              console.log(`Image ${index} already complete`);
+              checkComplete();
+            } else {
+              img.onload = () => {
+                if (img.naturalHeight > 0) {
+                  console.log(`Image ${index} loaded successfully`);
+                  checkComplete();
+                }
+              };
+              img.onerror = () => {
+                console.error(`Image ${index} failed to load`);
+                checkComplete(); // Continue even if image fails
+              };
+              
+              // If not loaded, try to trigger load
+              if (!img.complete && img.src) {
+                const src = img.src;
+                // Force reload
+                img.src = '';
+                setTimeout(() => {
+                  img.src = src;
+                }, 50);
+              }
+            }
+          }
+        });
+      }, 200); // Initial delay for iframe rendering
+    });
+    
+    // Get the body element from the iframe
+    const bodyElement = iframeDoc.body || iframeDoc.querySelector('body');
+    if (!bodyElement) {
+      document.body.removeChild(iframe);
+      throw new Error('Failed to find body element in iframe');
+    }
+
+    try {
+      // Use jsPDF and html2canvas directly for better control
+      const jsPDFLib = (await import("jspdf")).default;
+      const html2canvasLib = (await import("html2canvas")).default;
+      const html2canvas = html2canvasLib.default || html2canvasLib;
+
+      // Generate canvas from HTML element - capture full scroll height
+      const canvas = await html2canvas(bodyElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        letterRendering: true,
+        height: bodyElement.scrollHeight,
+        width: bodyElement.scrollWidth,
+        windowWidth: bodyElement.scrollWidth,
+        windowHeight: bodyElement.scrollHeight,
+      });
+
+      // Create PDF
+      const pdf = new jsPDFLib({
+        unit: "in",
+        format: "letter",
+        orientation: "portrait",
+        compress: true,
+      });
+
+      // Calculate dimensions with proper margins
+      const pageWidth = 8.5; // Letter width in inches
+      const pageHeight = 11; // Letter height in inches
+      const marginLeft = 0.5; // Left margin in inches
+      const marginTop = 0.5; // Top margin in inches
+      const marginRight = 0.5; // Right margin in inches
+      const marginBottom = 0.5; // Bottom margin in inches
+      const contentWidth = pageWidth - marginLeft - marginRight;
+      const contentHeight = pageHeight - marginTop - marginBottom;
+      
+      // Calculate scale to fit content width while maintaining aspect ratio
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+
+      // Check if content fits on one page
+      if (imgHeight <= contentHeight) {
+        // Content fits on one page - add it directly
+        pdf.addImage(imgData, "JPEG", marginLeft, marginTop, imgWidth, imgHeight);
+      } else {
+        // Content needs multiple pages - split it correctly
+        let yPosition = 0;
+        let pageNumber = 0;
+        
+        while (yPosition < canvas.height) {
+          if (pageNumber > 0) {
+            pdf.addPage();
+          }
+          
+          // Calculate how much of the image to show on this page
+          const remainingHeight = canvas.height - yPosition;
+          const displayHeight = Math.min(remainingHeight, (contentHeight * canvas.width) / imgWidth);
+          
+          // Calculate the source rectangle and destination
+          const sourceY = yPosition;
+          const sourceHeight = displayHeight;
+          
+          // Create a temporary canvas for this page slice
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = Math.min(sourceHeight, canvas.height - sourceY);
+          const pageCtx = pageCanvas.getContext('2d');
+          
+          if (pageCtx) {
+            pageCtx.drawImage(canvas, 0, sourceY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+            const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
+            const pageImgHeight = (pageCanvas.height * imgWidth) / canvas.width;
+            pdf.addImage(pageImgData, "JPEG", marginLeft, marginTop, imgWidth, pageImgHeight);
+          }
+          
+          yPosition += sourceHeight;
+          pageNumber++;
+        }
+      }
+
+      // Get PDF as blob
+      const pdfBlob = pdf.output('blob');
+      
+      if (!pdfBlob || !(pdfBlob instanceof Blob) || pdfBlob.size === 0) {
+        // Fallback: try arraybuffer
+        const arrayBuffer = pdf.output('arraybuffer');
+        if (arrayBuffer && arrayBuffer.byteLength > 0) {
+          const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+          // Clean up temporary iframe
+          document.body.removeChild(iframe);
+          return blob;
+        }
+        // Clean up temporary iframe
+        document.body.removeChild(iframe);
+        throw new Error('Generated PDF is empty');
+      }
+      
+      // Clean up temporary iframe
+      document.body.removeChild(iframe);
+      return pdfBlob;
+    } catch (error) {
+      // Clean up temporary iframe even on error
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error("Error generating PDF blob:", error);
+    throw error;
+  }
+};
