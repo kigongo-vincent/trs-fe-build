@@ -552,7 +552,7 @@ export default function SettingsPage() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
-
+      
       if (fullPage) {
         setShowFullPageCamera(true);
       }

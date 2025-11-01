@@ -15,6 +15,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { useMemo } from "react"
 import { createInvoiceApproval, getCompanyInvoicesSummary, getCompanyPaidInvoicesByMonth, getRequest, fetchApproverActions, ApproverAction, postRequest } from "@/services/api"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { getAuthData } from "@/services/auth"
 import { formatCurrency } from "@/lib/utils"
@@ -27,7 +37,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import React from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { generatePdf, imageToBase64 } from "@/utils/GeneratePDF"
+import { generatePdf, generatePdfAsBlob } from "@/utils/GeneratePDF"
+import JSZip from "jszip"
 import { Invoice } from "@/services/employee"
 import { User } from "@/services/departments"
 import * as Tabz from "@radix-ui/react-tabs";
@@ -122,8 +133,11 @@ export default function InvoicesPage() {
   const [filterLoading, setFilterLoading] = useState(false)
   const [filterParams, setFilterParams] = useState<{ status: string, startDate: string, endDate: string }>({ status: "processing", startDate: "", endDate: "" })
 
-  // Add a ref to InvoiceTable for PDF download
-  const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void } | null>(null)
+  // Track selected invoice count for button text
+  const [selectedInvoiceCount, setSelectedInvoiceCount] = useState(0)
+
+  // Add a ref to InvoiceTable for PDF download and selected count
+  const invoiceTableRef = useRef<{ handleAllInvoicesPDF: () => void; handleExportAllInvoicesPDF: () => void; selectedCount: number } | null>(null)
 
   // Get boardMemberRole from session
   const authData = getAuthData();
@@ -325,6 +339,30 @@ export default function InvoicesPage() {
   // Handler to trigger PDF from top button
   const handleTopDownloadPDF = () => {
     invoiceTableRef.current?.handleAllInvoicesPDF()
+  }
+
+  // Handler to export all invoices matching current filters
+  const handleExportAllInvoices = () => {
+    invoiceTableRef.current?.handleExportAllInvoicesPDF()
+  }
+
+  // Get export button text based on active filters or selected invoices
+  const getExportButtonText = () => {
+    if (selectedInvoiceCount > 0) {
+      return `Export ${selectedInvoiceCount} Selected`
+    }
+
+    if (searchTerm) {
+      return `Export Matching (${searchTerm})`
+    }
+    if (filterParams?.status) {
+      const statusLabel = filterParams.status.charAt(0).toUpperCase() + filterParams.status.slice(1)
+      return `Export All ${statusLabel}`
+    }
+    if (filterParams?.startDate || filterParams?.endDate) {
+      return 'Export Filtered'
+    }
+    return 'Export All Invoices'
   }
 
   return (
@@ -573,11 +611,28 @@ export default function InvoicesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-medium">All Invoices</CardTitle>
-          <CardDescription>Manage and track all company invoices</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-medium">All Invoices</CardTitle>
+              <CardDescription>Manage and track all company invoices</CardDescription>
+            </div>
+            <Button variant="outline" onClick={handleExportAllInvoices}>
+              <FileDown className="mr-2 h-4 w-4" />
+              {getExportButtonText()}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <InvoiceTable ref={invoiceTableRef} currency={companyCurrency} searchTerm={searchTerm} filterParams={filterParams} boardMemberRole={boardMemberRole} roleName={roleName} />
+          <InvoiceTable
+            ref={invoiceTableRef}
+            currency={companyCurrency}
+            searchTerm={searchTerm}
+            filterParams={filterParams}
+            boardMemberRole={boardMemberRole}
+            roleName={roleName}
+            onSelectionChange={setSelectedInvoiceCount}
+            activeTab={status}
+          />
         </CardContent>
       </Card>
     </div>
@@ -585,8 +640,8 @@ export default function InvoicesPage() {
 }
 
 const InvoiceTable = React.forwardRef(function InvoiceTable(
-  { currency, searchTerm, filterParams, boardMemberRole, roleName }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string }, boardMemberRole?: string, roleName?: string },
-  ref: React.ForwardedRef<{ handleAllInvoicesPDF: () => void }>
+  { currency, searchTerm, filterParams, boardMemberRole, roleName, onSelectionChange, activeTab }: { currency: string, searchTerm?: string, filterParams?: { status: string, startDate: string, endDate: string }, boardMemberRole?: string, roleName?: string, onSelectionChange?: (count: number) => void, activeTab?: string },
+  ref: React.ForwardedRef<{ handleAllInvoicesPDF: () => void; handleExportAllInvoicesPDF: () => void; selectedCount: number }>
 ) {
   const [invoices, setInvoices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -687,7 +742,13 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     // Reset selection when invoices change
     setSelectedInvoices(new Set())
     setSelectAll(false)
-  }, [invoices])
+    onSelectionChange?.(0)
+  }, [invoices, onSelectionChange])
+
+  // Notify parent when selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedInvoices.size)
+  }, [selectedInvoices.size, onSelectionChange])
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -713,12 +774,15 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
         const firstSelectedStatus = currentlySelected[0].status
 
         // Prevent mixing different statuses that can't be batch processed together
-        if (
-          (firstSelectedStatus === 'paid') ||
-          (currentlySelected.some(inv => inv.status === 'paid'))
-        ) {
-          alert("Cannot select paid invoices for batch operations.")
-          return
+        // Only apply this restriction if not on the paid tab (where selection is only for export)
+        if (activeTab !== 'paid') {
+          if (
+            (firstSelectedStatus === 'paid') ||
+            (currentlySelected.some(inv => inv.status === 'paid'))
+          ) {
+            alert("Cannot select paid invoices for batch operations.")
+            return
+          }
         }
       }
 
@@ -741,11 +805,12 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     if (checked) {
       // Only select invoices that can be batch processed together
       // For now, select all invoices with the same status as the first one
+      // On paid tab, allow selecting all paid invoices for export
       if (sortedInvoices.length > 0) {
         const firstStatus = sortedInvoices[0].status
-        const compatibleInvoices = sortedInvoices.filter(invoice =>
-          invoice.status !== 'paid'
-        )
+        const compatibleInvoices = activeTab === 'paid'
+          ? sortedInvoices
+          : sortedInvoices.filter(invoice => invoice.status !== 'paid')
         const compatibleIds = new Set(compatibleInvoices.map(invoice => invoice.id))
         setSelectedInvoices(compatibleIds)
         setSelectAll(compatibleIds.size === sortedInvoices.length)
@@ -811,206 +876,148 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
   // PDF download for row (stateless: checkboxes No, comment empty)
   const handleRowDownloadPDF = async (invoice: any) => {
     try {
-      const reviewedText = 'No'
-      const satisfiedText = 'No'
-      const approvedText = 'No'
-      const commentBlock = ''
-      const statusColor = getStatusColor(invoice.status)
-      const statusText = invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'
+      const getCurrencyOrigin = () => {
+        return { code: invoice.user?.currency || 'USD', origin: 'User' }
+      }
+      const currencyInfo = getCurrencyOrigin()
+
+      const formatCurrency = (amount: any, code = 'USD') => {
+        return `${code} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }
 
       const html = `
-        <div class="bg-white p-8 max-w-4xl mx-auto">
-          <!-- Header -->
-          <div class="border-b-2 border-gray-300 pb-6 mb-6">
-            <div class="flex justify-between items-start">
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 210mm; margin: 0 auto; padding: 12mm 10mm; background: white; color: #1f2937;">
+        <!-- Header -->
+        <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">
+          ${invoice.user?.company?.name ? `<div style="margin-bottom: 8px;"><h2 style="font-size: 16px; font-weight: 700; color: #F6931B; margin: 0 0 2px 0;">${invoice.user.company.name}</h2>${invoice.user?.company?.sector ? `<p style="font-size: 11px; color: #6b7280; margin: 0;">${invoice.user.company.sector}</p>` : ''}</div>` : ''}
+          <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">INVOICE</h1>
+          <p style="font-size: 12px; color: #6b7280; margin: 0;">${invoice.invoiceNumber || invoice.id}</p>
+        </div>
+
+        <!-- Invoice Details and Consultant Info -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Invoice Details</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Issue Date:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Period:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Last Updated:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Consultant Information</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
               <div>
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
-                <p class="text-lg text-gray-600">${invoice.invoiceNumber || invoice.id}</p>
+                <div style="font-weight: 600; color: #111827;">${invoice.user?.fullName || 'Consultant Name'}</div>
+                <div style="color: #6b7280; text-transform: capitalize; margin-top: 1px; font-size: 10px;">${invoice.user?.jobTitle || 'Consultant'} Consultant</div>
               </div>
-              <div class="text-right">
-                <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
-                  ${statusText}
-                </div>
+              <div style="color: #6b7280; display: flex; align-items: center; margin-top: 2px;">
+                <span>${invoice.user?.email || 'email@example.com'}</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Company Info -->
-          <div class="bg-primary text-white p-6 rounded-lg mb-6">
-            <h2 class="text-xl font-bold mb-1">${invoice.user?.company?.name || 'Company Name'}</h2>
-            <p class="text-blue-100 text-sm">${invoice.user?.company?.sector || 'Sector'}</p>
-          </div>
-
-          <!-- Invoice Details -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                Invoice Details
-              </h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Issue Date:</span>
-                  <span class="font-medium">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Period:</span>
-                  <span class="font-medium">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Last Updated:</span>
-                  <span class="font-medium">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
-                </div>
+              <div style="color: #6b7280; display: flex; align-items: center;">
+                <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
               </div>
             </div>
-
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                </svg>
-                Consultant Information
-              </h3>
-              <div class="space-y-2 text-sm">
-                <div>
-                  <span class="font-semibold text-gray-900">${invoice.user?.fullName || 'Consultant Name'}</span>
-                  <p class="text-gray-600 capitalize">${invoice.user?.jobTitle || 'Consultant'} Consultant</p>
-                </div>
-                <div class="flex items-center text-gray-600">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                  </svg>
-                  <span>${invoice.user?.email || 'email@example.com'}</span>
-                </div>
-                <div class="flex items-center text-gray-600">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                  </svg>
-                  <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Service Description -->
-          <div class="bg-blue-50 p-4 rounded-lg mb-6">
-            <h3 class="font-semibold text-gray-900 mb-2">Service Description</h3>
-            <p class="text-gray-700">${invoice.description || 'Consulting services for the specified period.'}</p>
-          </div>
-
-          <!-- Invoice Items -->
-          <div class="bg-white border border-gray-200 rounded-lg mb-6">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="font-semibold text-gray-900">Invoice Items</h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Rate</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr>
-                    <td class="px-4 py-3">
-                      <span class="font-medium text-gray-900">Consulting Services</span>
-                      <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
-                    </td>
-                    <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${invoice.user.currency} ${((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-3 text-right font-medium text-gray-900">${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Total -->
-          <div class="bg-gray-50 p-4 rounded-lg mb-6">
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between text-gray-600">
-                <span>Subtotal:</span>
-                <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div class="flex justify-between text-gray-600">
-                <span>Tax:</span>
-                <span>${invoice.user.currency} 0.00</span>
-              </div>
-              <div class="border-t pt-2">
-                <div class="flex justify-between text-base font-bold text-gray-900">
-                  <span>Total:</span>
-                  <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-            </div>
-            <div class="mt-2 text-xs text-gray-500 text-right">
-              Showing amounts in <span class="font-semibold">${invoice.user.currency}</span> (User currency)
-            </div>
-          </div>
-
-          <!-- Payment Information -->
-          <div class="bg-gradient-to-r from-gray-900 to-blue-900 text-white p-4 rounded-lg mb-6">
-            <h3 class="font-semibold mb-3 flex items-center">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Payment Information
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div>
-                <span class="text-gray-300 text-xs">Bank Name</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.bankName || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Branch</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.branch || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Account Name</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.accountName || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Account Number</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</p>
-              </div>
-              <div class="md:col-span-2">
-                <span class="text-gray-300 text-xs">SWIFT Code</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Review Status -->
-          <div class="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 class="font-semibold text-gray-900 mb-3">Review Status</h3>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between">
-                <span class="text-gray-600">Reviewed:</span>
-                <span class="font-medium">${reviewedText}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Satisfied:</span>
-                <span class="font-medium">${satisfiedText}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Approved:</span>
-                <span class="font-medium">${approvedText}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="text-center text-gray-500 text-xs border-t pt-4">
-            <p>Thank you for your business!</p>
-            <p class="mt-1">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
           </div>
         </div>
-      `
+
+        <!-- Invoice Items -->
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 16px; overflow: hidden;">
+          <div style="padding: 10px; border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">Invoice Items</h3>
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f9fafb;">
+              <tr>
+                <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Description</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Hours</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Rate</th>
+                <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb;">
+                  <div style="font-weight: 500; color: #111827; font-size: 11px;">Consulting Services</div>
+                  <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</div>
+                </td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${invoice.totalHours || '-'}</td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${formatCurrency(((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth) || 0), currencyInfo.code)}</td>
+                <td style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #e5e7eb; font-weight: 500; color: #111827; font-size: 11px;">${formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+          <div style="width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Tax:</span>
+              <span>${formatCurrency(0, currencyInfo.code)}</span>
+            </div>
+            <div style="border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #111827;">
+                <span>Total:</span>
+                <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+              </div>
+            </div>
+            <div style="margin-top: 6px; font-size: 10px; color: #9ca3af; text-align: right;">
+              Showing amounts in <span style="font-weight: 600;">${currencyInfo.code}</span> (${currencyInfo.origin} currency)
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        ${invoice.user?.bankDetails ? `
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; margin-bottom: 16px; background: #fafafa;">
+          <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 10px 0;">Payment Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Bank Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.bankName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Branch</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.branch || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Number</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">SWIFT Code</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 16px; text-align: center; font-size: 10px; color: #6b7280;">
+          <p style="margin: 0 0 4px 0;">Thank you for your business!</p>
+          <p style="margin: 0;">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
+        </div>
+      </div>
+    `
       await generatePdf(html)
     } catch (error) {
       console.error('Error generating PDF:', error)
@@ -1038,19 +1045,8 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       ]);
 
 
-      let logo = authData?.user?.company?.logo;
-      let logoBase64 = '';
-      if (logo) {
-        try {
-          logoBase64 = await imageToBase64(logo);
-        } catch (e) {
-          logoBase64 = '';
-        }
-      }
-
       // Build HTML table
       const tableHtml = `
-      ${logoBase64 ? `<img src="${logoBase64}" alt="Company Logo" class="h-32 mb-4">` : ''}
       <h1 class="text-3xl text-primary font-bold mb-4">${authData?.user?.company?.name || ''}</h1>
         <p class="mb-4">Invoices for the duration: &nbsp; ${getInvoiceDateRange(filteredInvoices)}</p>
         <span class=" text-xs  mb-4">Printed: ${format(new Date(), 'yyyy-MM-dd')}</span>
@@ -1080,6 +1076,316 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     }
   }
 
+  // Helper function to generate HTML for a single invoice PDF
+  const generateInvoicePDFHtml = async (invoice: any, reviewedText: string = 'No', satisfiedText: string = 'No', approvedText: string = 'No', commentBlock: string = '') => {
+    const getCurrencyOrigin = () => {
+      return { code: invoice.user?.currency || 'USD', origin: 'User' }
+    }
+    const currencyInfo = getCurrencyOrigin()
+    const formatCurrency = (amount: any, code = 'USD') => {
+      return `${code} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    }
+
+    return `
+          <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 210mm; margin: 0 auto; padding: 12mm 10mm; background: white; color: #1f2937;">
+            <!-- Header -->
+            <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">
+              ${invoice.user?.company?.name ? `<div style="margin-bottom: 8px;"><h2 style="font-size: 16px; font-weight: 700; color: #F6931B; margin: 0 0 2px 0;">${invoice.user.company.name}</h2>${invoice.user?.company?.sector ? `<p style="font-size: 11px; color: #6b7280; margin: 0;">${invoice.user.company.sector}</p>` : ''}</div>` : ''}
+              <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">INVOICE</h1>
+              <p style="font-size: 12px; color: #6b7280; margin: 0;">${invoice.invoiceNumber || invoice.id}</p>
+            </div>
+
+        <!-- Invoice Details and Consultant Info -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Invoice Details</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Issue Date:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Period:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Last Updated:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Consultant Information</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div>
+                <div style="font-weight: 600; color: #111827;">${invoice.user?.fullName || 'Consultant Name'}</div>
+                <div style="color: #6b7280; text-transform: capitalize; margin-top: 1px; font-size: 10px;">${invoice.user?.jobTitle || 'Consultant'} Consultant</div>
+              </div>
+              <div style="color: #6b7280; display: flex; align-items: center; margin-top: 2px;">
+                <span>${invoice.user?.email || 'email@example.com'}</span>
+              </div>
+              <div style="color: #6b7280; display: flex; align-items: center;">
+                <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice Items -->
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 16px; overflow: hidden;">
+          <div style="padding: 10px; border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">Invoice Items</h3>
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f9fafb;">
+              <tr>
+                <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Description</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Hours</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Rate</th>
+                <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb;">
+                  <div style="font-weight: 500; color: #111827; font-size: 11px;">Consulting Services</div>
+                  <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</div>
+                </td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${invoice.totalHours || '-'}</td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${formatCurrency(((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth) || 0), currencyInfo.code)}</td>
+                <td style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #e5e7eb; font-weight: 500; color: #111827; font-size: 11px;">${formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+          <div style="width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Tax:</span>
+              <span>${formatCurrency(0, currencyInfo.code)}</span>
+            </div>
+            <div style="border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #111827;">
+                <span>Total:</span>
+                <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+              </div>
+            </div>
+            <div style="margin-top: 6px; font-size: 10px; color: #9ca3af; text-align: right;">
+              Showing amounts in <span style="font-weight: 600;">${currencyInfo.code}</span> (${currencyInfo.origin} currency)
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        ${invoice.user?.bankDetails ? `
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; margin-bottom: 16px; background: #fafafa;">
+          <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 10px 0;">Payment Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Bank Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.bankName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Branch</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.branch || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Number</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">SWIFT Code</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 16px; text-align: center; font-size: 10px; color: #6b7280;">
+          <p style="margin: 0 0 4px 0;">Thank you for your business!</p>
+          <p style="margin: 0;">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
+        </div>
+      </div>
+    `
+  }
+
+  // Helper function to sanitize filename
+  const sanitizeFilename = (email: string): string => {
+    // Replace invalid filename characters with underscores
+    return email.replace(/[<>:"/\\|?*]/g, '_').replace(/[^\w.-]/g, '_')
+  }
+
+  // PDF download for ALL invoices matching current filters OR selected invoices
+  const handleExportAllInvoicesPDF = async () => {
+    try {
+      let invoicesToExport: any[] = []
+      const authData = getAuthData()
+
+      // Check if invoices are selected - if yes, export only selected
+      if (selectedInvoices.size > 0) {
+        invoicesToExport = sortedInvoices.filter(inv => selectedInvoices.has(inv.id))
+
+        if (invoicesToExport.length === 0) {
+          alert('No invoices selected for export')
+          return
+        }
+      } else {
+        // If no invoices selected, fetch all matching filters
+        const companyId = authData?.user?.company?.id
+        if (!companyId) {
+          alert('Company ID not found')
+          return
+        }
+
+        let url = `/company/invoices/${companyId}`
+        let params: any = {}
+
+        // Apply current filters (same logic as fetchInvoicesWithRetry)
+        if (searchTerm) {
+          params.search = searchTerm
+        } else if (filterParams) {
+          if (filterParams.status) {
+            params.status = filterParams.status
+          }
+          if (filterParams.startDate) {
+            params.startDate = filterParams.startDate
+          }
+          if (filterParams.endDate) {
+            params.endDate = filterParams.endDate
+          }
+        }
+
+        const query = Object.keys(params).length ? `?${new URLSearchParams(params).toString()}` : ""
+
+        // Add timeout to prevent long waits
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 30000)
+        )
+
+        const fetchPromise = getRequest(url + query)
+        const res: any = await Promise.race([fetchPromise, timeoutPromise])
+
+        invoicesToExport = res.data || []
+      }
+
+      if (invoicesToExport.length === 0) {
+        alert('No invoices found to export')
+        return
+      }
+
+      // Build zip filename based on filters
+      let zipFilename = 'invoices'
+      if (selectedInvoices.size > 0) {
+        zipFilename = `selected-invoices-${selectedInvoices.size}`
+      } else if (searchTerm) {
+        zipFilename = `invoices-${sanitizeFilename(searchTerm)}`
+      } else if (filterParams?.status) {
+        const statusLabel = filterParams.status.charAt(0).toUpperCase() + filterParams.status.slice(1)
+        zipFilename = `${statusLabel.toLowerCase()}-invoices`
+      }
+
+      // Add date range if present
+      if (filterParams?.startDate || filterParams?.endDate) {
+        const dateStr = filterParams.startDate
+          ? format(new Date(filterParams.startDate), 'yyyy-MM-dd')
+          : 'all'
+        zipFilename += `-${dateStr}`
+      }
+
+      zipFilename = `${zipFilename}-${format(new Date(), 'yyyy-MM-dd')}.zip`
+
+      // Show loading message
+      toast.loading(`Generating ${invoicesToExport.length} PDF${invoicesToExport.length > 1 ? 's' : ''}...`, { id: 'export-progress' })
+
+      // Create zip file
+      const zip = new JSZip()
+      let successfulCount = 0
+      let failedCount = 0
+
+      // Generate PDFs and add to zip
+      for (let i = 0; i < invoicesToExport.length; i++) {
+        const invoice = invoicesToExport[i]
+        const email = invoice.user?.email || `invoice-${invoice.id}`
+        const filename = `${sanitizeFilename(email)}.pdf`
+
+        try {
+          // Generate HTML for this invoice (async - converts logo to base64)
+          const html = await generateInvoicePDFHtml(invoice)
+
+          // Generate PDF as blob
+          const pdfBlob = await generatePdfAsBlob(html)
+
+          // Verify blob is valid
+          if (pdfBlob && pdfBlob instanceof Blob && pdfBlob.size > 0) {
+            // Add PDF to zip with proper naming
+            zip.file(filename, pdfBlob)
+            successfulCount++
+            console.log(`Successfully generated PDF for ${email} (${pdfBlob.size} bytes)`)
+          } else {
+            console.error(`Generated PDF blob is invalid for ${email}`)
+            failedCount++
+          }
+
+          // Update progress for large exports
+          if (invoicesToExport.length > 5 && (i + 1) % 5 === 0) {
+            toast.loading(`Generating PDFs... ${i + 1}/${invoicesToExport.length}`, { id: 'export-progress' })
+          }
+        } catch (err) {
+          console.error(`Failed to generate PDF for ${email}:`, err)
+          failedCount++
+          // Continue with other invoices even if one fails
+        }
+      }
+
+      // Check if we have any files in the zip
+      if (successfulCount === 0) {
+        toast.error('No PDFs were generated. Please check the console for errors.', { id: 'export-progress' })
+        return
+      }
+
+      if (failedCount > 0) {
+        toast.warning(`Generated ${successfulCount} PDF${successfulCount > 1 ? 's' : ''}, ${failedCount} failed`, { id: 'export-progress' })
+      }
+
+      // Generate zip file
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      })
+
+      // Download zip file
+      const link = document.createElement('a')
+      const url = URL.createObjectURL(zipBlob)
+      link.href = url
+      link.download = zipFilename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success(`Successfully exported ${invoicesToExport.length} invoice${invoicesToExport.length > 1 ? 's' : ''} as ${zipFilename}`, { id: 'export-progress' })
+    } catch (err) {
+      console.error('Failed to generate PDFs:', err);
+      toast.error('Failed to generate PDFs. Please try again.', { id: 'export-progress' })
+    }
+  }
+
+  // Confirmation dialog state for approve
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false)
+
   const handleApproveAll = async () => {
     // Prevent approval if any selected invoices are already approved
     if (hasApprovedInvoices) {
@@ -1087,6 +1393,12 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       return
     }
 
+    // Show confirmation dialog
+    setShowApproveConfirm(true)
+  }
+
+  const confirmApproveAll = async () => {
+    setShowApproveConfirm(false)
     const selectedIds = Array.from(selectedInvoices)
     setLoading2(true)
     try {
@@ -1122,6 +1434,9 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     }
   }
 
+  // Confirmation dialog state for mark as paid
+  const [showMarkPaidConfirm, setShowMarkPaidConfirm] = useState(false)
+
   const handleMarkAsPaid = async () => {
     // Prevent marking as paid if any selected invoices are already paid
     if (hasPaidInvoices) {
@@ -1129,6 +1444,12 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       return
     }
 
+    // Show confirmation dialog
+    setShowMarkPaidConfirm(true)
+  }
+
+  const confirmMarkAsPaid = async () => {
+    setShowMarkPaidConfirm(false)
     const selectedIds = Array.from(selectedInvoices)
     setLoading2(true)
     try {
@@ -1164,7 +1485,11 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
     }
   }
 
-  useImperativeHandle(ref, () => ({ handleAllInvoicesPDF }))
+  useImperativeHandle(ref, () => ({
+    handleAllInvoicesPDF,
+    handleExportAllInvoicesPDF,
+    selectedCount: selectedInvoices.size
+  }))
 
   if (loading) {
     return (
@@ -1265,7 +1590,7 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
             {selectedInvoices.size > 0 ? `${selectedInvoices.size} invoice(s) selected` : 'No invoices selected'}
           </span>
         </div>
-        {selectedInvoices.size > 0 && (
+        {selectedInvoices.size > 0 && activeTab !== 'paid' && (
           <div className="flex gap-2">
             {/* Show Approve button only if no approved invoices are selected */}
             {!hasApprovedInvoices && !allSelectedAreApproved && (
@@ -1297,12 +1622,6 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
             {hasApprovedInvoices && !allSelectedAreApproved && (
               <div className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded border border-amber-200">
                 Cannot approve: Some selected invoices are already approved
-              </div>
-            )}
-
-            {hasPaidInvoices && (
-              <div className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded border border-blue-200">
-                Cannot update: Some selected invoices are already paid
               </div>
             )}
           </div>
@@ -1396,6 +1715,42 @@ const InvoiceTable = React.forwardRef(function InvoiceTable(
       </Table>
       {/* Invoice Details Modal */}
       <InvoiceDetailsModal open={modalOpen} onOpenChange={setModalOpen} invoice={selectedInvoice} currency={currency} boardMemberRole={boardMemberRole} roleName={roleName} />
+
+      {/* Approve All Confirmation Dialog */}
+      <AlertDialog open={showApproveConfirm} onOpenChange={setShowApproveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Approval</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve {selectedInvoices.size} invoice{selectedInvoices.size > 1 ? 's' : ''}? This action will change the status of the selected invoices to "approved" and cannot be undone easily.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmApproveAll} className="bg-primary">
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mark as Paid Confirmation Dialog */}
+      <AlertDialog open={showMarkPaidConfirm} onOpenChange={setShowMarkPaidConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Mark as Paid</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark {selectedInvoices.size} invoice{selectedInvoices.size > 1 ? 's' : ''} as paid? This action will change the status of the selected invoices to "paid" and cannot be undone easily.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMarkAsPaid} className="bg-green-600 hover:bg-green-700">
+              Mark as Paid
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 })
@@ -1479,8 +1834,22 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
       });
   }, [open, invoice?.id])
   const checksChanged = reviewed !== false || satisfied !== false || approved !== false // always allow save for demo
+  // Confirmation dialog state for save
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false)
+
   // Save both checks and comment
   const handleSave = async () => {
+    // Show confirmation dialog if approving or marking as satisfied/reviewed
+    if (approved || satisfied || reviewed || comment.trim()) {
+      setShowSaveConfirm(true)
+    } else {
+      // No changes, nothing to save
+      return
+    }
+  }
+
+  const confirmSave = async () => {
+    setShowSaveConfirm(false)
     setSaving(true);
     try {
       await createInvoiceApproval(
@@ -1503,222 +1872,159 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
         ]);
         setComment("");
       }
+      // Reset checkboxes after successful save
+      setReviewed(false)
+      setSatisfied(false)
+      setApproved(false)
     } catch (e) {
       // Error already handled by onError
     }
   };
-  // PDF Generation (basic, organized, with inline HTML/CSS and table borders)
+  // PDF Generation (updated to match bulk export style)
   const handleDownloadPDF = async () => {
     try {
-      const reviewedText = reviewed ? 'Yes' : 'No'
-      const satisfiedText = satisfied ? 'Yes' : 'No'
-      const approvedText = approved ? 'Yes' : 'No'
-      // Use the first comment for PDF (or empty)
-      const firstComment = comments[0]?.content || ''
-      const statusColor = getStatusColor(invoice.status)
-      const statusText = invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : 'Unknown'
+      const getCurrencyOrigin = () => {
+        return { code: invoice.user?.currency || 'USD', origin: 'User' }
+      }
+      const currencyInfo = getCurrencyOrigin()
+
+      const formatCurrency = (amount: any, code = 'USD') => {
+        return `${code} ${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }
 
       const html = `
-        <div class="bg-white p-8 max-w-4xl mx-auto">
-          <!-- Header -->
-          <div class="border-b-2 border-gray-300 pb-6 mb-6">
-            <div class="flex justify-between items-start">
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 210mm; margin: 0 auto; padding: 12mm 10mm; background: white; color: #1f2937;">
+        <!-- Header -->
+        <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px;">
+          ${invoice.user?.company?.name ? `<div style="margin-bottom: 8px;"><h2 style="font-size: 16px; font-weight: 700; color: #F6931B; margin: 0 0 2px 0;">${invoice.user.company.name}</h2>${invoice.user?.company?.sector ? `<p style="font-size: 11px; color: #6b7280; margin: 0;">${invoice.user.company.sector}</p>` : ''}</div>` : ''}
+          <h1 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">INVOICE</h1>
+          <p style="font-size: 12px; color: #6b7280; margin: 0;">${invoice.invoiceNumber || invoice.id}</p>
+        </div>
+
+        <!-- Invoice Details and Consultant Info -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Invoice Details</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Issue Date:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Period:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: #6b7280;">Last Updated:</span>
+                <span style="font-weight: 500; color: #111827;">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 8px 0;">Consultant Information</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
               <div>
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
-                <p class="text-lg text-gray-600">${invoice.invoiceNumber || invoice.id}</p>
+                <div style="font-weight: 600; color: #111827;">${invoice.user?.fullName || 'Consultant Name'}</div>
+                <div style="color: #6b7280; text-transform: capitalize; margin-top: 1px; font-size: 10px;">${invoice.user?.jobTitle || 'Consultant'} Consultant</div>
               </div>
-              <div class="text-right">
-                <div class="inline-block px-4 py-2 rounded-full text-sm font-medium border ${statusColor}">
-                  ${statusText}
-                </div>
+              <div style="color: #6b7280; display: flex; align-items: center; margin-top: 2px;">
+                <span>${invoice.user?.email || 'email@example.com'}</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Company Info -->
-          <div class="bg-primary text-white p-6 rounded-lg mb-6">
-            <h2 class="text-xl font-bold mb-1">${invoice.user?.company?.name || 'Company Name'}</h2>
-            <p class="text-blue-100 text-sm">${invoice.user?.company?.sector || 'Sector'}</p>
-          </div>
-
-          <!-- Invoice Details -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                Invoice Details
-              </h3>
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Issue Date:</span>
-                  <span class="font-medium">${typeof invoice.createdAt === 'string' ? formatDate(invoice.createdAt) : typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Period:</span>
-                  <span class="font-medium">${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} - ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Last Updated:</span>
-                  <span class="font-medium">${typeof invoice.updatedAt === 'string' ? formatDate(invoice.updatedAt) : typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</span>
-                </div>
+              <div style="color: #6b7280; display: flex; align-items: center;">
+                <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
               </div>
             </div>
-
-            <div class="bg-gray-50 p-4 rounded-lg">
-              <h3 class="font-semibold text-gray-900 mb-3 flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                </svg>
-                Consultant Information
-              </h3>
-              <div class="space-y-2 text-sm">
-                <div>
-                  <span class="font-semibold text-gray-900">${invoice.user?.fullName || 'Consultant Name'}</span>
-                  <p class="text-gray-600 capitalize">${invoice.user?.jobTitle || 'Consultant'} Consultant</p>
-                </div>
-                <div class="flex items-center text-gray-600">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                  </svg>
-                  <span>${invoice.user?.email || 'email@example.com'}</span>
-                </div>
-                <div class="flex items-center text-gray-600">
-                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                  </svg>
-                  <span>${invoice.user?.phoneNumber || 'Phone Number'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Service Description -->
-          <div class="bg-blue-50 p-4 rounded-lg mb-6">
-            <h3 class="font-semibold text-gray-900 mb-2">Service Description</h3>
-            <p class="text-gray-700">${invoice.description || 'Consulting services for the specified period.'}</p>
-          </div>
-
-          <!-- Invoice Items -->
-          <div class="bg-white border border-gray-200 rounded-lg mb-6">
-            <div class="p-4 border-b border-gray-200">
-              <h3 class="font-semibold text-gray-900">Invoice Items</h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-900">Description</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Hours</th>
-                    <th class="px-4 py-3 text-center text-xs font-semibold text-gray-900">Rate</th>
-                    <th class="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                  <tr>
-                    <td class="px-4 py-3">
-                      <span class="font-medium text-gray-900">Consulting Services</span>
-                      <p class="text-xs text-gray-500">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</p>
-                    </td>
-                    <td class="px-4 py-3 text-center text-gray-900">${invoice.totalHours || '-'}</td>
-                    <td class="px-4 py-3 text-center text-gray-900">${currencyInfo.code} ${((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth).toFixed(2) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td class="px-4 py-3 text-right font-medium text-gray-900">${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Total -->
-          <div class="bg-gray-50 p-4 rounded-lg mb-6">
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between text-gray-600">
-                <span>Subtotal:</span>
-                <span>${currencyInfo.code} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div class="flex justify-between text-gray-600">
-                <span>Tax:</span>
-                <span>${currencyInfo.code} 0.00</span>
-              </div>
-              <div class="border-t pt-2">
-                <div class="flex justify-between text-base font-bold text-gray-900">
-                  <span>Total:</span>
-                  <span>${invoice.user.currency} ${(invoice.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-            </div>
-            <div class="mt-2 text-xs text-gray-500 text-right">
-              Showing amounts in <span class="font-semibold">${currencyInfo.code}</span> (${currencyInfo.origin} currency)
-            </div>
-          </div>
-
-          <!-- Payment Information -->
-          <div class="bg-gradient-to-r from-gray-900 to-blue-900 text-white p-4 rounded-lg mb-6">
-            <h3 class="font-semibold mb-3 flex items-center">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Payment Information
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div>
-                <span class="text-gray-300 text-xs">Bank Name</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.bankName || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Branch</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.branch || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Account Name</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.accountName || 'N/A'}</p>
-              </div>
-              <div>
-                <span class="text-gray-300 text-xs">Account Number</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</p>
-              </div>
-              <div class="md:col-span-2">
-                <span class="text-gray-300 text-xs">SWIFT Code</span>
-                <p class="font-medium">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Review Status -->
-          <div class="bg-gray-50 p-4 rounded-lg mb-6">
-            <h3 class="font-semibold text-gray-900 mb-3">Review Status</h3>
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between">
-                <span class="text-gray-600">Reviewed:</span>
-                <span class="font-medium">${reviewedText}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Satisfied:</span>
-                <span class="font-medium">${satisfiedText}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Approved:</span>
-                <span class="font-medium">${approvedText}</span>
-              </div>
-              ${firstComment ? `
-              <div class="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
-                <div class="text-sm">
-                  <span class="font-medium text-gray-900">Comment:</span>
-                  <p class="text-gray-700 mt-1">${firstComment}</p>
-                </div>
-              </div>
-              ` : ''}
-            </div>
-          </div>
-
-          <!-- Footer -->
-          <div class="text-center text-gray-500 text-xs border-t pt-4">
-            <p>Thank you for your business!</p>
-            <p class="mt-1">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
           </div>
         </div>
-      `
+
+        <!-- Invoice Items -->
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 16px; overflow: hidden;">
+          <div style="padding: 10px; border-bottom: 1px solid #e5e7eb; background: #fafafa;">
+            <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0;">Invoice Items</h3>
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f9fafb;">
+              <tr>
+                <th style="padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Description</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Hours</th>
+                <th style="padding: 8px 10px; text-align: center; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Rate</th>
+                <th style="padding: 8px 10px; text-align: right; font-size: 11px; font-weight: 600; color: #111827; border-bottom: 1px solid #e5e7eb;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px 10px; border-bottom: 1px solid #e5e7eb;">
+                  <div style="font-weight: 500; color: #111827; font-size: 11px;">Consulting Services</div>
+                  <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Period: ${typeof invoice.startDate === 'string' ? formatDate(invoice.startDate) : '-'} to ${typeof invoice.endDate === 'string' ? formatDate(invoice.endDate) : '-'}</div>
+                </td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${invoice.totalHours || '-'}</td>
+                <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 11px;">${formatCurrency(((invoice.user?.grossPay / invoice?.user?.totalHoursPerMonth) || 0), currencyInfo.code)}</td>
+                <td style="padding: 8px 10px; text-align: right; border-bottom: 1px solid #e5e7eb; font-weight: 500; color: #111827; font-size: 11px;">${formatCurrency(invoice.amount || 0, currencyInfo.code)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+          <div style="width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 11px; color: #6b7280;">
+              <span>Tax:</span>
+              <span>${formatCurrency(0, currencyInfo.code)}</span>
+            </div>
+            <div style="border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 8px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #111827;">
+                <span>Total:</span>
+                <span>${formatCurrency(invoice.amount || 0, currencyInfo.code)}</span>
+              </div>
+            </div>
+            <div style="margin-top: 6px; font-size: 10px; color: #9ca3af; text-align: right;">
+              Showing amounts in <span style="font-weight: 600;">${currencyInfo.code}</span> (${currencyInfo.origin} currency)
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Information -->
+        ${invoice.user?.bankDetails ? `
+        <div style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; margin-bottom: 16px; background: #fafafa;">
+          <h3 style="font-size: 12px; font-weight: 600; color: #111827; margin: 0 0 10px 0;">Payment Information</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Bank Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.bankName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Branch</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.branch || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Name</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountName || 'N/A'}</div>
+            </div>
+            <div>
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">Account Number</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.accountNumber || 'N/A'}</div>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div style="color: #6b7280; font-size: 10px; margin-bottom: 2px;">SWIFT Code</div>
+              <div style="font-weight: 500; color: #111827;">${invoice.user?.bankDetails?.swiftCode || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 16px; text-align: center; font-size: 10px; color: #6b7280;">
+          <p style="margin: 0 0 4px 0;">Thank you for your business!</p>
+          <p style="margin: 0;">For any questions regarding this invoice, please contact ${invoice.user?.email || 'support@company.com'}</p>
+        </div>
+      </div>
+    `
       await generatePdf(html)
     } catch (error) {
       console.error('Error generating PDF:', error)
@@ -1957,6 +2263,27 @@ function InvoiceDetailsModal({ open, onOpenChange, invoice, currency, boardMembe
           </Button>
         </CardFooter>
       </DialogContent>
+      {/* Save Confirmation Dialog */}
+      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Invoice Action</AlertDialogTitle>
+            <AlertDialogDescription>
+              {approved && "You are about to approve this invoice. "}
+              {satisfied && "You are marking this invoice as satisfied. "}
+              {reviewed && "You are marking this invoice as reviewed. "}
+              {comment.trim() && "You are adding a comment. "}
+              This action will update the invoice status and cannot be undone easily. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSave} className="bg-primary">
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 } 
