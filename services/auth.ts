@@ -1,8 +1,8 @@
-import { postRequest, putRequest } from "./api";
+import { BASE_URL, postRequest, putRequest } from "./api";
 
 interface SignupData {
-  name: string;
-  sector: string;
+  name?: string;
+  sector?: string;
   fullName: string;
   email: string;
   password: string;
@@ -74,10 +74,38 @@ export async function signupCompany(data: SignupData): Promise<AuthResponse> {
   return await postRequest<AuthResponse>("/company/signup", data);
 }
 
-export async function signupFreelancer(
-  data: SignupData
-): Promise<AuthResponse> {
-  return await postRequest<AuthResponse>("/freelancer/signup", data);
+export async function signupFreelancer(data: SignupData): Promise<any> {
+  // return await postRequest<AuthResponse>("/freelancer/auth/signup", data);
+  try {
+    const res = await fetch(`${BASE_URL}/freelancer/auth/signup`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
+}
+export async function verifyOTPFreelancer(data: {
+  email: string;
+  otp: string;
+}): Promise<any> {
+  // return await postRequest<AuthResponse>("/freelancer/auth/signup", data);
+  try {
+    const res = await fetch(`${BASE_URL}/freelancer/auth/verify-otp`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return await res.json();
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function login(data: LoginData): Promise<AuthResponse> {
