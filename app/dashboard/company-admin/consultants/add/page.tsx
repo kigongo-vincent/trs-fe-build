@@ -56,6 +56,7 @@ export default function AddConsultantPage() {
     grossPay: "",
     dateOfBirth: "",
     daysToCome: [] as string[],
+    type: 2,
     // Next of kin
     nextOfKinName: "",
     nextOfKinRelationship: "",
@@ -85,6 +86,7 @@ export default function AddConsultantPage() {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [currencies, setCurrencies] = useState<CurrencyI[]>([])
   const [loadingCurrencies, setLoadingCurrencies] = useState(false)
+  const [type, setType] = useState(2)
   // Consultant role ID
   const [totalWorkingHours, setTotalWorkingHours] = useState(160)
   const consultantRoleId = "0728a760-9495-4c9b-850b-d1f4ca5gb707"
@@ -242,6 +244,7 @@ export default function AddConsultantPage() {
         fullName: formData.fullName,
         email: formData.email,
         departmentId: formData.departmentId,
+        type: formData.type?.toString(),
         // roleId: consultantRoleId,
         companyId: companyId,
         job_title: formData.jobTitle,
@@ -252,7 +255,7 @@ export default function AddConsultantPage() {
         currency: formData.currency,
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
         roleId: consultantRoleId,
-        totalWorkingHours: totalWorkingHours
+        totalHoursPerMonth: totalWorkingHours
       }
 
       // Only add date_of_birth if it has a value
@@ -410,6 +413,7 @@ export default function AddConsultantPage() {
                 <button onClick={selectAllDays} className="border border-primary text-primary text-sm px-2 rounded-l-full rounded-r-full hover:opacity-100 opacity-50 py-1">Select all days</button>
                 <p className="text-sm text-muted-foreground">Select the days the consultant is expected to come in.</p>
               </div>
+
               <div className="space-y-2">
                 <Label>Total Working Hours<span className="text-red-500">*</span></Label>
                 <div className="flex items-center gap-2">
@@ -462,6 +466,29 @@ export default function AddConsultantPage() {
                 <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input  text-base " />
               </div>
               <p className="text-sm text-muted-foreground">Enter the consultant's salary and select the currency.</p>
+            </div>
+
+            {/* invoice */}
+            <div className="space-y-4 pt-6">
+              <h2 className="text-lg font-semibold mb-2">Invoice Details</h2>
+              <div className="flex w-full gap-2">
+                <Select value={formData.type?.toString()} onValueChange={(value) => setFormData((prev) => ({ ...prev, type: +value }))}>
+                  <SelectTrigger className=" rounded-md border border-input bg-transparent">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {
+                      [{ label: "Fixed", value: 1 }, { label: "Flexible", value: 2 }].map((c, i) => <SelectItem key={i} value={c?.value?.toString()}>
+                        <div className="flex items-center space-x-3">
+                          {c?.label}
+                        </div>
+                      </SelectItem>)
+                    }
+
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-sm text-muted-foreground">Specify whether the consultant's invoice amount is to be computed based off number of hours logged (flexible) or Fixed with the gross as the total amount to reflect on the invoice</p>
             </div>
 
             {/* ID Documents */}

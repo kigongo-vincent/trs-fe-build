@@ -2,20 +2,25 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from "recharts"
 
-// Freelancer Companies Chart
-const companiesData = [
-    { name: "TechCorp Inc", projects: 5, earnings: 15000 },
-    { name: "DesignStudio", projects: 3, earnings: 8500 },
-    { name: "StartupXYZ", projects: 2, earnings: 5000 },
-    { name: "MediaCorp", projects: 4, earnings: 12000 },
-    { name: "FinanceCo", projects: 1, earnings: 3000 },
-]
+type CompanyPerformanceDatum = {
+    name: string
+    projects: number
+    earnings: number
+}
 
-export function FreelancerCompaniesChart() {
+interface FreelancerCompaniesChartProps {
+    data: CompanyPerformanceDatum[]
+}
+
+export function FreelancerCompaniesChart({ data }: FreelancerCompaniesChartProps) {
+    const chartData = data?.length
+        ? data
+        : [{ name: "No data", projects: 0, earnings: 0 }]
+
     return (
         <ResponsiveContainer width="100%" height={300}>
             <BarChart
-                data={companiesData}
+                data={chartData}
                 margin={{
                     top: 20,
                     right: 30,

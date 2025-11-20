@@ -112,6 +112,24 @@ export interface FreelancerTimeLogsWithFiltersResponse {
   };
 }
 
+export interface FreelancerCompany {
+  id: string;
+  companyName: string;
+  sector: string;
+  contactPersonName1: string;
+  contactPersonEmail1: string;
+  contactPersonName2: string;
+  contactPersonEmail2: string;
+  address: string;
+  status: "active" | "inactive";
+}
+
+export interface FreelancerCompanyResponse {
+  status: number;
+  message: string;
+  data: FreelancerCompany[];
+}
+
 // API Functions
 export const fetchFreelancerDashboard =
   async (): Promise<FreelancerDashboardData> => {
@@ -125,6 +143,36 @@ export const fetchFreelancerDashboard =
       throw error;
     }
   };
+
+export const fetchFreelancerCompanies =
+  async (): Promise<FreelancerCompanyResponse> => {
+    try {
+      const response = await getRequest<any>("/freelancer/companies");
+      return response.data;
+    } catch (error) {
+      // console.error("Error fetching freelancer companies:", error);
+      throw error;
+    }
+  };
+
+export const createFreelancerCompany = async (
+  data: FreelancerCompany
+): Promise<any> => {
+  return await postRequest<any>("/freelancer/companies", data);
+};
+
+export const updateFreelancerCompany = async (
+  companyId: string,
+  data: Partial<FreelancerCompany>
+): Promise<any> => {
+  return await putRequest<any>(`/freelancer/companies/${companyId}`, data);
+};
+
+export const deleteFreelancerCompany = async (
+  companyId: string
+): Promise<any> => {
+  return await deleteRequest<any>(`/freelancer/companies/${companyId}`);
+};
 
 export const fetchFreelancerTimeLogs = async (
   params: {

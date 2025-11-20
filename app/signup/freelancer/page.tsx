@@ -8,7 +8,7 @@ import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Building2, User, DollarSig
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { signupFreelancer, storeAuthData, getUserRole } from "@/services/auth"
+import { signupFreelancer, storeAuthData, getUserRole, verifyOTPFreelancer } from "@/services/auth"
 import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -45,6 +45,7 @@ export default function FreelancerSignup() {
     })
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [otp, setOtp] = useState("")
     const [error, setError] = useState<string | null>(null)
     const [showRoundoffDialog, setShowRoundoffDialog] = useState(false)
 
@@ -95,12 +96,7 @@ export default function FreelancerSignup() {
             }
         }
 
-        if (step === 3) {
-            if (!formData.currency) {
-                setError("Please select a currency")
-                return false
-            }
-        }
+
 
         return true
     }
@@ -131,18 +127,25 @@ export default function FreelancerSignup() {
 
         try {
             const response = await signupFreelancer({
-                ...formData,
-                name: formData.fullName,
-                roundOff: roundoffValue
+                fullName: formData?.fullName,
+                email: formData?.email,
+                password: formData?.password
             })
-            storeAuthData(response.data.token, response.data.user)
-
-            const roleName = getUserRole() || ""
-            if (roleName === "Freelancer") {
-                router.push("/dashboard/freelancer")
+            if (response?.status == 201) {
+                setCurrentStep(3)
             } else {
-                router.push("/dashboard/freelancer")
+
+                setError(response.status != 200 ? response.message : "")
             }
+
+            // storeAuthData(response.data.token, response.data.user)
+
+            // const roleName = getUserRole() || ""
+            // if (roleName === "Freelancer") {
+            //     router.push("/dashboard/freelancer")
+            // } else {
+            //     router.push("/dashboard/freelancer")
+            // }
         } catch (err: any) {
             console.error("Signup error:", err)
             setError(err.message || "An error occurred during signup")
@@ -150,6 +153,28 @@ export default function FreelancerSignup() {
         } finally {
             setIsLoading(false)
         }
+    }
+
+    const handleVerifyOTP = async () => {
+        try {
+            setIsLoading(true)
+            const response = await verifyOTPFreelancer({
+                email: formData?.email,
+                otp
+            })
+            if (response.status == 200) {
+                storeAuthData(response?.data.token, response?.data.user)
+                router.push("/dashboard/freelancer/companies");
+            } else {
+                setError(response?.message)
+            }
+        } catch (error) {
+            setError("failed to verify OTP")
+        }
+        finally {
+            setIsLoading(false)
+        }
+        // alert("verify")
     }
 
     const renderStepContent = () => {
@@ -164,8 +189,8 @@ export default function FreelancerSignup() {
 
                         <div className="space-y-4">
                             <div
-                                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.accountType === 'freelancer'
-                                    ? 'border-primary bg-primary/5'
+                                className={`p-4 border rounded-lg cursor-pointer transition-colors ${formData.accountType === 'freelancer'
+                                    ? 'border-primary/30 bg-primary/5'
                                     : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                 onClick={() => setFormData(prev => ({ ...prev, accountType: 'freelancer' }))}
@@ -179,21 +204,7 @@ export default function FreelancerSignup() {
                                 </div>
                             </div>
 
-                            <div
-                                className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${formData.accountType === 'company'
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                onClick={() => setFormData(prev => ({ ...prev, accountType: 'company' }))}
-                            >
-                                <div className="flex items-center space-x-3">
-                                    <Building2 className="h-6 w-6 text-primary" />
-                                    <div>
-                                        <h3 className="font-semibold">Company</h3>
-                                        <p className="text-sm text-gray-600">Manage employees, departments and projects</p>
-                                    </div>
-                                </div>
-                            </div>
+
                         </div>
                     </div>
                 )
@@ -258,46 +269,33 @@ export default function FreelancerSignup() {
                         </div>
                     </div>
                 )
-
             case 3:
                 return (
                     <div className="space-y-4 md:space-y-5">
                         <div className="text-center mb-4 md:mb-6">
-                            <h2 className="text-lg md:text-xl font-semibold text-primary">Financial Settings</h2>
+                            <h2 className="text-lg md:text-xl font-semibold">
+                                OTP verification
+                            </h2>
                             <p className="text-muted-foreground text-sm mt-2">
-                                {formData.accountType === 'freelancer'
-                                    ? 'Configure your billing preferences'
-                                    : 'Configure your company\'s financial settings'
-                                }
+                                provide the otp that was sent to <u className="text-primary">{formData?.email}</u>
                             </p>
                         </div>
 
+
                         <div className="space-y-2">
-                            <Label htmlFor="currency" className="text-sm font-medium">Currency</Label>
-                            <select
-                                id="currency"
-                                name="currency"
-                                value={formData.currency}
-                                onChange={handleSelectChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                <option value="USD">USD - US Dollar</option>
-                                <option value="EUR">EUR - Euro</option>
-                                <option value="GBP">GBP - British Pound</option>
-                                <option value="CAD">CAD - Canadian Dollar</option>
-                                <option value="AUD">AUD - Australian Dollar</option>
-                                <option value="UGX">UGX - Ugandan Shilling</option>
-                                <option value="KES">KES - Kenyan Shilling</option>
-                                <option value="TZS">TZS - Tanzanian Shilling</option>
-                                <option value="NGN">NGN - Nigerian Naira</option>
-                                <option value="ZAR">ZAR - South African Rand</option>
-                                <option value="GHS">GHS - Ghanaian Cedi</option>
-                                <option value="JPY">JPY - Japanese Yen</option>
-                                <option value="CNY">CNY - Chinese Yuan</option>
-                                <option value="INR">INR - Indian Rupee</option>
-                                <option value="BRL">BRL - Brazilian Real</option>
-                            </select>
+                            <Label htmlFor="email" className="text-sm font-medium">OTP</Label>
+                            <Input
+                                id="otp"
+                                name="otp"
+                                type="text"
+                                placeholder="6 8 9 0 0 6....."
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="w-full"
+                            />
                         </div>
+
+
                     </div>
                 )
 
@@ -351,15 +349,15 @@ export default function FreelancerSignup() {
                                     </Button>
                                 )}
 
-                                {currentStep < totalSteps ? (
+                                {currentStep <= totalSteps ? (
                                     <Button
                                         type="button"
-                                        onClick={handleNext}
+                                        onClick={currentStep == 3 ? handleVerifyOTP : currentStep == 2 ? handleSubmit : handleNext}
                                         className="flex-1 order-1 sm:order-2 h-12 text-base"
                                         disabled={isLoading}
                                     >
                                         {currentStep === 1 ? "Continue to Personal Details" :
-                                            currentStep === 2 ? "Continue to Settings" : "Next"}
+                                            currentStep === 2 ? "Create account" : "Next"}
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 ) : (

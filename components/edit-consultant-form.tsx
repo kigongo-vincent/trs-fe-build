@@ -41,6 +41,8 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
 
 
     const [formData, setFormData] = useState({
+
+        type: consultant?.type,
         fullName: consultant.fullName || consultant.full_name || "",
         email: consultant.email || "",
         departmentId: consultant.departmentId || consultant.department?.id || "",
@@ -73,6 +75,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
         phoneNumber: consultant.phoneNumber || "",
         currency: consultant.currency || "USD",
         nin: consultant.nin || "",
+        totalWorkingHours: consultant
     })
     const [departments, setDepartments] = useState<Department[]>([])
     const [loading, setLoading] = useState(false)
@@ -207,10 +210,11 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                     : `+${formData.phoneNumber.trim()}`,
                 currency: formData.currency,
                 departmentId: formData.departmentId,
-                totalWorkingHours: totalWorkingHours,
+                totalHoursPerMonth: totalWorkingHours,
                 // snake_case fields
                 job_title: formData.jobTitle,
                 gross_pay: formData.grossPay,
+                type: formData.type?.toString(),
                 date_of_birth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
                 days_to_come: formData.daysToCome.length > 0 ? JSON.stringify(formData.daysToCome) : null,
                 // nested fields
@@ -398,6 +402,28 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                                 <Input id="grossPay" name="grossPay" type="number" placeholder="e.g. 75000" value={formData.grossPay} onChange={handleInputChange} required className="flex-1 rounded-md border border-input" />
                             </div>
                             <p className="text-sm text-muted-foreground">Enter the consultant's salary and select the currency.</p>
+                        </div>
+
+                        <div className="space-y-4 pt-6">
+                            <h2 className="text-lg font-semibold mb-2">Invoice Details</h2>
+                            <div className="flex w-full gap-2">
+                                <Select value={formData.type?.toString()} onValueChange={(value) => setFormData((prev) => ({ ...prev, type: +value }))}>
+                                    <SelectTrigger className=" rounded-md border border-input bg-transparent">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {
+                                            [{ label: "Fixed", value: 1 }, { label: "Flexible", value: 2 }].map((c, i) => <SelectItem key={i} value={c?.value?.toString()}>
+                                                <div className="flex items-center space-x-3">
+                                                    {c?.label}
+                                                </div>
+                                            </SelectItem>)
+                                        }
+
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <p className="text-sm text-muted-foreground">Specify whether the consultant's invoice amount is to be computed based off number of hours logged (flexible) or Fixed with the gross as the total amount to reflect on the invoice</p>
                         </div>
 
                         {/* ID Documents */}

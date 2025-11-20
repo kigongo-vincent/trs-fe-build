@@ -100,7 +100,7 @@ export default function Home() {
         } else if (["Consultant", "Employee", "Consultancy"].includes(roleName)) {
           router.push("/dashboard/employee");
         } else if (roleName === "Freelancer") {
-          router.push("/dashboard/freelancer");
+          router.push("/dashboard/freelancer/companies");
         } else {
           router.push("/dashboard/employee");
         }

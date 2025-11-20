@@ -1,3 +1,4 @@
+//@ts-nocheck
 "use client"
 
 import type React from "react"
@@ -33,6 +34,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { createFreelancerCompany, deleteFreelancerCompany, fetchFreelancerCompanies, FreelancerCompany, updateFreelancerCompany } from "@/services/freelancer"
+import { toast } from "sonner"
 
 interface Company {
     id: string
@@ -70,6 +73,12 @@ export default function CompaniesPage() {
     const [editingCompany, setEditingCompany] = useState<Company | null>(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [submitting, setSubmitting] = useState(false)
+    const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null)
+
+    const getStats = (data: Company[]) => {
+
+    }
 
     const [formData, setFormData] = useState({
         name: "",
@@ -80,54 +89,46 @@ export default function CompaniesPage() {
         address: ""
     })
 
+    const getCompanies = async () => {
+        setLoading(true)
+        try {
+            const data = await fetchFreelancerCompanies()
+            setCompanies(transformFreelancerToCompany(data))
+        } catch (error) {
+
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    function transformFreelancerToCompany(
+        freelancerCompanies: FreelancerCompany[]
+    ): Company[] {
+        return freelancerCompanies.map((freelancer) => ({
+            id: freelancer?.id,
+            name: freelancer.companyName,
+            sector: freelancer.sector,
+            // Prioritize first contact person, fallback to second if first is empty
+            contactPerson: freelancer.contactPersonName1 || freelancer.contactPersonName2 || '',
+            email: freelancer.contactPersonEmail1 || freelancer.contactPersonEmail2 || '',
+            phone: '', // Not available in source data
+            address: freelancer.address,
+            createdAt: new Date().toISOString(),
+            totalProjects: 0, // Not available in source data
+            activeProjects: 0, // Not available in source data
+            totalEarnings: 0, // Not available in source data
+            status: freelancer.status,
+        }));
+    }
+
     useEffect(() => {
         // Set hardcoded companies data
-        setCompanies([
-            {
-                id: "1",
-                name: "TechCorp Inc",
-                sector: "Technology & IT",
-                contactPerson: "John Smith",
-                email: "john@techcorp.com",
-                phone: "+1-555-0123",
-                address: "123 Tech Street, San Francisco, CA",
-                createdAt: "2024-01-01",
-                totalProjects: 1,
-                activeProjects: 1,
-                totalEarnings: 9000,
-                status: "active"
-            },
-            {
-                id: "2",
-                name: "DesignStudio",
-                sector: "Media & Entertainment",
-                contactPerson: "Sarah Johnson",
-                email: "sarah@designstudio.com",
-                phone: "+1-555-0456",
-                address: "456 Design Ave, New York, NY",
-                createdAt: "2024-01-15",
-                totalProjects: 1,
-                activeProjects: 0,
-                totalEarnings: 6800,
-                status: "active"
-            },
-            {
-                id: "8",
-                name: "RetailMax",
-                sector: "Retail & E-commerce",
-                contactPerson: "Jennifer Lee",
-                email: "jennifer@retailmax.com",
-                phone: "+1-555-0258",
-                address: "258 Commerce St, Seattle, WA",
-                createdAt: "2024-04-15",
-                totalProjects: 1,
-                activeProjects: 1,
-                totalEarnings: 15840,
-                status: "active"
-            }
-        ])
-        setLoading(false)
+        getCompanies()
     }, [])
+
+    useEffect(() => {
+        console.log(companies)
+    }, [companies])
 
     const filteredCompanies = companies.filter(company =>
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -141,46 +142,98 @@ export default function CompaniesPage() {
     const endIndex = startIndex + itemsPerPage
     const paginatedCompanies = filteredCompanies.slice(startIndex, endIndex)
 
+    const companiesPerformanceData = companies.map((company) => ({
+        name: company.name,
+        projects: company.totalProjects ?? 0,
+        earnings: company.totalEarnings ?? 0,
+    }))
+
     // Reset to first page when search term changes
     useEffect(() => {
         setCurrentPage(1)
     }, [searchTerm])
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        let success = false
+        const isEdit = Boolean(editingCompany)
 
-        if (editingCompany) {
-            // Update existing company
-            setCompanies(prev => prev.map(company =>
-                company.id === editingCompany.id
-                    ? { ...company, ...formData }
-                    : company
-            ))
-        } else {
-            // Add new company
-            const newCompany: Company = {
-                id: Date.now().toString(),
-                ...formData,
-                createdAt: new Date().toISOString().split('T')[0],
-                totalProjects: 0,
-                activeProjects: 0,
-                totalEarnings: 0,
-                status: "active"
+        try {
+            setSubmitting(true)
+
+            if (isEdit && editingCompany) {
+                const response = await updateFreelancerCompany(editingCompany.id, {
+                    companyName: formData?.name,
+                    sector: formData?.sector,
+                    contactPersonName1: formData?.contactPerson,
+                    contactPersonEmail1: formData?.email,
+                    contactPersonName2: formData?.contactPerson,
+                    contactPersonEmail2: formData?.email,
+                    address: formData?.address,
+                })
+
+                if (response?.status === 200) {
+                    const [updatedCompany] = transformFreelancerToCompany([response?.data])
+                    setCompanies(prev => prev.map(company =>
+                        company.id === updatedCompany.id
+                            ? {
+                                ...company,
+                                ...updatedCompany,
+                                totalProjects: company.totalProjects,
+                                activeProjects: company.activeProjects,
+                                totalEarnings: company.totalEarnings
+                            }
+                            : company
+                    ))
+                    setIsAddDialogOpen(false)
+                    setEditingCompany(null)
+                    success = true
+                    toast.success(response?.message || "Company updated successfully")
+                } else {
+                    toast.error(response?.message || "Failed to update company")
+                }
+            } else {
+                const response = await createFreelancerCompany({
+                    companyName: formData?.name,
+                    sector: formData?.sector,
+                    contactPersonName1: formData?.contactPerson,
+                    contactPersonEmail1: formData?.email,
+                    contactPersonName2: formData?.contactPerson,
+                    contactPersonEmail2: formData?.email,
+                    address: formData?.address,
+                    status: "active"
+                })
+
+                if (response?.status === 201) {
+                    const [newCompany] = transformFreelancerToCompany([response?.data])
+                    setCompanies(prev => [
+                        ...prev,
+                        newCompany
+                    ])
+                    setIsAddDialogOpen(false)
+                    setEditingCompany(null)
+                    success = true
+                    toast.success(response?.message || "Company created successfully")
+                } else {
+                    toast.error(response?.message || "Failed to create company")
+                }
             }
-            setCompanies(prev => [...prev, newCompany])
+        } catch (error) {
+            toast.error(isEdit ? "Failed to update company" : "Failed to create company")
+        } finally {
+            setSubmitting(false)
         }
 
-        // Reset form
-        setFormData({
-            name: "",
-            sector: "",
-            contactPerson: "",
-            email: "",
-            phone: "",
-            address: ""
-        })
-        setEditingCompany(null)
-        setIsAddDialogOpen(false)
+        if (success) {
+            setFormData({
+                name: "",
+                sector: "",
+                contactPerson: "",
+                email: "",
+                phone: "",
+                address: ""
+            })
+        }
     }
 
     const handleEdit = (company: Company) => {
@@ -196,9 +249,24 @@ export default function CompaniesPage() {
         setIsAddDialogOpen(true)
     }
 
-    const handleDelete = (companyId: string) => {
-        setCompanies(prev => prev.filter(company => company.id !== companyId))
+    const handleDelete = async (companyId: string) => {
+        try {
+            setDeletingCompanyId(companyId)
+            const response = await deleteFreelancerCompany(companyId)
+            if (response?.status === 200) {
+                setCompanies(prev => prev.filter(company => company.id !== companyId))
+                toast.success(response?.message || "Company deleted successfully")
+            } else {
+                toast.error(response?.message || "Failed to delete company")
+            }
+        } catch (error) {
+            toast.error("Failed to delete company")
+        } finally {
+            setDeletingCompanyId(null)
+        }
     }
+
+
 
     if (loading) {
         return (
@@ -393,7 +461,9 @@ export default function CompaniesPage() {
                                         <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                                             Cancel
                                         </Button>
-                                        <Button type="submit">
+                                        <Button
+                                            disabled={submitting}
+                                            type="submit">
                                             {editingCompany ? "Update Company" : "Add Company"}
                                         </Button>
                                     </DialogFooter>
@@ -474,7 +544,7 @@ export default function CompaniesPage() {
                         <CardDescription>Projects and earnings by company</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <FreelancerCompaniesChart />
+                        <FreelancerCompaniesChart data={companiesPerformanceData} />
                     </CardContent>
                 </Card>
 
@@ -566,6 +636,7 @@ export default function CompaniesPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="text-red-600 hover:text-red-700"
+                                                            disabled={deletingCompanyId === company.id}
                                                             aria-label="Delete"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
@@ -584,8 +655,9 @@ export default function CompaniesPage() {
                                                             <AlertDialogAction
                                                                 onClick={() => handleDelete(company.id)}
                                                                 className="bg-red-600 hover:bg-red-700"
+                                                                disabled={deletingCompanyId === company.id}
                                                             >
-                                                                Delete Company
+                                                                {deletingCompanyId === company.id ? "Deleting..." : "Delete Company"}
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
