@@ -75,6 +75,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
         phoneNumber: consultant.phoneNumber || "",
         currency: consultant.currency || "USD",
         nin: consultant.nin || "",
+        totalWorkingHours: consultant
     })
     const [departments, setDepartments] = useState<Department[]>([])
     const [loading, setLoading] = useState(false)
@@ -209,7 +210,7 @@ export const EditConsultantForm: React.FC<EditConsultantFormProps> = ({ consulta
                     : `+${formData.phoneNumber.trim()}`,
                 currency: formData.currency,
                 departmentId: formData.departmentId,
-                totalWorkingHours: totalWorkingHours,
+                totalHoursPerMonth: totalWorkingHours,
                 // snake_case fields
                 job_title: formData.jobTitle,
                 gross_pay: formData.grossPay,

@@ -255,7 +255,7 @@ export default function AddConsultantPage() {
         currency: formData.currency,
         attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
         roleId: consultantRoleId,
-        totalWorkingHours: totalWorkingHours
+        totalHoursPerMonth: totalWorkingHours
       }
 
       // Only add date_of_birth if it has a value
