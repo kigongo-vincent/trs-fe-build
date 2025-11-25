@@ -37,11 +37,14 @@ export default function DashboardLayout({
       try {
         const user = await getAuthUser()
         if (user) {
-          if (user.company?.package?.name) {
-            foundPlan = user.company.package.name
-          }
           if (user.role?.name) {
             setUserRole(user.role.name)
+            // For freelancers, default to "Trial" since they don't have company object
+            if (user.role.name === "Freelancer") {
+              foundPlan = "Trial"
+            } else if (user.company?.package?.name) {
+              foundPlan = user.company.package.name
+            }
           }
         }
       } catch (err) {
@@ -110,6 +113,8 @@ export default function DashboardLayout({
   const handleUpgradeClick = () => {
     if (userRole === "Company Admin") {
       router.push("/dashboard/company-admin/packages")
+    } else if (userRole === "Freelancer") {
+      router.push("/dashboard/freelancer/packages")
     }
   }
 
@@ -188,15 +193,18 @@ export default function DashboardLayout({
         <main className={cn(`flex-1 mt-[4rem] p-4 md:p-6`, "md:ml-64")}>
 
           {/* alert component for the current plan */}
-          {loaded && showPlanAlert && userRole === "Company Admin" && ["trial", "free"].includes(planName.toLowerCase()) && (
-            <div className="flex bg-primary/10 font-[13.5px] p-4 text-primary items-center justify-between rounded mb-4">
-              <span className="flex items-center space-x-3">
-                <AlertCircle />
-                <span className="font-[13.5px]">You are on the <b>{planName}</b> plan, <button className="rounded-full text-primary underline font-[13.5px]" onClick={handleUpgradeClick}>upgrade</button></span>
-              </span>
-              <X size={20} className="cursor-pointer" onClick={handleDismissAlert} />
-            </div>
-          )}
+          {loaded && showPlanAlert && (
+            (userRole === "Company Admin" && ["trial", "free"].includes(planName.toLowerCase())) ||
+            (userRole === "Freelancer" && planName.toLowerCase() === "trial")
+          ) && (
+              <div className="flex bg-primary/10 font-[13.5px] p-4 text-primary items-center justify-between rounded mb-4">
+                <span className="flex items-center space-x-3">
+                  <AlertCircle />
+                  <span className="font-[13.5px]">You are on the <b>{planName}</b> plan, <button className="rounded-full text-primary underline font-[13.5px]" onClick={handleUpgradeClick}>upgrade</button></span>
+                </span>
+                <X size={20} className="cursor-pointer" onClick={handleDismissAlert} />
+              </div>
+            )}
 
           <Suspense fallback={<div className=" h-full flex items-center justify-center w-full">
             <div className="bg-paper flex flex-col items-center justify-center rounded p-10">

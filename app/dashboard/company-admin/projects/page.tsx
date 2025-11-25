@@ -22,6 +22,8 @@ import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
+
+
 export default function ProjectsPage() {
   // All useState hooks
   const [projects, setProjects] = useState<Project[]>([])
@@ -313,7 +315,16 @@ export default function ProjectsPage() {
                 <Skeleton className="h-full w-full" />
               </div>
             ) : (
-              <ProjectTimelineChart projects={projects} />
+              <ProjectTimelineChart 
+                timelines={projects.map(project => ({
+                  id: project.id,
+                  projectName: project.name,
+                  status: project.status,
+                  startDate: project.created_at || new Date().toISOString(),
+                  endDate: project.deadline || new Date().toISOString(),
+                  createdAt: project.created_at || new Date().toISOString(),
+                }))} 
+              />
             )}
           </CardContent>
         </Card>

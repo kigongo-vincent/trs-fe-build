@@ -2,29 +2,20 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts"
 import { getChartColorVariations } from "@/lib/utils"
+import type { FreelancerProjectTimelineEntry } from "@/services/api"
 
-interface Project {
-  id: string
-  name: string
-  progress: number
-  department?: {
-    name: string
-  }
-  companyName?: string
+export interface ProjectTimelineChartProps {
+  timelines: FreelancerProjectTimelineEntry[]
 }
 
-interface ProjectTimelineChartProps {
-  projects: Project[]
-}
-
-export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
+export function ProjectTimelineChart({ timelines }: ProjectTimelineChartProps) {
   // Transform data for the chart
-  const chartData = projects
+  const chartData = timelines
     .map((project) => ({
-      displayName: project.name.length > 20 ? project.name.substring(0, 20) + "..." : project.name,
-      fullName: project.name,
-      progress: project.progress,
-      department: project.department?.name || project.companyName || 'Unknown',
+      displayName: project.projectName.length > 20 ? project.projectName.substring(0, 20) + "..." : project.projectName,
+      fullName: project.projectName,
+      progress: calculateProgress(project.startDate, project.endDate, project.status),
+      status: project.status,
     }))
     .sort((a, b) => b.progress - a.progress) // Sort by progress descending
 
@@ -68,4 +59,32 @@ export function ProjectTimelineChart({ projects }: ProjectTimelineChartProps) {
       </BarChart>
     </ResponsiveContainer>
   )
+}
+
+function calculateProgress(startDate: string, endDate: string, status?: string) {
+  if ((status || "").toLowerCase() === "completed") {
+    return 100
+  }
+
+  if (!startDate || !endDate) {
+    return 0
+  }
+
+  const start = new Date(startDate).getTime()
+  const end = new Date(endDate).getTime()
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return 0
+  }
+
+  const now = Date.now()
+
+  if (now <= start) {
+    return 0
+  }
+
+  const elapsed = Math.min(now, end) - start
+  const total = end - start
+
+  return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)))
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,25 +14,35 @@ import {
     Search,
     Edit,
     Trash2,
-    Eye,
-    Calendar,
     Clock,
     DollarSign,
-    Building2,
-    Users
+    Loader2
 } from "lucide-react"
-import Link from "next/link"
-import { motion } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MotionBlock } from "@/components/MotionBlock"
 import { FreelancerProjectStatusChart } from "@/components/freelancer-charts"
 import { ProjectTimelineChart } from "@/components/project-timeline-chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import {
+    createFreelancerProject,
+    deleteFreelancerProject,
+    getFreelancerProjectStatusDistribution,
+    getFreelancerProjectTimelines,
+    getFreelancerProjects,
+    getFreelancerProjectsSummary,
+    updateFreelancerProject,
+    type FreelancerProjectListItem,
+    type FreelancerProjectSummary,
+    type FreelancerProjectStatusDistribution,
+    type FreelancerProjectTimelineEntry,
+    type PaginationMeta
+} from "@/services/api"
+
+type ProjectStatus = 'active' | 'completed' | 'on-hold' | 'cancelled' | 'inactive'
 
 interface Project {
     id: string
@@ -41,13 +51,13 @@ interface Project {
     companyId: string
     companyName: string
     hourlyRate: number
-    status: 'active' | 'completed' | 'on-hold' | 'cancelled'
+    status: ProjectStatus
     startDate: string
     endDate?: string
     totalHours: number
     totalEarnings: number
     createdAt: string
-    progress: number
+    fixedTotalAmount?: number
 }
 
 interface Company {
@@ -55,168 +65,200 @@ interface Company {
     name: string
 }
 
+const PROJECT_FORM_DEFAULTS = {
+    name: "",
+    description: "",
+    companyId: "",
+    hourlyRate: "",
+    fixedTotalAmount: "",
+    status: "active",
+    startDate: "",
+    endDate: ""
+}
+
 export default function ProjectsPage() {
     const [projects, setProjects] = useState<Project[]>([])
     const [companies, setCompanies] = useState<Company[]>([])
-    const [loading, setLoading] = useState(true)
+    const [summary, setSummary] = useState<FreelancerProjectSummary | null>(null)
+    const [statusDistribution, setStatusDistribution] = useState<FreelancerProjectStatusDistribution | null>(null)
+    const [timelineData, setTimelineData] = useState<FreelancerProjectTimelineEntry[]>([])
+    const [paginationMeta, setPaginationMeta] = useState<PaginationMeta | null>(null)
+    const [overviewLoading, setOverviewLoading] = useState(true)
+    const [tableLoading, setTableLoading] = useState(true)
+    const [globalError, setGlobalError] = useState<string | null>(null)
+    const [formError, setFormError] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [searchInput, setSearchInput] = useState("")
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
     const [editingProject, setEditingProject] = useState<Project | null>(null)
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
-    const [formData, setFormData] = useState({
-        name: "",
-        description: "",
-        companyId: "",
-        hourlyRate: "",
-        status: "active",
-        startDate: "",
-        endDate: ""
-    })
+    const [formData, setFormData] = useState(() => ({ ...PROJECT_FORM_DEFAULTS }))
 
-    useEffect(() => {
-        // Set hardcoded data
-        setCompanies([
-            { id: "1", name: "TechCorp Inc" },
-            { id: "2", name: "DesignStudio" },
-            { id: "3", name: "StartupXYZ" },
-            { id: "4", name: "FinanceCo" },
-            { id: "5", name: "MediaCorp" },
-            { id: "6", name: "HealthTech Solutions" },
-            { id: "7", name: "EduTech Innovations" },
-            { id: "8", name: "RetailMax" }
-        ])
-
-        setProjects([
-            {
-                id: "1",
-                name: "Website Development",
-                description: "Complete website redesign and development with modern UI/UX",
-                companyId: "1",
-                companyName: "TechCorp Inc",
-                hourlyRate: 75,
-                status: "active",
-                startDate: "2024-01-01",
-                totalHours: 120,
-                totalEarnings: 9000,
-                createdAt: "2024-01-01",
-                progress: 75
-            },
-            {
-                id: "2",
-                name: "E-commerce Platform",
-                description: "Full-stack e-commerce solution with payment integration",
-                companyId: "8",
-                companyName: "RetailMax",
-                hourlyRate: 88,
-                status: "active",
-                startDate: "2024-04-15",
-                totalHours: 180,
-                totalEarnings: 15840,
-                createdAt: "2024-04-15",
-                progress: 70
-            },
-            {
-                id: "3",
-                name: "Mobile App Design",
-                description: "UI/UX design for mobile application with responsive layouts",
-                companyId: "2",
-                companyName: "DesignStudio",
-                hourlyRate: 85,
-                status: "completed",
-                startDate: "2024-01-15",
-                endDate: "2024-02-15",
-                totalHours: 80,
-                totalEarnings: 6800,
-                createdAt: "2024-01-15",
-                progress: 100
-            }
-        ])
-        setLoading(false)
+    const resetFormState = useCallback(() => {
+        setFormData({ ...PROJECT_FORM_DEFAULTS })
+        setFormError(null)
+        setEditingProject(null)
     }, [])
 
-    const filteredProjects = projects.filter(project =>
-        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const fetchOverview = useCallback(async () => {
+        try {
+            setGlobalError(null)
+            setOverviewLoading(true)
+            const [summaryResponse, statusResponse, timelineResponse] = await Promise.all([
+                getFreelancerProjectsSummary(),
+                getFreelancerProjectStatusDistribution(),
+                getFreelancerProjectTimelines()
+            ])
+            setSummary(summaryResponse.data)
+            setStatusDistribution(statusResponse.data)
+            setTimelineData(timelineResponse.data)
+        } catch (error) {
+            setGlobalError(extractErrorMessage(error))
+        } finally {
+            setOverviewLoading(false)
+        }
+    }, [])
 
-    // Pagination logic
-    const totalPages = Math.ceil(filteredProjects.length / itemsPerPage)
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    const paginatedProjects = filteredProjects.slice(startIndex, endIndex)
+    const loadProjects = useCallback(async (pageParam: number, limitParam: number, searchValue: string) => {
+        try {
+            setGlobalError(null)
+            setTableLoading(true)
+            const response = await getFreelancerProjects({
+                page: pageParam,
+                limit: limitParam,
+                search: searchValue.trim() ? searchValue.trim() : undefined
+            })
 
-    // Reset to first page when search term changes
-    useEffect(() => {
-        setCurrentPage(1)
-    }, [searchTerm])
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-
-        const company = companies.find(c => c.id === formData.companyId)
-
-        if (editingProject) {
-            // Update existing project
-            setProjects(prev => prev.map(project =>
-                project.id === editingProject.id
-                    ? {
-                        ...project,
-                        ...formData,
-                        status: formData.status as 'active' | 'completed' | 'on-hold' | 'cancelled',
-                        hourlyRate: parseFloat(formData.hourlyRate),
-                        companyName: company?.name || project.companyName
-                    }
-                    : project
-            ))
-        } else {
-            // Add new project
-            const newProject: Project = {
-                id: Date.now().toString(),
-                ...formData,
-                status: formData.status as 'active' | 'completed' | 'on-hold' | 'cancelled',
-                hourlyRate: parseFloat(formData.hourlyRate),
-                companyName: company?.name || "",
-                totalHours: 0,
-                totalEarnings: 0,
-                createdAt: new Date().toISOString().split('T')[0],
-                progress: 0
+            const items = response.data.items ?? []
+            setProjects(items.map(mapProjectFromApi))
+            setPaginationMeta(response.data.pagination)
+            const newCompanies = extractCompaniesFromProjects(items)
+            if (newCompanies.length > 0) {
+                setCompanies(prev => mergeCompanyLists(prev, newCompanies))
             }
-            setProjects(prev => [...prev, newProject])
+
+            const nextPage = response.data.pagination.page
+            const nextLimit = response.data.pagination.limit
+
+            setCurrentPage(prev => (prev === nextPage ? prev : nextPage))
+            setItemsPerPage(prev => (prev === nextLimit ? prev : nextLimit))
+        } catch (error) {
+            setGlobalError(extractErrorMessage(error))
+            setProjects([])
+            setPaginationMeta(null)
+        } finally {
+            setTableLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchOverview()
+    }, [fetchOverview])
+
+    useEffect(() => {
+        loadProjects(currentPage, itemsPerPage, searchTerm)
+    }, [currentPage, itemsPerPage, searchTerm, loadProjects])
+
+    useEffect(() => {
+        if (!isAddDialogOpen) {
+            resetFormState()
+        }
+    }, [isAddDialogOpen, resetFormState])
+
+    const totalProjects = paginationMeta?.total ?? summary?.totalProjects ?? projects.length
+    const totalPages = paginationMeta?.totalPages ?? 1
+    const pageStart = paginationMeta ? (paginationMeta.page - 1) * paginationMeta.limit + 1 : (projects.length ? 1 : 0)
+    const pageEnd = paginationMeta ? Math.min(paginationMeta.page * paginationMeta.limit, paginationMeta.total) : projects.length
+    const showInitialSkeleton = overviewLoading || (tableLoading && projects.length === 0)
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setFormError(null)
+
+        if (!formData.companyId) {
+            setFormError("Please select a company for this project.")
+            return
         }
 
-        // Reset form
-        setFormData({
-            name: "",
-            description: "",
-            companyId: "",
-            hourlyRate: "",
-            status: "active",
-            startDate: "",
-            endDate: ""
-        })
-        setEditingProject(null)
-        setIsAddDialogOpen(false)
+        const hourlyRateValue = parseFloat(formData.hourlyRate)
+        const fixedAmountValue = formData.fixedTotalAmount ? parseFloat(formData.fixedTotalAmount) : undefined
+
+        if (Number.isNaN(hourlyRateValue)) {
+            setFormError("Hourly rate must be a valid number.")
+            return
+        }
+
+        if (fixedAmountValue !== undefined && Number.isNaN(fixedAmountValue)) {
+            setFormError("Fixed total amount must be a valid number.")
+            return
+        }
+
+        const payload = {
+            projectName: formData.name.trim(),
+            freelancerCompanyId: formData.companyId,
+            description: formData.description.trim(),
+            status: formData.status,
+            startDate: formData.startDate,
+            endDate: formData.endDate || null,
+            hourlyRate: hourlyRateValue,
+            fixedTotalAmount: fixedAmountValue
+        }
+
+        setIsSubmitting(true)
+
+        try {
+            if (editingProject) {
+                await updateFreelancerProject(editingProject.id, payload)
+            } else {
+                await createFreelancerProject(payload)
+            }
+
+            const nextPage = editingProject ? currentPage : 1
+
+            const shouldManuallyReload = editingProject || currentPage === nextPage
+
+            if (!editingProject && currentPage !== nextPage) {
+                setCurrentPage(nextPage)
+            }
+
+            const reloadPromise = shouldManuallyReload
+                ? loadProjects(nextPage, itemsPerPage, searchTerm)
+                : Promise.resolve()
+
+            await Promise.all([
+                reloadPromise,
+                fetchOverview()
+            ])
+
+            resetFormState()
+            setIsAddDialogOpen(false)
+        } catch (error) {
+            setFormError(extractErrorMessage(error))
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     const handleEdit = (project: Project) => {
-        setFormData({
-            name: project.name,
-            description: project.description,
-            companyId: project.companyId,
-            hourlyRate: project.hourlyRate.toString(),
-            status: project.status,
-            startDate: project.startDate,
-            endDate: project.endDate || ""
-        })
-        setEditingProject(project)
-        setIsAddDialogOpen(true)
+        // Editing is temporarily disabled for freelancer projects.
+        // This handler is kept for future use but intentionally does nothing.
+        return
     }
 
-    const handleDelete = (projectId: string) => {
-        setProjects(prev => prev.filter(project => project.id !== projectId))
+    const handleDelete = async (projectId: string) => {
+        // Deleting is temporarily disabled for freelancer projects.
+        // This handler is kept for future use but intentionally does nothing.
+        return
+    }
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        setCurrentPage(1)
+        setSearchTerm(searchInput)
     }
 
     const getStatusColor = (status: string) => {
@@ -229,13 +271,15 @@ export default function ProjectsPage() {
                 return 'bg-yellow-100 text-yellow-800'
             case 'cancelled':
                 return 'bg-red-100 text-red-800'
+            case 'inactive':
+                return 'bg-gray-100 text-gray-800'
             default:
                 return 'bg-gray-100 text-gray-800'
         }
     }
 
 
-    if (loading) {
+    if (showInitialSkeleton) {
         return (
             <div className="flex flex-col gap-4">
                 {/* Header Skeleton */}
@@ -328,29 +372,30 @@ export default function ProjectsPage() {
         <div className="flex flex-col gap-4">
             {/* Header */}
             <MotionBlock delay={0}>
-                <div className="bg-paper p-8 rounded-lg">
-                    <div className="flex md:h-[5vh] h-max items-center justify-between">
+                <div className="bg-paper p-4 sm:p-6 md:p-8 rounded-lg">
+                    <div className="flex flex-col sm:flex-row md:h-[5vh] h-max items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="">
-                            <h1 className="text tracking-tight">
+                            <h1 className="text-base sm:text-lg tracking-tight">
                                 <span className="font-semibold">Projects</span>
                             </h1>
-                            <p className="text-sm text-muted-foreground">Manage your projects and hourly rates</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Manage your projects and hourly rates</p>
                         </div>
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button>
+                                <Button className="w-full sm:w-auto">
                                     <Plus className="h-4 w-4 mr-2" />
-                                    New Project
+                                    <span className="hidden sm:inline">New Project</span>
+                                    <span className="sm:hidden">New</span>
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle>
+                                    <DialogTitle className="text-base sm:text-lg">
                                         {editingProject ? "Edit Project" : "Create New Project"}
                                     </DialogTitle>
                                 </DialogHeader>
                                 <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="name">Project Name</Label>
                                             <Input
@@ -368,11 +413,17 @@ export default function ProjectsPage() {
                                                     <SelectValue placeholder="Select company" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {companies.map((company) => (
-                                                        <SelectItem key={company.id} value={company.id}>
-                                                            {company.name}
+                                                    {companies.length === 0 ? (
+                                                        <SelectItem value="" disabled>
+                                                            {tableLoading ? "Loading companies..." : "No companies available"}
                                                         </SelectItem>
-                                                    ))}
+                                                    ) : (
+                                                        companies.map((company) => (
+                                                            <SelectItem key={company.id} value={company.id}>
+                                                                {company.name}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -390,7 +441,7 @@ export default function ProjectsPage() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="hourlyRate">Hourly Rate</Label>
                                             <Input
@@ -404,18 +455,28 @@ export default function ProjectsPage() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="status">Status</Label>
-                                            <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="active">Active</SelectItem>
-                                                    <SelectItem value="completed">Completed</SelectItem>
-                                                    <SelectItem value="on-hold">On Hold</SelectItem>
-                                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                            <Label htmlFor="fixedTotalAmount">Fixed Project Amount (Optional)</Label>
+                                            <Input
+                                                id="fixedTotalAmount"
+                                                type="number"
+                                                step="0.01"
+                                                value={formData.fixedTotalAmount}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, fixedTotalAmount: e.target.value }))}
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="endDate">End Date (Optional)</Label>
+                                                <Input
+                                                    id="endDate"
+                                                    type="date"
+                                                    value={formData.endDate}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                                                />
+                                            </div>
+
+
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="startDate">Start Date</Label>
@@ -430,20 +491,30 @@ export default function ProjectsPage() {
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="endDate">End Date (Optional)</Label>
-                                        <Input
-                                            id="endDate"
-                                            type="date"
-                                            value={formData.endDate}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                                        />
+                                        <Label htmlFor="status">Status</Label>
+                                        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="completed">Completed</SelectItem>
+                                                <SelectItem value="on-hold">On Hold</SelectItem>
+                                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
+
+                                    {formError && (
+                                        <p className="text-sm text-red-600">{formError}</p>
+                                    )}
 
                                     <DialogFooter>
                                         <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                                             Cancel
                                         </Button>
-                                        <Button type="submit">
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             {editingProject ? "Update Project" : "Create Project"}
                                         </Button>
                                     </DialogFooter>
@@ -454,18 +525,24 @@ export default function ProjectsPage() {
                 </div>
             </MotionBlock>
 
+            {globalError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {globalError}
+                </div>
+            )}
+
 
             {/* Summary Cards Row */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-normal">Total Projects</CardTitle>
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-semibold text-primary">{projects.length}</div>
+                        <div className="text-2xl font-semibold text-primary">{summary?.totalProjects ?? projects.length}</div>
                         <p className="text-xs text-muted-foreground">
-                            {projects.filter(p => p.status === 'active').length} active
+                            {statusDistribution?.active ?? 0} active
                         </p>
                     </CardContent>
                 </Card>
@@ -477,7 +554,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            {projects.reduce((sum, p) => sum + p.totalHours, 0)}h
+                            {(summary?.totalHours ?? 0)}h
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Across all projects
@@ -492,7 +569,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            {projects.reduce((sum, p) => sum + p.totalEarnings, 0).toLocaleString()}
+                            {(summary?.totalEarnings ?? 0).toLocaleString()}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             From all projects
@@ -507,7 +584,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            ${Math.round(projects.reduce((sum, p) => sum + p.hourlyRate, 0) / projects.length) || 0}
+                            ${Math.round(summary?.avgHourlyRate ?? 0)}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Average rate per hour
@@ -517,14 +594,14 @@ export default function ProjectsPage() {
             </div>
 
             {/* Charts Row */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 <Card>
                     <CardHeader>
                         <CardTitle>Project Status Distribution</CardTitle>
                         <CardDescription>Projects by status</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <FreelancerProjectStatusChart />
+                        <FreelancerProjectStatusChart data={statusDistribution} />
                     </CardContent>
                 </Card>
 
@@ -534,7 +611,7 @@ export default function ProjectsPage() {
                         <CardDescription>Projects by completion percentage</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ProjectTimelineChart projects={projects} />
+                        <ProjectTimelineChart timelines={timelineData} />
                     </CardContent>
                 </Card>
             </div>
@@ -542,32 +619,34 @@ export default function ProjectsPage() {
             {/* Table Row */}
             <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div>
-                            <CardTitle className="flex items-center text-xl text-primary">
+                            <CardTitle className="flex items-center text-lg sm:text-xl text-primary">
                                 <span className="text-gradient">Projects</span>
                             </CardTitle>
-                            <CardDescription>
-                                Showing {filteredProjects.length} projects
+                            <CardDescription className="text-xs sm:text-sm">
+                                Showing {totalProjects} projects
                             </CardDescription>
                         </div>
-                        <div className="relative max-w-sm">
+                        <form onSubmit={handleSearchSubmit} className="relative w-full sm:max-w-sm">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
                                 placeholder="Search projects..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
+                                value={searchInput}
+                                onChange={(e) => {
+                                    setSearchInput(e.target.value)
+                                }}
+                                className="pl-10 w-full"
                             />
-                        </div>
+                        </form>
                     </div>
                 </CardHeader>
-                <CardContent className="overflow-auto max-w-[90vw]">
-                    {filteredProjects.length === 0 ? (
-                        <div className="text-center py-8">
-                            <p className="text-muted-foreground">
-                                No projects found. Get started by creating your first project.
-                            </p>
+                <CardContent className="overflow-x-auto max-w-full">
+                    {tableLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading projects...</div>
+                    ) : projects.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            No projects found. Get started by creating your first project.
                         </div>
                     ) : (
                         <Table>
@@ -583,7 +662,7 @@ export default function ProjectsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {paginatedProjects.map((project) => (
+                                {projects.map((project) => (
                                     <TableRow key={project.id}>
                                         <TableCell className="font-medium">{project.name}</TableCell>
                                         <TableCell>{project.companyName}</TableCell>
@@ -595,47 +674,8 @@ export default function ProjectsPage() {
                                                 <span className="capitalize">{project.status.replace('-', ' ')}</span>
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end space-x-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleEdit(project)}
-                                                    aria-label="Edit"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-red-600 hover:text-red-700"
-                                                            aria-label="Delete"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete the project
-                                                                <strong> "{project.name}"</strong> and remove all associated data.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleDelete(project.id)}
-                                                                className="bg-red-600 hover:bg-red-700"
-                                                            >
-                                                                Delete Project
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
+                                        <TableCell className="text-right text-muted-foreground text-xs">
+                                            Actions temporarily disabled
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -645,21 +685,21 @@ export default function ProjectsPage() {
                 </CardContent>
 
                 {/* Pagination Controls */}
-                {filteredProjects.length > 0 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                {projects.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 px-4 sm:px-6 py-4 border-t">
                         <div className="flex items-center space-x-2">
-                            <p className="text-sm text-muted-foreground">
-                                Showing {startIndex + 1} to {Math.min(endIndex, filteredProjects.length)} of {filteredProjects.length} projects
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                                Showing {pageStart} to {pageEnd} of {totalProjects} projects
                             </p>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-2 w-full sm:w-auto">
                             <div className="flex items-center space-x-2">
-                                <p className="text-sm text-muted-foreground">Rows per page:</p>
+                                <p className="text-xs sm:text-sm text-muted-foreground">Rows per page:</p>
                                 <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                                     setItemsPerPage(Number(value))
                                     setCurrentPage(1)
                                 }}>
-                                    <SelectTrigger className="w-20">
+                                    <SelectTrigger className="w-20 h-8 sm:h-10">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -670,12 +710,13 @@ export default function ProjectsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1 sm:space-x-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setCurrentPage(1)}
                                     disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronsLeft className="h-4 w-4" />
                                 </Button>
@@ -684,11 +725,12 @@ export default function ProjectsPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(currentPage - 1)}
                                     disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <div className="flex items-center space-x-1">
-                                    <span className="text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-1 px-2">
+                                    <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                         Page {currentPage} of {totalPages}
                                     </span>
                                 </div>
@@ -697,6 +739,7 @@ export default function ProjectsPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -705,6 +748,7 @@ export default function ProjectsPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(totalPages)}
                                     disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronsRight className="h-4 w-4" />
                                 </Button>
@@ -715,7 +759,7 @@ export default function ProjectsPage() {
             </Card>
 
 
-            {filteredProjects.length === 0 && (
+            {projects.length === 0 && !tableLoading && (
                 <div className="text-center py-12">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No projects found</h3>
@@ -732,4 +776,59 @@ export default function ProjectsPage() {
             )}
         </div>
     )
+}
+
+function extractErrorMessage(error: unknown): string {
+    if (error instanceof Error && error.message) {
+        return error.message
+    }
+    return "An unexpected error occurred. Please try again."
+}
+
+function mapProjectFromApi(item: FreelancerProjectListItem): Project {
+    return {
+        id: item.id,
+        name: item.projectName,
+        description: item.description,
+        companyId: item.company?.id ?? "",
+        companyName: item.company?.companyName ?? "Unknown company",
+        hourlyRate: item.hourlyRate ?? 0,
+        status: normalizeStatus(item.status),
+        startDate: item.startDate,
+        endDate: item.endDate ?? "",
+        totalHours: item.totalHours ?? 0,
+        totalEarnings: item.earnings ?? item.fixedTotalAmount ?? 0,
+        createdAt: item.createdAt,
+        fixedTotalAmount: item.fixedTotalAmount
+    }
+}
+
+function normalizeStatus(status?: string): ProjectStatus {
+    const normalized = (status || "").toLowerCase() as ProjectStatus
+    const allowed: ProjectStatus[] = ['active', 'completed', 'on-hold', 'cancelled', 'inactive']
+    return allowed.includes(normalized) ? normalized : 'active'
+}
+
+function extractCompaniesFromProjects(items: FreelancerProjectListItem[]): Company[] {
+    const map = new Map<string, Company>()
+    items.forEach(item => {
+        if (item.company?.id) {
+            map.set(item.company.id, {
+                id: item.company.id,
+                name: item.company.companyName ?? "Unnamed Company"
+            })
+        }
+    })
+    return Array.from(map.values())
+}
+
+function mergeCompanyLists(current: Company[], incoming: Company[]): Company[] {
+    if (incoming.length === 0) {
+        return current
+    }
+
+    const map = new Map<string, Company>()
+    current.forEach(company => map.set(company.id, company))
+    incoming.forEach(company => map.set(company.id, company))
+    return Array.from(map.values())
 }

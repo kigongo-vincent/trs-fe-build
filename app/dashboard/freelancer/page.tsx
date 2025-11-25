@@ -220,18 +220,19 @@ export default function FreelancerDashboard() {
     <div className="flex flex-col gap-4">
       {/* Header */}
       <MotionBlock delay={0}>
-        <div className="flex md:h-[5vh] h-max items-center justify-between">
+        <div className="flex flex-col sm:flex-row md:h-[5vh] h-max items-start sm:items-center justify-between gap-2 sm:gap-0">
           <div className="">
-            <h1 className="text tracking-tight">
+            <h1 className="text-base sm:text-lg tracking-tight">
               Hello, <span className="font-semibold">{user?.lastName || user?.fullName?.split(" ")[1] || "Freelancer"}</span>
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {showAdd && (
               <MotionBlock delay={.1}>
-                <Button asChild className="gradient rounded-full">
+                <Button asChild className="gradient rounded-full w-full sm:w-auto">
                   <Link href="/dashboard/freelancer/time-logs/new">
-                    <Clock size={25} className="h-10 w-10 rounded-full" /> Log Time
+                    <Clock size={25} className="h-6 w-6 sm:h-10 sm:w-10 rounded-full" /> 
+                    <span className="ml-2">Log Time</span>
                   </Link>
                 </Button>
               </MotionBlock>
@@ -242,7 +243,7 @@ export default function FreelancerDashboard() {
 
       {/* Dashboard Cards */}
       <MotionBlock delay={0.1}>
-        <div className="text-white bg-paper p-8 rounded-lg grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="text-white bg-paper p-4 sm:p-6 md:p-8 rounded-lg grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3].map((index) => {
             const dataMap = [
               {
@@ -285,7 +286,7 @@ export default function FreelancerDashboard() {
                     {card.icon}
                   </CardHeader>
                   <CardContent>
-                    <div className={`${index != 0 && "text-primary"} text-2xl`}>
+                    <div className={`${index != 0 && "text-primary"} text-xl sm:text-2xl`}>
                       {card.title === 'Billable Hours'
                         ? `${Math.floor(summaryStats.billableHours)}h ${Math.round((summaryStats.billableHours % 1) * 60)}m`
                         : card.title === 'Hours Today'
@@ -297,7 +298,7 @@ export default function FreelancerDashboard() {
                               : `${card.value}h`
                       }
                     </div>
-                    <div className="flex items-center gap-1 text-xs">
+                    <div className="flex items-center gap-1 text-xs sm:text-sm">
                       {getPercentageIcon(card.percentage, index)}
                       <span className={getPercentageColor(card.percentage, index)}>
                         {card.title === 'Billable Hours'
@@ -344,20 +345,20 @@ export default function FreelancerDashboard() {
                   {todayLogs.length > 0 ? (
                     <div className="space-y-4">
                       {todayLogs.map((log) => (
-                        <div key={log.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                        <div key={log.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                               <Clock className="h-4 w-4 text-white" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{log.title}</p>
-                              <p className="text-xs text-muted-foreground">Project: {log.project}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{log.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">Project: {log.project}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-xs text-muted-foreground">{formatMinutesToHours(log.minutes)}</span>
                             <div
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'active'
+                              className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${log.status === 'active'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
                                 }`}
@@ -392,20 +393,20 @@ export default function FreelancerDashboard() {
                   {yesterdayLogs.length > 0 ? (
                     <div className="space-y-4">
                       {yesterdayLogs.map((log) => (
-                        <div key={log.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                        <div key={log.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                               <Clock className="h-4 w-4 text-white" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{log.title}</p>
-                              <p className="text-xs text-muted-foreground">Project: {log.project}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{log.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">Project: {log.project}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-xs text-muted-foreground">{formatMinutesToHours(log.minutes)}</span>
                             <div
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${log.status === 'active'
+                              className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${log.status === 'active'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
                                 }`}

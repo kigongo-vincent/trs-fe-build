@@ -826,9 +826,9 @@ export default function TimeLogsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex  bg-paper p-4 rounded-lg items-center justify-between">
+      <div className="flex flex-col sm:flex-row bg-paper p-3 sm:p-4 rounded-lg items-stretch sm:items-center justify-between gap-3 sm:gap-0">
 
-        <div className="p-2  bg-pale gap-3 md:min-w-[20vw] rounded flex items-center ">
+        <div className="p-2 bg-pale gap-3 w-full sm:w-auto sm:min-w-[20vw] rounded flex items-center">
           <div />
           <input
             value={searchTerm}
@@ -838,8 +838,8 @@ export default function TimeLogsPage() {
                 fetchTimeLogsWithFilters()
               }
             }}
-            placeholder="Search for your tasks..." type="text" className="bg-none bg-transparent flex-1 text-sm outline-none border-none" />
-          <Button className=" bg-gray-900 hover:bg-gray-600" onClick={() => fetchTimeLogsWithFilters()}>
+            placeholder="Search for your tasks..." type="text" className="bg-none bg-transparent flex-1 text-xs sm:text-sm outline-none border-none" />
+          <Button className="bg-gray-900 hover:bg-gray-600 h-8 w-8 sm:h-10 sm:w-10 p-0" onClick={() => fetchTimeLogsWithFilters()}>
             {isFiltering ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -853,16 +853,16 @@ export default function TimeLogsPage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button asChild className="gradient">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button asChild className="gradient w-full sm:w-auto">
             <Link href="/dashboard/freelancer/time-logs/new">
-              <Plus className="h-4 w-4" /> <span className="hidden md:flex">Log Time</span>
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Log Time</span>
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-normal">Hours Today</CardTitle>
@@ -1029,26 +1029,26 @@ export default function TimeLogsPage() {
       </div> */}
 
       {/* Filters Row */}
-      <div className=" max-w-[92vw]  bg-paper p-4 rounded flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-row items-center rounded bg-pale overflow-auto p-4 gap-2">
-          <div className="flex items-center gap-2">
+      <div className="max-w-full bg-paper p-3 sm:p-4 rounded flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-row items-center rounded bg-pale overflow-auto p-2 sm:p-4 gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
 
             <Input
               id="start-date"
               type="date"
-              className="h-9 min-w-max bg-transparent"
+              className="h-9 w-full sm:w-auto sm:min-w-[140px] bg-transparent text-xs sm:text-sm border border-input focus-visible:ring-1 focus-visible:ring-ring"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
             />
 
-            <div className="flex items-center">
+            <div className="flex items-center flex-shrink-0">
               <MoveRight size={15} className="opacity-40" />
             </div>
 
             <Input
               id="end-date"
               type="date"
-              className="h-9 w-min-max bg-transparent"
+              className="h-9 w-full sm:w-auto sm:min-w-[140px] bg-transparent text-xs sm:text-sm border border-input focus-visible:ring-1 focus-visible:ring-ring"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
             />
@@ -1056,10 +1056,10 @@ export default function TimeLogsPage() {
           </div>
 
         </div>
-        <div className="flex items-center bg-pale p-4 rounded gap-2">
+        <div className="flex items-center bg-pale p-2 sm:p-4 rounded gap-2 w-full sm:w-auto">
 
           <Select value={projectFilter} onValueChange={setProjectFilter}>
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger className="h-9 w-full sm:w-[160px]">
               <SelectValue placeholder="Project" />
             </SelectTrigger>
             <SelectContent>
@@ -1079,39 +1079,40 @@ export default function TimeLogsPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 bg-transparent"
+            className="h-9 bg-transparent w-full sm:w-auto"
             onClick={handleResetFilters}
             disabled={isFiltering}
           >
-            <RefreshCcw />
-            Reset
+            <RefreshCcw className="h-4 w-4" />
+            <span className="ml-2">Reset</span>
           </Button>
         </div>
       </div>
 
       <Card >
         <CardHeader>
-          <CardTitle className="flex items-center text-xl text-primary justify-between">
+          <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center text-lg sm:text-xl text-primary justify-between gap-3 sm:gap-0">
             <span className="text-gradient">
               Time Logs
             </span>
 
-            <span className="flex items-center space-x-3">
+            <span className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
               <Button
                 size="sm"
-                className="h-9 gradient flex items-center gap-2"
+                className="h-9 gradient flex items-center gap-2 flex-1 sm:flex-none"
                 onClick={generateFilteredTimeLogsPdf}
                 disabled={isGeneratingPdf || filteredTimeLogs.length === 0}
               >
                 {isGeneratingPdf ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    <span className="hidden md:inline">Generating...</span>
+                    <span className="hidden sm:inline">Generating...</span>
                   </>
                 ) : (
                   <>
                     <FileText className="h-4 w-4" />
-                    <span className="hidden md:inline">Export ({filteredTimeLogs.length})</span>
+                    <span className="hidden sm:inline">Export ({filteredTimeLogs.length})</span>
+                    <span className="sm:hidden">Export</span>
                   </>
                 )}
               </Button>
@@ -1121,15 +1122,16 @@ export default function TimeLogsPage() {
                   size="sm"
                   onClick={() => setPublishAllDialogOpen(true)}
                   disabled={isPublishingAll || loading}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 flex-1 sm:flex-none"
                 >
                   {isPublishingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  <span className="hidden md:inline">Publish All Drafts</span>
+                  <span className="hidden sm:inline">Publish All Drafts</span>
+                  <span className="sm:hidden">Publish All</span>
                 </Button>
               )}
             </span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             {searchTerm || statusFilter !== 'all' || projectFilter !== 'all' || startDate || endDate ? (
               <>
                 Showing {filteredTimeLogs.length} filtered time logs
@@ -1143,7 +1145,7 @@ export default function TimeLogsPage() {
             )}
           </CardDescription>
         </CardHeader>
-        <CardContent className=" overflow-auto max-w-[90vw]">
+        <CardContent className="overflow-x-auto max-w-full">
           {loading ? (
             <div className="space-y-4">
               {[...Array(2)].map((_, i) => (
@@ -1282,15 +1284,15 @@ export default function TimeLogsPage() {
 
           {/* Pagination Controls */}
           {timeLogs.length > 0 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t">
-              <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 px-4 sm:px-6 py-4 border-t">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-4 w-full sm:w-auto">
                 <div className="flex items-center space-x-2">
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
                   </p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <p className="text-sm font-medium text-foreground">Items per page:</p>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <p className="text-xs sm:text-sm font-medium text-foreground">Items per page:</p>
                   <div className="flex items-center space-x-2">
                     <Select
                       value={pagination.limit.toString()}
@@ -1313,15 +1315,16 @@ export default function TimeLogsPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 sm:space-x-2 w-full sm:w-auto justify-end">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={!pagination.hasPrev || isChangingLimit || isNavigating}
+                  className="h-8 px-2 sm:px-3"
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
                 <div className="flex items-center space-x-1">
                   {(() => {
@@ -1391,9 +1394,10 @@ export default function TimeLogsPage() {
                   size="sm"
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={!pagination.hasNext || isChangingLimit || isNavigating}
+                  className="h-8 px-2 sm:px-3"
                 >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
                 </Button>
               </div>
             </div>
@@ -1415,9 +1419,9 @@ export default function TimeLogsPage() {
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className=" backdrop-blur-sm">
-            <div className="flex items-center  justify-between">
-              <DialogTitle className="text-xl text-gradient">Edit Time Log</DialogTitle>
+          <DialogHeader className="backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-base sm:text-xl text-gradient">Edit Time Log</DialogTitle>
               <Button type="button" variant="ghost" className="hover:bg-gray-100" onClick={() => setIsEditDialogOpen(false)} aria-label="Close">
                 <X className="h-10 w-10" />
               </Button>

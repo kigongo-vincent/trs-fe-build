@@ -1,0 +1,177 @@
+PATH: /freelancer/invoices/summary
+RESPONSE: {
+    "status": 200,
+    "message": "Summary retrieved successfully",
+    "data": {
+        "totalInvoices": 0,
+        "totalAmount": 0,
+        "paidAmount": 0,
+        "pendingAmount": 0
+    }
+}
+
+PATH: /freelancer/invoices/status-distribution
+RESPONSE: {
+    "status": 200,
+    "message": "Status distribution retrieved successfully",
+    "data": {
+        "draft": 0,
+        "sent": 0,
+        "paid": 0,
+        "overdue": 0
+    }
+}
+
+PATH: /freelancer/invoices/monthly-trend
+RESPONSE: {
+    "status": 200,
+    "message": "Monthly trend retrieved successfully",
+    "data": [
+        {
+            "month": "June 2025",
+            "year": 2025,
+            "monthNumber": 6,
+            "total": 0
+        },
+        {
+            "month": "July 2025",
+            "year": 2025,
+            "monthNumber": 7,
+            "total": 0
+        },
+        {
+            "month": "August 2025",
+            "year": 2025,
+            "monthNumber": 8,
+            "total": 0
+        },
+        {
+            "month": "September 2025",
+            "year": 2025,
+            "monthNumber": 9,
+            "total": 0
+        },
+        {
+            "month": "October 2025",
+            "year": 2025,
+            "monthNumber": 10,
+            "total": 0
+        },
+        {
+            "month": "November 2025",
+            "year": 2025,
+            "monthNumber": 11,
+            "total": 0
+        }
+    ]
+}
+
+METHOD: GET
+PATH: /freelancer/projects/summary
+RES: {
+    "status": 200,
+    "message": "Summary retrieved successfully",
+    "data": {
+        "totalProjects": 1,
+        "totalHours": 0,
+        "totalEarnings": 5000,
+        "avgHourlyRate": 50
+    }
+}
+
+
+METHOD: GET
+PATH: freelancer/projects/status-distribution
+RES: {
+    "status": 200,
+    "message": "Status distribution retrieved successfully",
+    "data": {
+        "active": 1,
+        "inactive": 0,
+        "completed": 0,
+        "on-hold": 0
+    }
+}
+
+METHOD: GET
+PATH: freelancer/projects/timelines
+RES: {
+    "status": 200,
+    "message": "Timelines retrieved successfully",
+    "data": [
+        {
+            "id": "aaf55353-6bfe-4d62-b02e-c05749a58cf6",
+            "projectName": "Website Development",
+            "status": "active",
+            "startDate": "2024-01-01",
+            "endDate": "2024-12-31",
+            "createdAt": "2025-11-25T08:51:10.001Z"
+        }
+    ]
+}
+
+METHOD: GET
+PATH: /freelancer/projects
+res:{
+    "status": 200,
+    "message": "Projects retrieved successfully",
+    "data": {
+        "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 1,
+            "totalPages": 1,
+            "hasNext": false,
+            "hasPrev": false
+        },
+        "items": [
+            {
+                "id": "aaf55353-6bfe-4d62-b02e-c05749a58cf6",
+                "projectName": "Website Development",
+                "description": "Building a new website for client",
+                "status": "active",
+                "startDate": "2024-01-01",
+                "endDate": "2024-12-31",
+                "hourlyRate": 50,
+                "fixedTotalAmount": 5000,
+                "totalHours": 0,
+                "earnings": 5000,
+                "company": {
+                    "id": "0c28adb7-dc26-4845-8f44-dc502884b98a",
+                    "companyName": "Tek juice"
+                },
+                "createdAt": "2025-11-25T08:51:10.001Z",
+                "updatedAt": "2025-11-25T08:51:10.001Z"
+            }
+        ]
+    }
+}
+
+METHOD: POST
+PATH: /freelancer/projects
+res:{
+    "projectName": "Website Development",
+    "freelancerCompanyId": "123e4567-e89b-12d3-a456-426614174000",
+    "description": "Building a new website for client",
+    "status": "active",
+    "startDate": "2024-01-01",
+    "endDate": "2024-12-31",
+    "hourlyRate": 50,
+    "fixedTotalAmount": 5000
+  }
+
+  GET /freelancer/invoices/summary {
+    "status": 200,
+    "message": "Summary retrieved successfully",
+    "data": {
+        "totalInvoices": 0,
+        "totalAmount": 0,
+        "paidAmount": 0,
+        "pendingAmount": 0
+    }
+}
+
+
+
+
+

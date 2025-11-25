@@ -293,7 +293,7 @@ export default function NewTimeLogPage() {
                 {/* Basic Info Section */}
                 <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
                     <h3 className="text-lg font-semibold text-gradient">Basic Information</h3>
-                    <div className={`grid grid-cols-1 ${showProjects ? 'md:grid-cols-2' : ''} gap-4`}>
+                    <div className={`grid grid-cols-1 ${showProjects ? 'sm:grid-cols-2' : ''} gap-4`}>
                         <div className="space-y-2">
                             <Label htmlFor="taskTitle">Task Title *</Label>
                             <Input
@@ -349,7 +349,7 @@ export default function NewTimeLogPage() {
                 {/* Time & Status Section */}
                 <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
                     <h3 className="text-lg font-semibold text-gradient">Time & Status</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="minutes">Time Duration *</Label>
                             <div className="flex items-center">
@@ -578,7 +578,7 @@ export default function NewTimeLogPage() {
             const selectedProject = getSelectedProject()
             return (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Task Title</Label>
                             <p className="font-medium">{formData.title}</p>
@@ -641,11 +641,11 @@ export default function NewTimeLogPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <Card className="max-w-4xl">
+            <Card className="max-w-4xl w-full">
                 <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between mb-6">
-                        <CardTitle className="text-base">New Time log</CardTitle>
-                        <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3 sm:gap-0">
+                        <CardTitle className="text-base sm:text-lg">New Time log</CardTitle>
+                        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -655,13 +655,14 @@ export default function NewTimeLogPage() {
                                     localStorage.setItem("enableTimeLogSteppers", JSON.stringify(newValue))
                                     toast.success(`Switched to ${newValue ? 'stepped' : 'full form'} interface`)
                                 }}
-                                className="text-xs"
+                                className="text-xs flex-1 sm:flex-none"
                             >
                                 {enableSteppers ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
-                                {enableSteppers ? 'Steps' : 'Full Form'}
+                                <span className="hidden sm:inline">{enableSteppers ? 'Steps' : 'Full Form'}</span>
+                                <span className="sm:hidden">{enableSteppers ? 'Steps' : 'Form'}</span>
                             </Button>
                             {enableSteppers && (
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                     Step {currentStep} of {effectiveSteps.length}
                                 </span>
                             )}
@@ -670,9 +671,9 @@ export default function NewTimeLogPage() {
 
                     {/* MUI-inspired Stepper - Only show if steppers are enabled */}
                     {enableSteppers && (
-                        <div className="w-full bg-pale rounded p-6">
+                        <div className="w-full bg-pale rounded p-4 sm:p-6">
                             {/* Desktop stepper */}
-                            <div className="hidden sm:block">
+                            <div className="hidden md:block">
                                 <div className="flex items-center justify-between relative">
                                     {effectiveSteps.map((step, index) => (
                                         <div key={step.id} className="flex flex-col items-center flex-1 relative">
@@ -731,7 +732,7 @@ export default function NewTimeLogPage() {
                             </div>
 
                             {/* Mobile stepper */}
-                            <div className="block sm:hidden">
+                            <div className="block md:hidden">
                                 <div className="flex items-center justify-between mb-4">
                                     {effectiveSteps.map((step, index) => (
                                         <div key={step.id} className="flex items-center flex-1">
@@ -789,31 +790,31 @@ export default function NewTimeLogPage() {
                     {enableSteppers ? renderStepContent() : renderFullForm()}
                 </CardContent>
 
-                <CardFooter className="flex justify-between pt-6">
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild type="button" className="bg-transparent">
+                <CardFooter className="flex flex-col sm:flex-row justify-between pt-6 gap-3 sm:gap-0">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="outline" asChild type="button" className="bg-transparent w-full sm:w-auto">
                             <Link href="/dashboard/freelancer/time-logs">Cancel</Link>
                         </Button>
                     </div>
 
-                    <div className="items-center flex gap-3">
+                    <div className="items-center flex gap-3 w-full sm:w-auto justify-end">
                         {enableSteppers ? (
                             // Stepped interface navigation
                             <>
                                 {currentStep > 1 && (
-                                    <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
-                                        <ChevronLeft className=" h-4 w-4" />
-                                        <span className="font-normal">back</span>
+                                    <Button variant="outline" className="bg-transparent flex-1 sm:flex-none" onClick={handlePrevious} type="button">
+                                        <ChevronLeft className="h-4 w-4" />
+                                        <span className="font-normal ml-1">back</span>
                                     </Button>
                                 )}
                                 {currentStep < effectiveSteps.length ? (
                                     <Button
                                         onClick={handleNext}
                                         type="button"
-                                        className="gradient"
+                                        className="gradient flex-1 sm:flex-none"
                                         disabled={!validateStep(currentStep)}
                                     >
-                                        Next
+                                        <span className="hidden sm:inline">Next</span>
                                         <ChevronRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 ) : (
@@ -821,15 +822,19 @@ export default function NewTimeLogPage() {
                                         onClick={handleSubmit}
                                         disabled={isSubmitting}
                                         type="button"
-                                        className="gradient"
+                                        className="gradient flex-1 sm:flex-none"
                                     >
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Saving...
+                                                <span className="hidden sm:inline">Saving...</span>
+                                                <span className="sm:hidden">Saving</span>
                                             </>
                                         ) : (
-                                            "Create Time Log"
+                                            <>
+                                                <span className="hidden sm:inline">Create Time Log</span>
+                                                <span className="sm:hidden">Create</span>
+                                            </>
                                         )}
                                     </Button>
                                 )}
@@ -847,15 +852,19 @@ export default function NewTimeLogPage() {
                                 }}
                                 disabled={isSubmitting}
                                 type="button"
-                                className="gradient"
+                                className="gradient w-full sm:w-auto"
                             >
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        <span className="hidden sm:inline">Saving...</span>
+                                        <span className="sm:hidden">Saving</span>
                                     </>
                                 ) : (
-                                    "Create Time Log"
+                                    <>
+                                        <span className="hidden sm:inline">Create Time Log</span>
+                                        <span className="sm:hidden">Create</span>
+                                    </>
                                 )}
                             </Button>
                         )}

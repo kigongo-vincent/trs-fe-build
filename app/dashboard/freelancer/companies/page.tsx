@@ -361,29 +361,30 @@ export default function CompaniesPage() {
         <div className="flex flex-col gap-4">
             {/* Header */}
             <MotionBlock delay={0}>
-                <div className="bg-paper p-8 rounded-lg">
-                    <div className="flex md:h-[5vh] h-max items-center justify-between">
+                <div className="bg-paper p-4 sm:p-6 md:p-8 rounded-lg">
+                    <div className="flex flex-col sm:flex-row md:h-[5vh] h-max items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div className="">
-                            <h1 className="text tracking-tight">
+                            <h1 className="text-base sm:text-lg tracking-tight">
                                 <span className="font-semibold">Companies</span>
                             </h1>
-                            <p className="text-sm text-muted-foreground">Manage your client companies</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">Manage your client companies</p>
                         </div>
                         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button>
+                                <Button className="w-full sm:w-auto">
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Add Company
+                                    <span className="hidden sm:inline">Add Company</span>
+                                    <span className="sm:hidden">Add</span>
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle>
+                                    <DialogTitle className="text-base sm:text-lg">
                                         {editingCompany ? "Edit Company" : "Add New Company"}
                                     </DialogTitle>
                                 </DialogHeader>
                                 <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="name">Company Name</Label>
                                             <Input
@@ -411,9 +412,9 @@ export default function CompaniesPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="contactPerson">Contact Person</Label>
+                                            <Label htmlFor="contactPerson" className="text-xs sm:text-sm">Contact Person</Label>
                                             <Input
                                                 id="contactPerson"
                                                 value={formData.contactPerson}
@@ -435,9 +436,9 @@ export default function CompaniesPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="phone">Phone</Label>
+                                            <Label htmlFor="phone" className="text-xs sm:text-sm">Phone</Label>
                                             <Input
                                                 id="phone"
                                                 value={formData.phone}
@@ -476,7 +477,7 @@ export default function CompaniesPage() {
 
 
             {/* Summary Cards Row */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-normal">Total Companies</CardTitle>
@@ -537,7 +538,7 @@ export default function CompaniesPage() {
             </div>
 
             {/* Charts Row */}
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 <Card>
                     <CardHeader>
                         <CardTitle>Companies Performance</CardTitle>
@@ -567,27 +568,27 @@ export default function CompaniesPage() {
             {/* Table Row */}
             <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div>
-                            <CardTitle className="flex items-center text-xl text-primary">
+                            <CardTitle className="flex items-center text-lg sm:text-xl text-primary">
                                 <span className="text-gradient">Companies</span>
                             </CardTitle>
-                            <CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">
                                 Showing {filteredCompanies.length} companies
                             </CardDescription>
                         </div>
-                        <div className="relative max-w-sm">
+                        <div className="relative w-full sm:max-w-sm">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <Input
                                 placeholder="Search companies..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 w-full"
                             />
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="overflow-auto max-w-[90vw]">
+                <CardContent className="overflow-x-auto max-w-full">
                     {filteredCompanies.length === 0 ? (
                         <div className="text-center py-8">
                             <p className="text-muted-foreground">
@@ -673,20 +674,20 @@ export default function CompaniesPage() {
 
                 {/* Pagination Controls */}
                 {filteredCompanies.length > 0 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 px-4 sm:px-6 py-4 border-t">
                         <div className="flex items-center space-x-2">
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 Showing {startIndex + 1} to {Math.min(endIndex, filteredCompanies.length)} of {filteredCompanies.length} companies
                             </p>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:space-x-2 w-full sm:w-auto">
                             <div className="flex items-center space-x-2">
-                                <p className="text-sm text-muted-foreground">Rows per page:</p>
+                                <p className="text-xs sm:text-sm text-muted-foreground">Rows per page:</p>
                                 <Select value={itemsPerPage.toString()} onValueChange={(value) => {
                                     setItemsPerPage(Number(value))
                                     setCurrentPage(1)
                                 }}>
-                                    <SelectTrigger className="w-20">
+                                    <SelectTrigger className="w-20 h-8 sm:h-10">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -697,12 +698,13 @@ export default function CompaniesPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1 sm:space-x-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setCurrentPage(1)}
                                     disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronsLeft className="h-4 w-4" />
                                 </Button>
@@ -711,11 +713,12 @@ export default function CompaniesPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(currentPage - 1)}
                                     disabled={currentPage === 1}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <div className="flex items-center space-x-1">
-                                    <span className="text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-1 px-2">
+                                    <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                         Page {currentPage} of {totalPages}
                                     </span>
                                 </div>
@@ -724,6 +727,7 @@ export default function CompaniesPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(currentPage + 1)}
                                     disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
@@ -732,6 +736,7 @@ export default function CompaniesPage() {
                                     size="sm"
                                     onClick={() => setCurrentPage(totalPages)}
                                     disabled={currentPage === totalPages}
+                                    className="h-8 w-8 p-0"
                                 >
                                     <ChevronsRight className="h-4 w-4" />
                                 </Button>

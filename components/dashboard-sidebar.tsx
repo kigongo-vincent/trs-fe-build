@@ -605,15 +605,15 @@ export function DashboardSidebar({ open, setOpen }: DashboardSidebarProps) {
                       <span>Invoices</span>
                     </Link>
                     <Link
-                      href="/dashboard/freelancer/settings"
+                      href="/dashboard/freelancer/packages"
                       onClick={handleLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-800",
-                        isActive("/dashboard/freelancer/settings") && "bg-gray-800 text-primary font-semibold",
+                        isActive("/dashboard/freelancer/packages") && "bg-gray-800 text-primary font-semibold",
                       )}
                     >
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
+                      <Package className="h-4 w-4" />
+                      <span>Packages</span>
                     </Link>
                   </div>
                 )}
