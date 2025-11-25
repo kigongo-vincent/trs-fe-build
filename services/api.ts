@@ -299,6 +299,7 @@ export async function createPackage(payload: {
   durationType: "monthly" | "yearly";
   no_of_users: number;
   status: string;
+  url: string;
 }): Promise<any> {
   return postRequest("/super-admin/packages", payload);
 }

@@ -13,7 +13,7 @@ import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle
 import Link from "next/link"
 import { getProjects, type Project } from "@/services/projects"
 import { getAuthUser } from "@/services/auth"
-import { createFreelancerTimeLog } from "@/services/freelancer"
+import { postRequest } from "@/services/api"
 import { toast } from "sonner"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
 import { RichTextEditor } from "@/components/rich-text-editor"
@@ -90,7 +90,7 @@ export default function NewTimeLogPage() {
             try {
                 const user = getAuthUser()
                 if (!user?.company?.id) {
-                    toast.error("Company information not found")
+                    setProjects([])
                     return
                 }
 
@@ -240,12 +240,16 @@ export default function NewTimeLogPage() {
                 urls: urlAttachments.length > 0 ? urlAttachments : undefined,
             };
 
-            await createFreelancerTimeLog(payload);
-            toast.success("Time log created successfully!");
-            if (enableStayOnForm) {
-                resetForm();
+            const response = await postRequest("/consultants/time-logs", payload);
+            if ((response as { status: number }).status === 201) {
+                toast.success("Time log created successfully!");
+                if (enableStayOnForm) {
+                    resetForm();
+                } else {
+                    router.push("/dashboard/freelancer/time-logs");
+                }
             } else {
-                router.push("/dashboard/freelancer/time-logs");
+                toast.error("Failed to create time log");
             }
         } catch (error) {
             console.error("Error creating time log:", error);

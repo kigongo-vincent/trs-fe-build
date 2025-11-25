@@ -32,7 +32,7 @@ interface FormData {
 
 export default function FreelancerSignup() {
     const router = useRouter()
-    const [currentStep, setCurrentStep] = useState(1)
+    const [currentStep, setCurrentStep] = useState(2)
     const [formData, setFormData] = useState<FormData>({
         accountType: "freelancer",
         fullName: "",
@@ -336,7 +336,7 @@ export default function FreelancerSignup() {
                             {renderStepContent()}
 
                             <div className="flex flex-col sm:flex-row gap-4 pt-8">
-                                {currentStep > 1 && (
+                                {currentStep > 2 && (
                                     <Button
                                         type="button"
                                         variant="outline"
