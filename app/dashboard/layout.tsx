@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Loader2, Menu, X } from "lucide-react"
 import { getUserRole, isAuthenticated, isTokenExpired, getAuthUser, getDashboardPath } from "@/services/auth"
+import { fetchCurrentFreelancerSubscription } from "@/services/freelancer"
 import { Badge } from "@/components/ui/badge"
 import { Package } from "lucide-react"
 import Link from "next/link"
@@ -39,9 +40,19 @@ export default function DashboardLayout({
         if (user) {
           if (user.role?.name) {
             setUserRole(user.role.name)
-            // For freelancers, default to "Trial" since they don't have company object
+            // For freelancers, fetch current subscription from API
             if (user.role.name === "Freelancer") {
-              foundPlan = "Trial"
+              try {
+                const currentSubscription = await fetchCurrentFreelancerSubscription()
+                if (currentSubscription && currentSubscription.plan) {
+                  foundPlan = currentSubscription.plan.name
+                } else {
+                  foundPlan = "Trial"
+                }
+              } catch (err) {
+                console.error("Error fetching freelancer subscription:", err)
+                foundPlan = "Trial"
+              }
             } else if (user.company?.package?.name) {
               foundPlan = user.company.package.name
             }
@@ -62,6 +73,24 @@ export default function DashboardLayout({
   const router = useRouter()
   useEffect(() => {
     loadDefaults()
+
+    // Listen for plan name updates from packages page
+    const handlePlanNameUpdate = () => {
+      if (typeof window !== "undefined") {
+        const updatedPlanName = localStorage.getItem("freelancerPlanName")
+        if (updatedPlanName) {
+          setPlanName(updatedPlanName)
+        } else {
+          // Reload from API if localStorage is cleared
+          loadDefaults()
+        }
+      }
+    }
+
+    window.addEventListener("freelancerPlanNameUpdated", handlePlanNameUpdate)
+    return () => {
+      window.removeEventListener("freelancerPlanNameUpdated", handlePlanNameUpdate)
+    }
   }, [router])
 
   // Client-side role guard: read from localStorage via getAuthUser

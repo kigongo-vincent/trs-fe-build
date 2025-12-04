@@ -9,8 +9,21 @@ export interface ProjectTimelineChartProps {
 }
 
 export function ProjectTimelineChart({ timelines }: ProjectTimelineChartProps) {
+  // Handle null/undefined timelines
+  if (!timelines || !Array.isArray(timelines)) {
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <p>No project data available</p>
+          <p className="text-sm">Projects will appear here once created</p>
+        </div>
+      </div>
+    )
+  }
+
   // Transform data for the chart
   const chartData = timelines
+    .filter(project => project && project.projectName) // Filter out invalid entries
     .map((project) => ({
       displayName: project.projectName.length > 20 ? project.projectName.substring(0, 20) + "..." : project.projectName,
       fullName: project.projectName,

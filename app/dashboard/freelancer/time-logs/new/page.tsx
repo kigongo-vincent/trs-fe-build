@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File, ToggleLeft, ToggleRight } from "lucide-react"
 import Link from "next/link"
-import { getProjects, type Project } from "@/services/projects"
+import { getFreelancerProjects, type FreelancerProjectListItem } from "@/services/api"
 import { getAuthUser } from "@/services/auth"
 import { postRequest } from "@/services/api"
 import { toast } from "sonner"
@@ -41,7 +41,7 @@ const STEPS = [
 export default function NewTimeLogPage() {
     const router = useRouter()
     const [currentStep, setCurrentStep] = useState(1)
-    const [projects, setProjects] = useState<Project[]>([])
+    const [projects, setProjects] = useState<FreelancerProjectListItem[]>([])
     const [isLoadingProjects, setIsLoadingProjects] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -88,17 +88,13 @@ export default function NewTimeLogPage() {
 
         const fetchProjects = async () => {
             try {
-                const user = getAuthUser()
-                if (!user?.company?.id) {
-                    setProjects([])
-                    return
-                }
-
-                const response = await getProjects(user.company.id)
-                setProjects(response.data)
+                const response = await getFreelancerProjects({ page: 1, limit: 100 })
+                const items = response?.data?.items ?? []
+                setProjects(items)
             } catch (error) {
                 console.error("Error fetching projects:", error)
                 toast.error("Failed to load projects")
+                setProjects([])
             } finally {
                 setIsLoadingProjects(false)
             }
@@ -117,7 +113,7 @@ export default function NewTimeLogPage() {
     const validateStep = (step: number): boolean => {
         switch (step) {
             case 1:
-                return formData.title.trim().length > 0
+                return formData.title.trim().length > 0 && (showProjects ? formData.project.trim().length > 0 : true)
             case 2:
                 return formData.minutes.length > 0 && Number(formData.minutes) > 0
             case 3:
@@ -135,6 +131,7 @@ export default function NewTimeLogPage() {
         switch (step) {
             case 1:
                 if (!formData.title.trim()) return "Task title is required"
+                if (showProjects && !formData.project.trim()) return "Project is required"
                 return null
             case 2:
                 if (!formData.minutes) return "Time duration is required"
@@ -150,6 +147,7 @@ export default function NewTimeLogPage() {
 
     const validateFullForm = (): string | null => {
         if (!formData.title.trim()) return "Task title is required"
+        if (showProjects && !formData.project.trim()) return "Project is required"
         if (!formData.minutes) return "Time duration is required"
         if (Number(formData.minutes) <= 0) return "Time must be greater than 0"
         if (!formData.description.trim()) return "Task description is required"
@@ -235,7 +233,7 @@ export default function NewTimeLogPage() {
                 title: formData.title.trim(),
                 description: formData.description.trim(),
                 status: formData.status,
-                ...(formData.project ? { project: formData.project } : {}),
+                project: formData.project?.trim() || "",
                 attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
                 urls: urlAttachments.length > 0 ? urlAttachments : undefined,
             };
@@ -306,14 +304,15 @@ export default function NewTimeLogPage() {
 
                         {showProjects && (
                             <div className="space-y-2">
-                                <Label htmlFor="project">Project (optional)</Label>
+                                <Label htmlFor="project">Project <span className="text-red-500">*</span></Label>
                                 <Select
                                     value={formData.project}
                                     onValueChange={(value) => handleInputChange("project", value)}
                                     disabled={isLoadingProjects}
+                                    required
                                 >
                                     <SelectTrigger id="project">
-                                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {isLoadingProjects ? (
@@ -331,10 +330,12 @@ export default function NewTimeLogPage() {
                                             projects.map((project) => (
                                                 <SelectItem key={project.id} value={project.id}>
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium">{project.name}</span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {project.department.name} • {project.lead.fullName}
-                                                        </span>
+                                                        <span className="font-medium">{project.projectName}</span>
+                                                        {project.company?.companyName && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {project.company.companyName}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </SelectItem>
                                             ))
@@ -448,14 +449,15 @@ export default function NewTimeLogPage() {
 
                     {showProjects && (
                         <div className="space-y-2">
-                            <Label htmlFor="project">Project (optional)</Label>
+                            <Label htmlFor="project">Project <span className="text-red-500">*</span></Label>
                             <Select
                                 value={formData.project}
                                 onValueChange={(value) => handleInputChange("project", value)}
                                 disabled={isLoadingProjects}
+                                required
                             >
                                 <SelectTrigger id="project">
-                                    <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                                    <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {isLoadingProjects ? (
@@ -473,10 +475,12 @@ export default function NewTimeLogPage() {
                                         projects.map((project) => (
                                             <SelectItem key={project.id} value={project.id}>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{project.name}</span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {project.department.name} • {project.lead.fullName}
-                                                    </span>
+                                                    <span className="font-medium">{project.projectName}</span>
+                                                    {project.company?.companyName && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {project.company.companyName}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </SelectItem>
                                         ))
@@ -588,10 +592,12 @@ export default function NewTimeLogPage() {
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium text-muted-foreground">Project</Label>
                                 <div>
-                                    <p className="font-medium">{selectedProject.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {selectedProject.department.name} • {selectedProject.lead.fullName}
-                                    </p>
+                                    <p className="font-medium">{selectedProject.projectName}</p>
+                                    {selectedProject.company?.companyName && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedProject.company.companyName}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         )}

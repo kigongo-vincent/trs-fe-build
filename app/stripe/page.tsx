@@ -1,63 +1,71 @@
 "use client"
-import { useEffect, useState, Suspense, useRef } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, CheckCircle2, InfoIcon, Phone } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { getRequest } from "@/services/api"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogHeader, DialogFooter } from "@/components/ui/dialog"
 import SuccessCheckIcon from "@/components/SuccessCheckIcon";
 
-type Company = {
+type Freelancer = {
     id: string;
-    name: string;
-    sector: string;
-    address: string;
-    phone: string;
+    fullName: string;
     email: string;
+    password: string;
     status: string;
+    type: string;
+    jobTitle: string;
+    bio: string;
+    profileImage: string | null;
+    resetToken: string | null;
+    resetTokenExpires: string | null;
+    phoneNumber: string;
+    employeeId: string | null;
+    firstName: string;
+    lastName: string;
+    grossPay: number | null;
+    dateOfBirth: string | null;
+    nextOfKin: {
+        name: string;
+        email: string;
+        phoneNumber: string | null;
+        relationship: string;
+    };
+    address: string | null;
+    bankDetails: {
+        bankName: string;
+        swiftCode: string;
+        accountName: string;
+        accountNumber: string;
+        routingNumber: string;
+    };
+    officeDays: string | null;
     createdAt: string;
     updatedAt: string;
+    hourlyRate: number | null;
+    currency: string | null;
+    totalHoursPerMonth: number;
+    attachments: string | null;
+    boardMemberRole: string | null;
 };
 
-type Package = {
+type Plan = {
     id: string;
     name: string;
     description: string;
-    price: number;
+    price: string;
+    currency: string;
     durationType: string;
-    no_of_users: number;
-    status: string;
+    isActive: boolean;
+    maxProjects: number;
+    maxTimeLogsPerMonth: number;
+    stripePriceId: string | null;
+    url: string;
     createdAt: string;
     updatedAt: string;
 };
-
-// Hardcoded data (from LicenseKey interface fields)
-const company: Company = {
-    id: "c1",
-    name: "Acme Corp",
-    sector: "Technology",
-    address: "123 Main St, Springfield",
-    phone: "+1 555-1234",
-    email: "info@acme.com",
-    status: "active",
-    createdAt: "2023-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-}
-const pkg: Package = {
-    id: "p1",
-    name: "Pro Plan",
-    description: "Full access to all features, priority support, and advanced analytics.",
-    price: 99,
-    durationType: "monthly",
-    no_of_users: 50,
-    status: "active",
-    createdAt: "2023-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
-}
 
 // Skeleton Loader
 function StripeSkeleton() {
@@ -104,11 +112,11 @@ function StripeError({ message }: { message: string }) {
     return (
         <div className="flex flex-col items-center justify-center h-[100vh] py-12 px-4">
             <div className="w-full max-w-xl border-0 shadow bg-card rounded-xl p-8 flex flex-col items-center">
-                <AlertCircle className="h-12 w-12 text-red-500 mb-2" />
-                <h2 className="text-2xl font-bold text-red-500 dark:text-red-400 mb-2">Payment Error</h2>
+                <AlertCircle className="h-12 w-12 text-muted-foreground mb-2" />
+                <h2 className="text-2xl font-bold text-foreground mb-2">Payment Error</h2>
                 <p className="text-center text-muted-foreground mb-4">{message}</p>
-                <Button asChild variant="destructive" className="px-8 py-6 text-base">
-                    <Link href="/dashboard/company-admin/packages">Try Again</Link>
+                <Button asChild variant="default" className="px-8 py-6 text-base">
+                    <Link href="/dashboard/freelancer/packages">Try Again</Link>
                 </Button>
             </div>
         </div>
@@ -116,23 +124,24 @@ function StripeError({ message }: { message: string }) {
 }
 
 // Update types to match new server response
-
 type StripeSessionData = {
-    transactionId: string;
-    subscriptionId: string;
-    amount: number;
-    currency: string;
+    freelancerId: string;
+    planId: string;
+    stripeSubscriptionId: string;
     status: string;
+    startsAt: string;
     expiresAt: string;
-    company: Company;
+    freelancer: Freelancer;
+    plan: Plan;
+    canceledAt: string | null;
     id: string;
     createdAt: string;
     updatedAt: string;
 };
 
-// Update verifySession to accept planId
+// Update verifySession to use freelancer subscription endpoint
 async function verifySession(session_id: string, planId?: string): Promise<{ status: number; message: string; data: StripeSessionData }> {
-    let url = `/billing/session/${session_id}`;
+    let url = `/freelancer/subscriptions/session/${session_id}`;
     if (planId) {
         url += `?planId=${encodeURIComponent(planId)}`;
     }
@@ -148,8 +157,6 @@ function StripeSuccessPageInner() {
     const [error, setError] = useState<string | null>(null)
     const [data, setData] = useState<StripeSessionData | null>(null)
     const [message, setMessage] = useState<string>("")
-    const [showDeviceAlert, setShowDeviceAlert] = useState(false)
-    const dummyRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!session_id) {
@@ -162,12 +169,12 @@ function StripeSuccessPageInner() {
                 setData(res.data)
                 setMessage(res.message)
                 setLoading(false)
-                // Update session user info with new company info
+                // Update session user info with new subscription info
                 try {
                     const user = localStorage.getItem("user")
                     if (user) {
                         const userObj = JSON.parse(user)
-                        userObj.company = res.data.company
+                        // Update user subscription info if needed
                         localStorage.setItem("user", JSON.stringify(userObj))
                         // Dispatch custom event for other components
                         window.dispatchEvent(new Event("userDataUpdated"))
@@ -178,117 +185,103 @@ function StripeSuccessPageInner() {
                 setError(err.message)
                 setLoading(false)
             })
-        // Show modal after 2 seconds
-        const timer = setTimeout(() => setShowDeviceAlert(true), 2000)
-        return () => clearTimeout(timer)
     }, [session_id, planId])
-
-    useEffect(() => {
-        if (showDeviceAlert && dummyRef.current) {
-            dummyRef.current.focus();
-        }
-    }, [showDeviceAlert]);
 
     if (loading) return <StripeSkeleton />
     if (error) return <StripeError message={error} />
     if (!data) return null
-    const { company, amount, currency, status: paymentStatus, transactionId, subscriptionId, expiresAt, createdAt } = data
+    const { freelancer, plan, status: subscriptionStatus, stripeSubscriptionId, startsAt, expiresAt, createdAt } = data
     return (
-        <div className="flex flex-col items-center justify-center h-[100vh] py-12 px-4">
-            <Dialog open={showDeviceAlert} onOpenChange={setShowDeviceAlert}>
-                <DialogContent className="p-0 overflow-hidden min-w-[75vw] max-w-2xl min-h-[70vh] max-h-[70vh]">
-                    <div
-                        tabIndex={0}
-                        ref={dummyRef}
-                        style={{
-                            position: 'absolute',
-                            width: 1,
-                            height: 1,
-                            opacity: 0,
-                            pointerEvents: 'none',
-                        }}
-                        aria-hidden="true"
-                    />
-                    <div className="flex flex-col items-center md:flex-row w-full h-full">
-                        {/* Left: Image */}
-                        <div className="hidden h-full w-[50%] md:block md:w-1/2 relative bg-black/40 dark:bg-black/60">
-                            <img
-                                src="https://images.pexels.com/photos/2528118/pexels-photo-2528118.jpeg"
-                                alt="Devices security"
-                                className="absolute inset-0 w-full h-full object-cover object-center rounded-l-xl"
-                            />
-                        </div>
-                        {/* Right: Content */}
-                        <div className="flex-1 flex flex-col justify-center items-center p-8 bg-card h-full">
-                            <div className="flex flex-col items-center p-0 border-0 shadow-none relative bg-transparent text-center">
-                                <h2 className="text-primary text-lg md:text-xl font-bold mb-2">Re-login Required on Other Devices</h2>
-                                <p className="text-base md:text-base text-muted-foreground mb-4">
-                                    For security, you must re-login on your other devices (such as your phone or tablet) to continue using your account with the updated company subscription. This device is already updated.
-                                </p>
-                            </div>
-                            <Button onClick={() => setShowDeviceAlert(false)} className="mt-6 max-w-xs outline-none" tabIndex={-1}>CONFIRM</Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-            <div className="w-full max-w-xl">
+        <div className="flex flex-col items-center justify-center min-h-[100vh] py-12 px-4">
+            <div className="w-full max-w-4xl">
                 <Card className="border">
                     <CardHeader className="flex flex-col items-center gap-2">
                         <SuccessCheckIcon className="mb-2" size={90} />
-                        <CardTitle className="text-2xl font-bold text-green-500 dark:text-green-400">Payment Successful!</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-foreground">Payment Successful!</CardTitle>
                         <CardDescription className="text-center text-muted-foreground">
                             {message || "Your payment was processed successfully."}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-8 mt-2">
-                        {/* Transaction Summary */}
-                        <div className="bg-muted/50 rounded-xl p-6 shadow-sm flex flex-col items-center">
-                            <div className="mb-4 flex flex-col items-center">
-                                {/* <SuccessCheckIcon size={90} className="mb-2" /> */}
-                                {/* <div className="text-lg font-semibold text-green-600 mb-1">Payment Successful</div> */}
-                                {/* <div className="text-sm text-muted-foreground">{message || "Your payment was processed successfully."}</div> */}
+                    <CardContent className="flex flex-col gap-6 mt-2">
+                        {/* Main Content Grid - Responsive layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Transaction Summary */}
+                            <div className="bg-white rounded-xl p-6 shadow-sm">
+                                <h3 className="text-lg font-semibold mb-4 text-primary">Subscription Summary</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                    <div className="text-muted-foreground">Plan</div>
+                                    <div className="font-medium">{plan.name}</div>
+                                    <div className="text-muted-foreground">Price</div>
+                                    <div className="font-medium">${plan.price} {plan.currency?.toUpperCase()}</div>
+                                    <div className="text-muted-foreground">Status</div>
+                                    <div>
+                                        <Badge variant={subscriptionStatus === "active" ? "success" : "destructive" as any} className="capitalize">
+                                            {subscriptionStatus}
+                                        </Badge>
+                                    </div>
+                                    <div className="text-muted-foreground">Started</div>
+                                    <div>{new Date(startsAt).toLocaleString()}</div>
+                                    <div className="text-muted-foreground">Subscription ID</div>
+                                    <div className="truncate font-mono text-xs">{stripeSubscriptionId}</div>
+                                    <div className="text-muted-foreground">Expires</div>
+                                    <div>{expiresAt ? new Date(expiresAt).toLocaleString() : "-"}</div>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 w-full max-w-md text-sm">
-                                <div className="text-muted-foreground">Amount</div>
-                                <div className="font-medium">${amount} {currency?.toUpperCase()}</div>
-                                <div className="text-muted-foreground">Status</div>
-                                <div>
-                                    <Badge variant={paymentStatus === "paid" ? "success" : "destructive" as any} className="capitalize">
-                                        {paymentStatus}
+
+                            {/* Plan Info */}
+                            <div className="bg-white rounded-xl p-6 shadow-sm">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-lg font-semibold text-primary">Plan Details</span>
+                                    <Badge variant={plan.isActive ? "success" : "destructive" as any} className="capitalize">
+                                        {plan.isActive ? "Active" : "Inactive"}
                                     </Badge>
                                 </div>
-                                <div className="text-muted-foreground">Date</div>
-                                <div>{new Date(createdAt).toLocaleString()}</div>
-                                <div className="text-muted-foreground">Subscription ID</div>
-                                <div className="truncate">{subscriptionId}</div>
-                                <div className="text-muted-foreground">Expires</div>
-                                <div>{expiresAt ? new Date(expiresAt).toLocaleString() : "-"}</div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                    <div className="text-muted-foreground">Name</div>
+                                    <div>{plan.name}</div>
+                                    <div className="text-muted-foreground">Description</div>
+                                    <div>{plan.description}</div>
+                                    <div className="text-muted-foreground">Duration</div>
+                                    <div className="capitalize">{plan.durationType}</div>
+                                    <div className="text-muted-foreground">Max Projects</div>
+                                    <div>{plan.maxProjects}</div>
+                                    <div className="text-muted-foreground">Max Time Logs/Month</div>
+                                    <div>{plan.maxTimeLogsPerMonth}</div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Company Info */}
-                        <div className="bg-card/80 rounded-xl p-5 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-base font-semibold text-primary">Company</span>
-                                <Badge variant={company.status === "active" ? "success" : "destructive" as any} className="capitalize">
-                                    {company.status}
+                        {/* Freelancer Info - Full width on large screens */}
+                        <div className="bg-white rounded-xl p-6 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-lg font-semibold text-primary">Freelancer</span>
+                                <Badge variant={freelancer.status === "active" ? "success" : "destructive" as any} className="capitalize">
+                                    {freelancer.status}
                                 </Badge>
                             </div>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                                <div className="text-muted-foreground">Name</div>
-                                <div>{company.name}</div>
-                                <div className="text-muted-foreground">Sector</div>
-                                <div>{company.sector}</div>
-                                <div className="text-muted-foreground">Email</div>
-                                <div>{company.email || "-"}</div>
-                                <div className="text-muted-foreground">Phone</div>
-                                <div>{company.phone || "-"}</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+                                <div>
+                                    <div className="text-muted-foreground mb-1">Name</div>
+                                    <div className="font-medium break-words">{freelancer.fullName}</div>
+                                </div>
+                                <div className="sm:col-span-2 lg:col-span-1">
+                                    <div className="text-muted-foreground mb-1">Email</div>
+                                    <div className="font-medium break-all word-break break-words">{freelancer.email}</div>
+                                </div>
+                                <div>
+                                    <div className="text-muted-foreground mb-1">Phone</div>
+                                    <div className="font-medium break-words">{freelancer.phoneNumber || "-"}</div>
+                                </div>
+                                <div>
+                                    <div className="text-muted-foreground mb-1">Job Title</div>
+                                    <div className="font-medium break-words">{freelancer.jobTitle || "-"}</div>
+                                </div>
                             </div>
                         </div>
 
                         {/* CTA */}
-                        <Button asChild variant="default" className="w-full py-6 text-base mt-2">
-                            <Link href="/dashboard/company-admin">Go to Dashboard</Link>
+                        <Button asChild variant="default" className="w-full py-6 text-base">
+                            <Link href="/dashboard/freelancer">Go to Dashboard</Link>
                         </Button>
                     </CardContent>
                 </Card>

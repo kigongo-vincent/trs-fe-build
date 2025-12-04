@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
 import { useRouter } from "next/navigation"
-import { getProjects } from "@/services/projects"
+import { getFreelancerProjects, type FreelancerProjectListItem } from "@/services/api"
 import { getAuthUser } from "@/services/auth"
 import { putRequest } from "@/services/api"
 import { Label } from "@/components/ui/label"
@@ -48,7 +48,7 @@ export default function TimeLogsPage() {
   const router = useRouter()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editTimeLog, setEditTimeLog] = useState<TimeLog | null>(null)
-  const [projects, setProjects] = useState<any[]>([])
+  const [projects, setProjects] = useState<FreelancerProjectListItem[]>([])
   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTimeLogId, setDeleteTimeLogId] = useState<string | null>(null)
@@ -310,12 +310,12 @@ export default function TimeLogsPage() {
     const fetchProjectsList = async () => {
       setIsLoadingProjects(true)
       try {
-        const user = getAuthUser()
-        if (!user?.company?.id) return
-        const response = await getProjects(user.company.id)
-        setProjects(response.data)
+        const response = await getFreelancerProjects({ page: 1, limit: 100 })
+        const items = response?.data?.items ?? []
+        setProjects(items)
       } catch (e) {
-        // handle error
+        console.error("Error fetching projects:", e)
+        setProjects([])
       } finally {
         setIsLoadingProjects(false)
       }
@@ -702,6 +702,10 @@ export default function TimeLogsPage() {
       toast.error("Please enter a task title")
       return
     }
+    if (!editForm.project || !editForm.project.trim()) {
+      toast.error("Please select a project")
+      return
+    }
     if (!editForm.description.trim()) {
       toast.error("Please enter a task description")
       return
@@ -1067,7 +1071,7 @@ export default function TimeLogsPage() {
               {uniqueProjects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
                   <div>
-                    <div className="font-semibold">{project.name}</div>
+                    <div className="font-semibold">{project.projectName}</div>
                   </div>
                 </SelectItem>
               ))}
@@ -1419,9 +1423,9 @@ export default function TimeLogsPage() {
       {/* Edit Time Log Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-base sm:text-xl text-gradient">Edit Time Log</DialogTitle>
+          <DialogHeader className=" backdrop-blur-sm">
+            <div className="flex items-center  justify-between">
+              <DialogTitle className="text-xl text-gradient">Edit Time Log</DialogTitle>
               <Button type="button" variant="ghost" className="hover:bg-gray-100" onClick={() => setIsEditDialogOpen(false)} aria-label="Close">
                 <X className="h-10 w-10" />
               </Button>
@@ -1440,14 +1444,15 @@ export default function TimeLogsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="editProject">Project (optional)</Label>
+              <Label htmlFor="editProject">Project <span className="text-red-500">*</span></Label>
               <Select
                 value={editForm.project}
                 onValueChange={value => handleEditInputChange("project", value)}
                 disabled={isLoadingProjects}
+                required
               >
                 <SelectTrigger id="editProject">
-                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                  <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
                 </SelectTrigger>
                 <SelectContent>
                   {isLoadingProjects ? (
@@ -1462,8 +1467,10 @@ export default function TimeLogsPage() {
                     projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
                         <div>
-                          <div className="font-semibold">{project.name}</div>
-
+                          <div className="font-semibold">{project.projectName}</div>
+                          {project.company?.companyName && (
+                            <div className="text-xs text-muted-foreground">{project.company.companyName}</div>
+                          )}
                         </div>
                       </SelectItem>
                     ))

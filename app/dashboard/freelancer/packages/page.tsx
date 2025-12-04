@@ -3,43 +3,25 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Package, AlertCircle, X, Clock, CheckCircle } from "lucide-react"
+import { Package } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { fetchPackages } from "@/services/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getAuthUser } from "@/services/auth"
-import { Input } from "@/components/ui/input"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
-import { format } from "date-fns"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { fetchFreelancerPlans, fetchFreelancerSubscriptions, fetchCurrentFreelancerSubscription, FreelancerPlan, FreelancerPlansResponse, FreelancerSubscription } from "@/services/freelancer"
 
-// Type for a package (from API)
-type PackageType = {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    durationType: string;
-    no_of_users: number;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    url?: string; // Add url property
-}
-
-type PackagesApiResponse = {
-    status: number;
-    message: string;
-    data: PackageType[];
-}
+// Type for a package (from API) - using FreelancerPlan from service
+type PackageType = FreelancerPlan
 
 export default function FreelancerPackagesPage() {
     const [packages, setPackages] = useState<PackageType[]>([])
+    const [subscriptions, setSubscriptions] = useState<FreelancerSubscription[]>([])
     const [loading, setLoading] = useState(true)
+    const [subscriptionsLoading, setSubscriptionsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selectedPlan, setSelectedPlan] = useState<PackageType | null>(null)
+    const [currentSubscription, setCurrentSubscription] = useState<FreelancerSubscription | null>(null)
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false)
     const [pendingUpgrade, setPendingUpgrade] = useState<PackageType | null>(null)
 
@@ -48,10 +30,14 @@ export default function FreelancerPackagesPage() {
         id: "trial",
         name: "Trial",
         description: "Free trial plan for freelancers",
-        price: 0,
+        price: "0",
+        currency: "usd",
         durationType: "monthly",
-        no_of_users: 1,
-        status: "active",
+        isActive: true,
+        maxProjects: 0,
+        maxTimeLogsPerMonth: 0,
+        stripePriceId: null,
+        url: "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     }
@@ -61,22 +47,93 @@ export default function FreelancerPackagesPage() {
             setLoading(true)
             setError(null)
             try {
-                const res: PackagesApiResponse = await fetchPackages()
+                const res: FreelancerPlansResponse = await fetchFreelancerPlans()
                 if (!res || !Array.isArray(res.data)) {
-                    throw new Error("Invalid packages response")
+                    throw new Error("Invalid plans response")
                 }
                 setPackages(res.data)
-                // Set current plan as Trial (hardcoded)
-                setSelectedPlan(currentPlan)
             } catch (err: any) {
                 console.error("Packages page error:", err)
-                setError("Failed to fetch packages")
+                setError("Failed to fetch plans")
             } finally {
                 setLoading(false)
             }
         }
         loadData()
     }, [])
+
+    useEffect(() => {
+        async function loadSubscriptions() {
+            setSubscriptionsLoading(true)
+            try {
+                const user = getAuthUser()
+                if (!user || !user.id) {
+                    console.error("User not found")
+                    return
+                }
+                // Fetch subscriptions list for the table
+                const res = await fetchFreelancerSubscriptions(user.id)
+                if (res && Array.isArray(res.data)) {
+                    setSubscriptions(res.data)
+                }
+            } catch (err: any) {
+                console.error("Subscriptions page error:", err)
+                // Don't set error state for subscriptions, just log it
+            } finally {
+                setSubscriptionsLoading(false)
+            }
+        }
+        loadSubscriptions()
+    }, [])
+
+    useEffect(() => {
+        async function loadCurrentSubscription() {
+            try {
+                const subscription = await fetchCurrentFreelancerSubscription()
+                if (subscription && subscription.plan) {
+                    // Set current plan from active subscription
+                    setCurrentSubscription(subscription)
+                    setSelectedPlan(subscription.plan)
+                    // Update localStorage for banner
+                    if (typeof window !== "undefined") {
+                        localStorage.setItem("freelancerPlanName", subscription.plan.name)
+                        window.dispatchEvent(new Event("freelancerPlanNameUpdated"))
+                    }
+                } else {
+                    // Default to trial plan if no subscription found
+                    setCurrentSubscription(null)
+                    setSelectedPlan(currentPlan)
+                    // Update localStorage for banner
+                    if (typeof window !== "undefined") {
+                        localStorage.setItem("freelancerPlanName", currentPlan.name)
+                        window.dispatchEvent(new Event("freelancerPlanNameUpdated"))
+                    }
+                }
+            } catch (err: any) {
+                console.error("Current subscription error:", err)
+                // Default to trial plan on error
+                setCurrentSubscription(null)
+                setSelectedPlan(currentPlan)
+                // Update localStorage for banner
+                if (typeof window !== "undefined") {
+                    localStorage.setItem("freelancerPlanName", currentPlan.name)
+                    window.dispatchEvent(new Event("freelancerPlanNameUpdated"))
+                }
+            }
+        }
+        loadCurrentSubscription()
+    }, [])
+
+    // Calculate days remaining until expiry
+    const getDaysRemaining = (expiresAt: string): number => {
+        const expiryDate = new Date(expiresAt)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        expiryDate.setHours(0, 0, 0, 0)
+        const diffTime = expiryDate.getTime() - today.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        return diffDays
+    }
 
     const handleUpgradeClick = (pkg: PackageType) => {
         setPendingUpgrade(pkg)
@@ -123,7 +180,7 @@ export default function FreelancerPackagesPage() {
             {loading ? (
                 <>
                     {/* Current Plan Skeleton */}
-                    <Card className={`border-2 border-primary/60 bg-primary/5 `}>
+                    <Card className={`border border-primary/60 bg-primary/5 `}>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div className="flex-1">
                                 <CardTitle className="flex items-center gap-2">
@@ -169,39 +226,77 @@ export default function FreelancerPackagesPage() {
                 <>
                     {/* Current Plan Section */}
                     {selectedPlan && (
-                        <Card className={`border-2 border-primary/60 bg-primary/5 flex flex-col`}>
+                        <Card className={`border border-primary/60 bg-primary/5 flex flex-col`}>
                             <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div className="flex-1 w-full sm:w-auto">
                                     <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                                         <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800">
                                             Current Plan
                                         </Badge>
-                                        <span>{currentPlan.name}</span>
+                                        <span>{selectedPlan.name}</span>
                                     </CardTitle>
                                     <CardDescription className="mt-2 text-xs sm:text-sm">
-                                        {currentPlan.description}
+                                        {selectedPlan.description}
                                     </CardDescription>
                                 </div>
                                 <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                                    <span className="text-xl sm:text-2xl font-bold">{currentPlan.price === 0 ? "Free" : `$${currentPlan.price}/${currentPlan.durationType === "yearly" ? "yr" : "mo"}`}</span>
-                                    <Badge variant="outline" className="capitalize">{currentPlan.durationType}</Badge>
+                                    <span className="text-xl sm:text-2xl font-bold">{selectedPlan.price === "0" ? "Free" : `${selectedPlan.currency.toUpperCase() === "USD" ? "$" : ""}${selectedPlan.price}/${selectedPlan.durationType === "yearly" ? "yr" : "mo"}`}</span>
+                                    <Badge variant="outline" className="capitalize">{selectedPlan.durationType}</Badge>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex-1 flex flex-col justify-end">
-                                {/* Features not available from API */}
+                            <CardContent className="flex-1 flex flex-col gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Max Projects</p>
+                                        <p className="text-base font-semibold">{selectedPlan.maxProjects}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Max Time Logs Per Month</p>
+                                        <p className="text-base font-semibold">{selectedPlan.maxTimeLogsPerMonth}</p>
+                                    </div>
+                                </div>
+                                {currentSubscription ? (
+                                    <div className="border-t pt-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Expiry Date</p>
+                                                <p className="text-base font-semibold">
+                                                    {new Date(currentSubscription.expiresAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground">Days Remaining</p>
+                                                <p className="text-base font-semibold">
+                                                    {getDaysRemaining(currentSubscription.expiresAt) > 0
+                                                        ? `${getDaysRemaining(currentSubscription.expiresAt)} days`
+                                                        : "Expired"
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="border-t pt-4">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Expiry Date</p>
+                                            <p className="text-base font-semibold">No expiry (Trial)</p>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
 
+
+
                     {/* Available Packages Section */}
-                    <div>
+                    <div className="mt-8">
                         <h2 className="text-base sm:text-lg font-semibold mb-4">Available Packages</h2>
                         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                             {/* Existing Packages */}
                             {packages.filter(pkg => {
                                 const name = pkg.name?.toLowerCase() || "";
-                                const status = pkg.status?.toLowerCase() || "";
-                                return name !== "trial" && name !== "free" && status !== "archived";
+                                return name !== "trial" && name !== "free" && pkg.isActive;
                             }).map(pkg => (
                                 <Card key={pkg.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border-gray-300 shadow-sm">
                                     <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary flex-shrink-0">
@@ -210,12 +305,12 @@ export default function FreelancerPackagesPage() {
                                     <div className="flex-1 min-w-0 w-full sm:w-auto">
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                                             <span className="text-base sm:text-lg font-semibold truncate">{pkg.name}</span>
-                                            <Badge className="w-fit">{pkg.status}</Badge>
+                                            <Badge className="w-fit">{pkg.isActive ? "Active" : "Inactive"}</Badge>
                                         </div>
                                         <div className="text-xs sm:text-sm text-muted-foreground truncate mt-1">{pkg.description}</div>
                                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-2 text-xs">
-                                            <span>Price: <span className="font-medium">{pkg.price.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span></span>
-                                            <span>Users: <span className="font-medium">{pkg.no_of_users}</span></span>
+                                            <span>Price: <span className="font-medium">{pkg.currency.toUpperCase() === "USD" ? "$" : ""}{pkg.price}</span></span>
+                                            <span>Max Projects: <span className="font-medium">{pkg.maxProjects}</span></span>
                                         </div>
                                     </div>
                                     <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto sm:ml-4">
@@ -231,6 +326,91 @@ export default function FreelancerPackagesPage() {
                                 </Card>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Subscriptions Section */}
+                    <div className="mt-8">
+                        <h2 className="text-base sm:text-lg font-semibold mb-4">My Subscriptions</h2>
+                        {subscriptionsLoading ? (
+                            <Card>
+                                <CardContent className="p-6">
+                                    <div className="space-y-4">
+                                        {Array.from({ length: 3 }).map((_, i) => (
+                                            <div key={i} className="flex items-center gap-4">
+                                                <Skeleton className="h-12 w-12 rounded" />
+                                                <div className="flex-1 space-y-2">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-3 w-48" />
+                                                </div>
+                                                <Skeleton className="h-6 w-16" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : subscriptions.length === 0 ? (
+                            <Card>
+                                <CardContent className="p-6 text-center text-muted-foreground">
+                                    No subscriptions found
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card>
+                                <CardContent className="p-0">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Plan Name</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Start Date</TableHead>
+                                                <TableHead>Expiry Date</TableHead>
+                                                <TableHead>Price</TableHead>
+                                                <TableHead>Stripe Subscription ID</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {subscriptions.map((subscription) => (
+                                                <TableRow key={subscription.id}>
+                                                    <TableCell className="font-medium">
+                                                        {subscription.plan.name}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={
+                                                                subscription.status === "active"
+                                                                    ? "default"
+                                                                    : "secondary"
+                                                            }
+                                                            className={
+                                                                subscription.status === "active"
+                                                                    ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                                                                    : ""
+                                                            }
+                                                        >
+                                                            {subscription.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(subscription.startsAt).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {new Date(subscription.expiresAt).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {subscription.plan.currency.toUpperCase() === "USD" ? "$" : ""}
+                                                        {subscription.plan.price}
+                                                        {subscription.plan.durationType === "yearly" ? "/yr" : "/mo"}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-xs">
+                                                        {subscription.stripeSubscriptionId || "N/A"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
                     {/* Upgrade Confirmation Dialog */}

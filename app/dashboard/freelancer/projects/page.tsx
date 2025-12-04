@@ -104,6 +104,9 @@ export default function ProjectsPage() {
         setEditingProject(null)
     }, [])
 
+    // Ensure formData is always initialized
+    const safeFormData = formData || { ...PROJECT_FORM_DEFAULTS }
+
     const fetchOverview = useCallback(async () => {
         try {
             setGlobalError(null)
@@ -113,11 +116,15 @@ export default function ProjectsPage() {
                 getFreelancerProjectStatusDistribution(),
                 getFreelancerProjectTimelines()
             ])
-            setSummary(summaryResponse.data)
-            setStatusDistribution(statusResponse.data)
-            setTimelineData(timelineResponse.data)
+            setSummary(summaryResponse?.data ?? null)
+            setStatusDistribution(statusResponse?.data ?? null)
+            setTimelineData(Array.isArray(timelineResponse?.data) ? timelineResponse.data : [])
         } catch (error) {
             setGlobalError(extractErrorMessage(error))
+            // Set defaults on error to prevent crashes
+            setSummary(null)
+            setStatusDistribution(null)
+            setTimelineData([])
         } finally {
             setOverviewLoading(false)
         }
@@ -133,19 +140,34 @@ export default function ProjectsPage() {
                 search: searchValue.trim() ? searchValue.trim() : undefined
             })
 
-            const items = response.data.items ?? []
-            setProjects(items.map(mapProjectFromApi))
-            setPaginationMeta(response.data.pagination)
+            const items = response?.data?.items ?? []
+            const mappedProjects = Array.isArray(items)
+                ? items
+                    .map(item => {
+                        try {
+                            return mapProjectFromApi(item)
+                        } catch (error) {
+                            console.warn("Failed to map project item:", error, item)
+                            return null
+                        }
+                    })
+                    .filter((project): project is Project => project !== null)
+                : []
+            setProjects(mappedProjects)
+            setPaginationMeta(response?.data?.pagination ?? null)
             const newCompanies = extractCompaniesFromProjects(items)
             if (newCompanies.length > 0) {
                 setCompanies(prev => mergeCompanyLists(prev, newCompanies))
             }
 
-            const nextPage = response.data.pagination.page
-            const nextLimit = response.data.pagination.limit
+            const pagination = response?.data?.pagination
+            if (pagination) {
+                const nextPage = pagination.page ?? pageParam
+                const nextLimit = pagination.limit ?? limitParam
 
-            setCurrentPage(prev => (prev === nextPage ? prev : nextPage))
-            setItemsPerPage(prev => (prev === nextLimit ? prev : nextLimit))
+                setCurrentPage(prev => (prev === nextPage ? prev : nextPage))
+                setItemsPerPage(prev => (prev === nextLimit ? prev : nextLimit))
+            }
         } catch (error) {
             setGlobalError(extractErrorMessage(error))
             setProjects([])
@@ -169,41 +191,52 @@ export default function ProjectsPage() {
         }
     }, [isAddDialogOpen, resetFormState])
 
-    const totalProjects = paginationMeta?.total ?? summary?.totalProjects ?? projects.length
+    const totalProjects = paginationMeta?.total ?? summary?.totalProjects ?? projects.length ?? 0
     const totalPages = paginationMeta?.totalPages ?? 1
-    const pageStart = paginationMeta ? (paginationMeta.page - 1) * paginationMeta.limit + 1 : (projects.length ? 1 : 0)
-    const pageEnd = paginationMeta ? Math.min(paginationMeta.page * paginationMeta.limit, paginationMeta.total) : projects.length
+    const pageStart = paginationMeta && paginationMeta.page && paginationMeta.limit
+        ? (paginationMeta.page - 1) * paginationMeta.limit + 1
+        : (projects.length ? 1 : 0)
+    const pageEnd = paginationMeta && paginationMeta.page && paginationMeta.limit && paginationMeta.total
+        ? Math.min(paginationMeta.page * paginationMeta.limit, paginationMeta.total)
+        : projects.length
     const showInitialSkeleton = overviewLoading || (tableLoading && projects.length === 0)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setFormError(null)
 
-        if (!formData.companyId) {
+        const currentFormData = formData || { ...PROJECT_FORM_DEFAULTS }
+
+        if (!currentFormData.companyId) {
             setFormError("Please select a company for this project.")
             return
         }
 
-        const hourlyRateValue = parseFloat(formData.hourlyRate)
-        const fixedAmountValue = formData.fixedTotalAmount ? parseFloat(formData.fixedTotalAmount) : undefined
+        const hourlyRateValue = parseFloat(currentFormData.hourlyRate || "0")
+        const fixedAmountValue = currentFormData.fixedTotalAmount ? parseFloat(currentFormData.fixedTotalAmount) : undefined
 
-        if (Number.isNaN(hourlyRateValue)) {
-            setFormError("Hourly rate must be a valid number.")
+        if (Number.isNaN(hourlyRateValue) || hourlyRateValue <= 0) {
+            setFormError("Hourly rate must be a valid positive number.")
             return
         }
 
-        if (fixedAmountValue !== undefined && Number.isNaN(fixedAmountValue)) {
-            setFormError("Fixed total amount must be a valid number.")
+        if (fixedAmountValue !== undefined && (Number.isNaN(fixedAmountValue) || fixedAmountValue < 0)) {
+            setFormError("Fixed total amount must be a valid positive number.")
+            return
+        }
+
+        if (!currentFormData.startDate) {
+            setFormError("Start date is required.")
             return
         }
 
         const payload = {
-            projectName: formData.name.trim(),
-            freelancerCompanyId: formData.companyId,
-            description: formData.description.trim(),
-            status: formData.status,
-            startDate: formData.startDate,
-            endDate: formData.endDate || null,
+            projectName: (currentFormData.name || "").trim(),
+            freelancerCompanyId: currentFormData.companyId,
+            description: (currentFormData.description || "").trim(),
+            status: currentFormData.status || "active",
+            startDate: currentFormData.startDate,
+            endDate: currentFormData.endDate || null,
             hourlyRate: hourlyRateValue,
             fixedTotalAmount: fixedAmountValue
         }
@@ -211,10 +244,16 @@ export default function ProjectsPage() {
         setIsSubmitting(true)
 
         try {
+            let response
             if (editingProject) {
-                await updateFreelancerProject(editingProject.id, payload)
+                response = await updateFreelancerProject(editingProject.id, payload)
             } else {
-                await createFreelancerProject(payload)
+                response = await createFreelancerProject(payload)
+            }
+
+            // Validate response structure
+            if (!response || !response.data) {
+                throw new Error("Invalid response from server. Please try again.")
             }
 
             const nextPage = editingProject ? currentPage : 1
@@ -225,18 +264,28 @@ export default function ProjectsPage() {
                 setCurrentPage(nextPage)
             }
 
+            // Reload data with error handling
             const reloadPromise = shouldManuallyReload
-                ? loadProjects(nextPage, itemsPerPage, searchTerm)
+                ? loadProjects(nextPage, itemsPerPage, searchTerm).catch(err => {
+                    console.error("Error reloading projects:", err)
+                    // Don't throw - we still want to close the dialog
+                })
                 : Promise.resolve()
+
+            const overviewPromise = fetchOverview().catch(err => {
+                console.error("Error fetching overview:", err)
+                // Don't throw - we still want to close the dialog
+            })
 
             await Promise.all([
                 reloadPromise,
-                fetchOverview()
+                overviewPromise
             ])
 
             resetFormState()
             setIsAddDialogOpen(false)
         } catch (error) {
+            console.error("Error creating/updating project:", error)
             setFormError(extractErrorMessage(error))
         } finally {
             setIsSubmitting(false)
@@ -400,29 +449,31 @@ export default function ProjectsPage() {
                                             <Label htmlFor="name">Project Name</Label>
                                             <Input
                                                 id="name"
-                                                value={formData.name}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                                value={safeFormData.name || ""}
+                                                onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), name: e.target.value }))}
                                                 placeholder="Enter project name"
                                                 required
                                             />
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="companyId">Company</Label>
-                                            <Select value={formData.companyId} onValueChange={(value) => setFormData(prev => ({ ...prev, companyId: value }))}>
+                                            <Select value={safeFormData.companyId || ""} onValueChange={(value) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), companyId: value }))}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select company" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {companies.length === 0 ? (
+                                                    {!Array.isArray(companies) || companies.length === 0 ? (
                                                         <SelectItem value="" disabled>
                                                             {tableLoading ? "Loading companies..." : "No companies available"}
                                                         </SelectItem>
                                                     ) : (
-                                                        companies.map((company) => (
-                                                            <SelectItem key={company.id} value={company.id}>
-                                                                {company.name}
-                                                            </SelectItem>
-                                                        ))
+                                                        companies
+                                                            .filter(company => company && company.id && company.name)
+                                                            .map((company) => (
+                                                                <SelectItem key={company.id} value={company.id}>
+                                                                    {company.name}
+                                                                </SelectItem>
+                                                            ))
                                                     )}
                                                 </SelectContent>
                                             </Select>
@@ -433,8 +484,8 @@ export default function ProjectsPage() {
                                         <Label htmlFor="description">Description</Label>
                                         <Textarea
                                             id="description"
-                                            value={formData.description}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                            value={safeFormData.description || ""}
+                                            onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), description: e.target.value }))}
                                             placeholder="Enter project description"
                                             rows={3}
                                             required
@@ -448,8 +499,8 @@ export default function ProjectsPage() {
                                                 id="hourlyRate"
                                                 type="number"
                                                 step="0.01"
-                                                value={formData.hourlyRate}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: e.target.value }))}
+                                                value={safeFormData.hourlyRate || ""}
+                                                onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), hourlyRate: e.target.value }))}
                                                 placeholder="0.00"
                                                 required
                                             />
@@ -460,8 +511,8 @@ export default function ProjectsPage() {
                                                 id="fixedTotalAmount"
                                                 type="number"
                                                 step="0.01"
-                                                value={formData.fixedTotalAmount}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, fixedTotalAmount: e.target.value }))}
+                                                value={safeFormData.fixedTotalAmount || ""}
+                                                onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), fixedTotalAmount: e.target.value }))}
                                                 placeholder="0.00"
                                             />
                                         </div>
@@ -471,8 +522,8 @@ export default function ProjectsPage() {
                                                 <Input
                                                     id="endDate"
                                                     type="date"
-                                                    value={formData.endDate}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                                                    value={safeFormData.endDate || ""}
+                                                    onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), endDate: e.target.value }))}
                                                 />
                                             </div>
 
@@ -483,8 +534,8 @@ export default function ProjectsPage() {
                                             <Input
                                                 id="startDate"
                                                 type="date"
-                                                value={formData.startDate}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                                                value={safeFormData.startDate || ""}
+                                                onChange={(e) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), startDate: e.target.value }))}
                                                 required
                                             />
                                         </div>
@@ -492,7 +543,7 @@ export default function ProjectsPage() {
 
                                     <div className="space-y-2">
                                         <Label htmlFor="status">Status</Label>
-                                        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                                        <Select value={safeFormData.status || "active"} onValueChange={(value) => setFormData(prev => ({ ...(prev || PROJECT_FORM_DEFAULTS), status: value }))}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
@@ -540,7 +591,7 @@ export default function ProjectsPage() {
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-semibold text-primary">{summary?.totalProjects ?? projects.length}</div>
+                        <div className="text-2xl font-semibold text-primary">{summary?.totalProjects ?? projects.length ?? 0}</div>
                         <p className="text-xs text-muted-foreground">
                             {statusDistribution?.active ?? 0} active
                         </p>
@@ -554,7 +605,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            {(summary?.totalHours ?? 0)}h
+                            {summary && Number.isFinite(summary.totalHours) ? `${summary.totalHours}h` : '0h'}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Across all projects
@@ -569,7 +620,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            {(summary?.totalEarnings ?? 0).toLocaleString()}
+                            ${summary && Number.isFinite(summary.totalEarnings) ? summary.totalEarnings.toLocaleString() : '0'}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             From all projects
@@ -584,7 +635,7 @@ export default function ProjectsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-semibold text-primary">
-                            ${Math.round(summary?.avgHourlyRate ?? 0)}
+                            ${summary && Number.isFinite(summary.avgHourlyRate) ? Math.round(summary.avgHourlyRate) : '0'}
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Average rate per hour
@@ -666,9 +717,9 @@ export default function ProjectsPage() {
                                     <TableRow key={project.id}>
                                         <TableCell className="font-medium">{project.name}</TableCell>
                                         <TableCell>{project.companyName}</TableCell>
-                                        <TableCell>{project.hourlyRate}/hr</TableCell>
-                                        <TableCell>{project.totalHours}h</TableCell>
-                                        <TableCell>{project.totalEarnings.toLocaleString()}</TableCell>
+                                        <TableCell>{Number.isFinite(project.hourlyRate) ? `${project.hourlyRate}/hr` : '0/hr'}</TableCell>
+                                        <TableCell>{Number.isFinite(project.totalHours) ? `${project.totalHours}h` : '0h'}</TableCell>
+                                        <TableCell>{Number.isFinite(project.totalEarnings) ? project.totalEarnings.toLocaleString() : '0'}</TableCell>
                                         <TableCell>
                                             <Badge className={getStatusColor(project.status)}>
                                                 <span className="capitalize">{project.status.replace('-', ' ')}</span>
@@ -786,19 +837,22 @@ function extractErrorMessage(error: unknown): string {
 }
 
 function mapProjectFromApi(item: FreelancerProjectListItem): Project {
+    if (!item || !item.id) {
+        throw new Error("Invalid project item: missing required fields")
+    }
     return {
         id: item.id,
-        name: item.projectName,
-        description: item.description,
+        name: item.projectName ?? "Unnamed Project",
+        description: item.description ?? "",
         companyId: item.company?.id ?? "",
         companyName: item.company?.companyName ?? "Unknown company",
         hourlyRate: item.hourlyRate ?? 0,
         status: normalizeStatus(item.status),
-        startDate: item.startDate,
+        startDate: item.startDate ?? "",
         endDate: item.endDate ?? "",
         totalHours: item.totalHours ?? 0,
         totalEarnings: item.earnings ?? item.fixedTotalAmount ?? 0,
-        createdAt: item.createdAt,
+        createdAt: item.createdAt ?? "",
         fixedTotalAmount: item.fixedTotalAmount
     }
 }
@@ -810,9 +864,12 @@ function normalizeStatus(status?: string): ProjectStatus {
 }
 
 function extractCompaniesFromProjects(items: FreelancerProjectListItem[]): Company[] {
+    if (!Array.isArray(items)) {
+        return []
+    }
     const map = new Map<string, Company>()
     items.forEach(item => {
-        if (item.company?.id) {
+        if (item?.company?.id) {
             map.set(item.company.id, {
                 id: item.company.id,
                 name: item.company.companyName ?? "Unnamed Company"

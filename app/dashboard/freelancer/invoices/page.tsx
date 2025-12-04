@@ -786,7 +786,7 @@ export default function InvoicesPage() {
                                     )}
                                 </div>
 
-                                {selectedProject && (
+                                {/* {selectedProject && (
                                     <div className="p-4 bg-gray-50 rounded-lg space-y-2">
                                         <h4 className="font-medium">Project Details</h4>
                                         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -812,7 +812,7 @@ export default function InvoicesPage() {
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                )} */}
 
                                 <div className="space-y-2">
                                     <Label htmlFor="description">Description</Label>
