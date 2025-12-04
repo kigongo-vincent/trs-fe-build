@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, Loader2, Paperclip, Type, ChevronRight, ChevronLeft, CheckCircle2, File, ToggleLeft, ToggleRight } from "lucide-react"
 import Link from "next/link"
-import { getProjects, type Project } from "@/services/projects"
+import { getFreelancerProjects, type FreelancerProjectListItem } from "@/services/api"
 import { getAuthUser } from "@/services/auth"
-import { createFreelancerTimeLog } from "@/services/freelancer"
+import { postRequest } from "@/services/api"
 import { toast } from "sonner"
 import { FileAttachment, type Attachment } from "@/components/file-attachment"
 import { RichTextEditor } from "@/components/rich-text-editor"
@@ -41,7 +41,7 @@ const STEPS = [
 export default function NewTimeLogPage() {
     const router = useRouter()
     const [currentStep, setCurrentStep] = useState(1)
-    const [projects, setProjects] = useState<Project[]>([])
+    const [projects, setProjects] = useState<FreelancerProjectListItem[]>([])
     const [isLoadingProjects, setIsLoadingProjects] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -88,17 +88,13 @@ export default function NewTimeLogPage() {
 
         const fetchProjects = async () => {
             try {
-                const user = getAuthUser()
-                if (!user?.company?.id) {
-                    toast.error("Company information not found")
-                    return
-                }
-
-                const response = await getProjects(user.company.id)
-                setProjects(response.data)
+                const response = await getFreelancerProjects({ page: 1, limit: 100 })
+                const items = response?.data?.items ?? []
+                setProjects(items)
             } catch (error) {
                 console.error("Error fetching projects:", error)
                 toast.error("Failed to load projects")
+                setProjects([])
             } finally {
                 setIsLoadingProjects(false)
             }
@@ -117,7 +113,7 @@ export default function NewTimeLogPage() {
     const validateStep = (step: number): boolean => {
         switch (step) {
             case 1:
-                return formData.title.trim().length > 0
+                return formData.title.trim().length > 0 && (showProjects ? formData.project.trim().length > 0 : true)
             case 2:
                 return formData.minutes.length > 0 && Number(formData.minutes) > 0
             case 3:
@@ -135,6 +131,7 @@ export default function NewTimeLogPage() {
         switch (step) {
             case 1:
                 if (!formData.title.trim()) return "Task title is required"
+                if (showProjects && !formData.project.trim()) return "Project is required"
                 return null
             case 2:
                 if (!formData.minutes) return "Time duration is required"
@@ -150,6 +147,7 @@ export default function NewTimeLogPage() {
 
     const validateFullForm = (): string | null => {
         if (!formData.title.trim()) return "Task title is required"
+        if (showProjects && !formData.project.trim()) return "Project is required"
         if (!formData.minutes) return "Time duration is required"
         if (Number(formData.minutes) <= 0) return "Time must be greater than 0"
         if (!formData.description.trim()) return "Task description is required"
@@ -235,17 +233,21 @@ export default function NewTimeLogPage() {
                 title: formData.title.trim(),
                 description: formData.description.trim(),
                 status: formData.status,
-                ...(formData.project ? { project: formData.project } : {}),
+                project: formData.project?.trim() || "",
                 attachments: attachmentsBase64.length > 0 ? attachmentsBase64 : undefined,
                 urls: urlAttachments.length > 0 ? urlAttachments : undefined,
             };
 
-            await createFreelancerTimeLog(payload);
-            toast.success("Time log created successfully!");
-            if (enableStayOnForm) {
-                resetForm();
+            const response = await postRequest("/consultants/time-logs", payload);
+            if ((response as { status: number }).status === 201) {
+                toast.success("Time log created successfully!");
+                if (enableStayOnForm) {
+                    resetForm();
+                } else {
+                    router.push("/dashboard/freelancer/time-logs");
+                }
             } else {
-                router.push("/dashboard/freelancer/time-logs");
+                toast.error("Failed to create time log");
             }
         } catch (error) {
             console.error("Error creating time log:", error);
@@ -289,7 +291,7 @@ export default function NewTimeLogPage() {
                 {/* Basic Info Section */}
                 <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
                     <h3 className="text-lg font-semibold text-gradient">Basic Information</h3>
-                    <div className={`grid grid-cols-1 ${showProjects ? 'md:grid-cols-2' : ''} gap-4`}>
+                    <div className={`grid grid-cols-1 ${showProjects ? 'sm:grid-cols-2' : ''} gap-4`}>
                         <div className="space-y-2">
                             <Label htmlFor="taskTitle">Task Title *</Label>
                             <Input
@@ -302,14 +304,15 @@ export default function NewTimeLogPage() {
 
                         {showProjects && (
                             <div className="space-y-2">
-                                <Label htmlFor="project">Project (optional)</Label>
+                                <Label htmlFor="project">Project <span className="text-red-500">*</span></Label>
                                 <Select
                                     value={formData.project}
                                     onValueChange={(value) => handleInputChange("project", value)}
                                     disabled={isLoadingProjects}
+                                    required
                                 >
                                     <SelectTrigger id="project">
-                                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                                        <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {isLoadingProjects ? (
@@ -327,10 +330,12 @@ export default function NewTimeLogPage() {
                                             projects.map((project) => (
                                                 <SelectItem key={project.id} value={project.id}>
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium">{project.name}</span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {project.department.name} • {project.lead.fullName}
-                                                        </span>
+                                                        <span className="font-medium">{project.projectName}</span>
+                                                        {project.company?.companyName && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {project.company.companyName}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </SelectItem>
                                             ))
@@ -345,7 +350,7 @@ export default function NewTimeLogPage() {
                 {/* Time & Status Section */}
                 <div className="space-y-4 p-4 border rounded-lg bg-pale/50">
                     <h3 className="text-lg font-semibold text-gradient">Time & Status</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="minutes">Time Duration *</Label>
                             <div className="flex items-center">
@@ -444,14 +449,15 @@ export default function NewTimeLogPage() {
 
                     {showProjects && (
                         <div className="space-y-2">
-                            <Label htmlFor="project">Project (optional)</Label>
+                            <Label htmlFor="project">Project <span className="text-red-500">*</span></Label>
                             <Select
                                 value={formData.project}
                                 onValueChange={(value) => handleInputChange("project", value)}
                                 disabled={isLoadingProjects}
+                                required
                             >
                                 <SelectTrigger id="project">
-                                    <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project (optional)"} />
+                                    <SelectValue placeholder={isLoadingProjects ? "Loading projects..." : "Select a project"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {isLoadingProjects ? (
@@ -469,10 +475,12 @@ export default function NewTimeLogPage() {
                                         projects.map((project) => (
                                             <SelectItem key={project.id} value={project.id}>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{project.name}</span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {project.department.name} • {project.lead.fullName}
-                                                    </span>
+                                                    <span className="font-medium">{project.projectName}</span>
+                                                    {project.company?.companyName && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {project.company.companyName}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </SelectItem>
                                         ))
@@ -574,7 +582,7 @@ export default function NewTimeLogPage() {
             const selectedProject = getSelectedProject()
             return (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="text-sm font-medium text-muted-foreground">Task Title</Label>
                             <p className="font-medium">{formData.title}</p>
@@ -584,10 +592,12 @@ export default function NewTimeLogPage() {
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium text-muted-foreground">Project</Label>
                                 <div>
-                                    <p className="font-medium">{selectedProject.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {selectedProject.department.name} • {selectedProject.lead.fullName}
-                                    </p>
+                                    <p className="font-medium">{selectedProject.projectName}</p>
+                                    {selectedProject.company?.companyName && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedProject.company.companyName}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -637,11 +647,11 @@ export default function NewTimeLogPage() {
 
     return (
         <div className="flex flex-col gap-4">
-            <Card className="max-w-4xl">
+            <Card className="max-w-4xl w-full">
                 <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between mb-6">
-                        <CardTitle className="text-base">New Time log</CardTitle>
-                        <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3 sm:gap-0">
+                        <CardTitle className="text-base sm:text-lg">New Time log</CardTitle>
+                        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -651,13 +661,14 @@ export default function NewTimeLogPage() {
                                     localStorage.setItem("enableTimeLogSteppers", JSON.stringify(newValue))
                                     toast.success(`Switched to ${newValue ? 'stepped' : 'full form'} interface`)
                                 }}
-                                className="text-xs"
+                                className="text-xs flex-1 sm:flex-none"
                             >
                                 {enableSteppers ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
-                                {enableSteppers ? 'Steps' : 'Full Form'}
+                                <span className="hidden sm:inline">{enableSteppers ? 'Steps' : 'Full Form'}</span>
+                                <span className="sm:hidden">{enableSteppers ? 'Steps' : 'Form'}</span>
                             </Button>
                             {enableSteppers && (
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                     Step {currentStep} of {effectiveSteps.length}
                                 </span>
                             )}
@@ -666,9 +677,9 @@ export default function NewTimeLogPage() {
 
                     {/* MUI-inspired Stepper - Only show if steppers are enabled */}
                     {enableSteppers && (
-                        <div className="w-full bg-pale rounded p-6">
+                        <div className="w-full bg-pale rounded p-4 sm:p-6">
                             {/* Desktop stepper */}
-                            <div className="hidden sm:block">
+                            <div className="hidden md:block">
                                 <div className="flex items-center justify-between relative">
                                     {effectiveSteps.map((step, index) => (
                                         <div key={step.id} className="flex flex-col items-center flex-1 relative">
@@ -727,7 +738,7 @@ export default function NewTimeLogPage() {
                             </div>
 
                             {/* Mobile stepper */}
-                            <div className="block sm:hidden">
+                            <div className="block md:hidden">
                                 <div className="flex items-center justify-between mb-4">
                                     {effectiveSteps.map((step, index) => (
                                         <div key={step.id} className="flex items-center flex-1">
@@ -785,31 +796,31 @@ export default function NewTimeLogPage() {
                     {enableSteppers ? renderStepContent() : renderFullForm()}
                 </CardContent>
 
-                <CardFooter className="flex justify-between pt-6">
-                    <div className="flex gap-2">
-                        <Button variant="outline" asChild type="button" className="bg-transparent">
+                <CardFooter className="flex flex-col sm:flex-row justify-between pt-6 gap-3 sm:gap-0">
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="outline" asChild type="button" className="bg-transparent w-full sm:w-auto">
                             <Link href="/dashboard/freelancer/time-logs">Cancel</Link>
                         </Button>
                     </div>
 
-                    <div className="items-center flex gap-3">
+                    <div className="items-center flex gap-3 w-full sm:w-auto justify-end">
                         {enableSteppers ? (
                             // Stepped interface navigation
                             <>
                                 {currentStep > 1 && (
-                                    <Button variant="outline" className="bg-transparent" onClick={handlePrevious} type="button">
-                                        <ChevronLeft className=" h-4 w-4" />
-                                        <span className="font-normal">back</span>
+                                    <Button variant="outline" className="bg-transparent flex-1 sm:flex-none" onClick={handlePrevious} type="button">
+                                        <ChevronLeft className="h-4 w-4" />
+                                        <span className="font-normal ml-1">back</span>
                                     </Button>
                                 )}
                                 {currentStep < effectiveSteps.length ? (
                                     <Button
                                         onClick={handleNext}
                                         type="button"
-                                        className="gradient"
+                                        className="gradient flex-1 sm:flex-none"
                                         disabled={!validateStep(currentStep)}
                                     >
-                                        Next
+                                        <span className="hidden sm:inline">Next</span>
                                         <ChevronRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 ) : (
@@ -817,15 +828,19 @@ export default function NewTimeLogPage() {
                                         onClick={handleSubmit}
                                         disabled={isSubmitting}
                                         type="button"
-                                        className="gradient"
+                                        className="gradient flex-1 sm:flex-none"
                                     >
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Saving...
+                                                <span className="hidden sm:inline">Saving...</span>
+                                                <span className="sm:hidden">Saving</span>
                                             </>
                                         ) : (
-                                            "Create Time Log"
+                                            <>
+                                                <span className="hidden sm:inline">Create Time Log</span>
+                                                <span className="sm:hidden">Create</span>
+                                            </>
                                         )}
                                     </Button>
                                 )}
@@ -843,15 +858,19 @@ export default function NewTimeLogPage() {
                                 }}
                                 disabled={isSubmitting}
                                 type="button"
-                                className="gradient"
+                                className="gradient w-full sm:w-auto"
                             >
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        <span className="hidden sm:inline">Saving...</span>
+                                        <span className="sm:hidden">Saving</span>
                                     </>
                                 ) : (
-                                    "Create Time Log"
+                                    <>
+                                        <span className="hidden sm:inline">Create Time Log</span>
+                                        <span className="sm:hidden">Create</span>
+                                    </>
                                 )}
                             </Button>
                         )}

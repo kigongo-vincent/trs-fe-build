@@ -350,3 +350,155 @@ export const formatHoursCount = (hours: number): string => {
   }
   return `${wholeHours}h ${minutes}m`;
 };
+
+// Types for Freelancer Plans API Response
+export interface FreelancerPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  durationType: string;
+  isActive: boolean;
+  maxProjects: number;
+  maxTimeLogsPerMonth: number;
+  stripePriceId: string | null;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FreelancerPlansResponse {
+  status: number;
+  message: string;
+  data: FreelancerPlan[];
+}
+
+// Fetch freelancer plans
+export const fetchFreelancerPlans = async (): Promise<FreelancerPlansResponse> => {
+  try {
+    const response = await getRequest<FreelancerPlansResponse>(
+      "/freelancer/plans"
+    );
+    return response;
+  } catch (error) {
+    console.error("Error fetching freelancer plans:", error);
+    throw error;
+  }
+};
+
+// Types for Freelancer Subscriptions API Response
+export interface FreelancerSubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  currency: string;
+  durationType: string;
+  isActive: boolean;
+  maxProjects: number;
+  maxTimeLogsPerMonth: number;
+  stripePriceId: string | null;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FreelancerSubscriptionFreelancer {
+  id: string;
+  fullName: string;
+  email: string;
+  password: string;
+  status: string;
+  type: string;
+  jobTitle: string;
+  bio: string;
+  profileImage: string | null;
+  resetToken: string | null;
+  resetTokenExpires: string | null;
+  phoneNumber: string;
+  employeeId: string | null;
+  firstName: string;
+  lastName: string;
+  grossPay: number | null;
+  dateOfBirth: string | null;
+  nextOfKin: {
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+    relationship: string;
+  };
+  address: string | null;
+  bankDetails: {
+    bankName: string;
+    swiftCode: string;
+    accountName: string;
+    accountNumber: string;
+    routingNumber: string;
+  };
+  officeDays: string | null;
+  createdAt: string;
+  updatedAt: string;
+  hourlyRate: number | null;
+  currency: string | null;
+  totalHoursPerMonth: number;
+  attachments: string | null;
+  boardMemberRole: string | null;
+}
+
+export interface FreelancerSubscription {
+  id: string;
+  freelancerId: string;
+  planId: string;
+  stripeSubscriptionId: string;
+  status: string;
+  startsAt: string;
+  expiresAt: string;
+  canceledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  freelancer: FreelancerSubscriptionFreelancer;
+  plan: FreelancerSubscriptionPlan;
+}
+
+export interface FreelancerSubscriptionsResponse {
+  status: number;
+  message: string;
+  data: FreelancerSubscription[];
+}
+
+// Fetch freelancer subscriptions
+export const fetchFreelancerSubscriptions = async (
+  freelancerId: string
+): Promise<FreelancerSubscriptionsResponse> => {
+  try {
+    const response = await getRequest<FreelancerSubscriptionsResponse>(
+      `/freelancer/subscriptions/list/${freelancerId}`
+    );
+    return response;
+  } catch (error) {
+    console.error("Error fetching freelancer subscriptions:", error);
+    throw error;
+  }
+};
+
+// Response type for current subscription
+export interface FreelancerCurrentSubscriptionResponse {
+  status: number;
+  message: string;
+  data: FreelancerSubscription | null;
+}
+
+// Fetch current freelancer subscription
+export const fetchCurrentFreelancerSubscription = async (): Promise<FreelancerSubscription | null> => {
+  try {
+    const response = await getRequest<FreelancerCurrentSubscriptionResponse>(
+      "/freelancer/subscriptions/current"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching current freelancer subscription:", error);
+    // Return null if there's an error (e.g., no subscription found)
+    return null;
+  }
+};

@@ -28,6 +28,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [emailPlaceholder, setEmailPlaceholder] = useState("e.g brian@gmail.com")
+  // const [passwordPlaceholder, setPasswordPlaceholder] = useState("")
 
   useEffect(() => {
     const checkAuthentication = () => {
@@ -169,7 +171,8 @@ export default function Home() {
                   name="email"
                   autoComplete="off"
                   type="email"
-                  placeholder="alex.jordan@gmail.com"
+                  onFocus={() => setEmailPlaceholder("")}
+                  placeholder={emailPlaceholder}
                   value={formData.email}
                   onChange={handleChange}
                   required
@@ -221,12 +224,12 @@ export default function Home() {
                 )}
               </Button>
             </form>
-            <div className="text-center text-sm mt-6 text-muted-foreground">
-              Don't have an account?{' '}
+            <div className="text-center flex items-center justify-center gap-1 text-sm mt-6 text-muted-foreground">
+              Don't have an account{' '}
               <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
-                <Link href="/signup/company" className="text-primary font-medium hover:underline">Company Signup</Link>
-                <span className="hidden sm:inline">or</span>
-                <Link href="/signup/freelancer" className="text-primary font-medium hover:underline">Freelancer Signup</Link>
+                {/* <Link href="/signup/company" className="text-primary font-medium hover:underline">Company Signup</Link> */}
+                {/* <span className="hidden sm:inline">or</span> */}
+                <Link href="/signup/freelancer" className="text-primary font-medium hover:underline">Signup</Link>
               </div>
             </div>
           </div>

@@ -54,6 +54,6 @@ export const getChartColorVariations = (count: number): string[] => {
 };
 
 export const textCropper = (string: string, limit: number): string => {
-  const stringLength = string.length;
+  const stringLength = string?.length;
   return stringLength > limit ? `${string.slice(0, limit - 3)}...` : string;
 };

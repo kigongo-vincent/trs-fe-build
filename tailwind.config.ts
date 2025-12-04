@@ -88,7 +88,7 @@ const config = {
         sans: ["Poppins", "sans-serif"],
       },
       fontSize: {
-        base: "14px",
+        base: "13px",
       },
     },
   },

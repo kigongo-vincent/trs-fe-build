@@ -237,6 +237,287 @@ export function getImage(path: string): string {
   return IMAGE_BASE_URL + path.replace(/^\//, "");
 }
 
+export interface ApiResponse<T> {
+  status: number;
+  message: string;
+  data: T;
+}
+
+export interface FreelancerInvoiceSummary {
+  totalInvoices: number;
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+}
+
+export type FreelancerInvoiceStatus =
+  | "draft"
+  | "active"
+  | "sent"
+  | "paid"
+  | "overdue";
+
+export interface FreelancerInvoiceStatusDistribution {
+  draft: number;
+  sent: number;
+  paid: number;
+  overdue: number;
+}
+
+export interface FreelancerInvoiceMonthlyTrendPoint {
+  month: string;
+  year: number;
+  monthNumber: number;
+  total: number;
+}
+
+export interface FreelancerInvoiceProjectRef {
+  id: string;
+  projectName: string;
+}
+
+export interface FreelancerInvoiceListItem {
+  id: string;
+  description?: string;
+  amount?: number;
+  dueDate?: string;
+  status?: FreelancerInvoiceStatus | string;
+  project?: FreelancerInvoiceProjectRef;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FreelancerInvoicesData {
+  pagination: PaginationMeta;
+  items: FreelancerInvoiceListItem[];
+}
+
+export interface FreelancerProjectSummary {
+  totalProjects: number;
+  totalHours: number;
+  totalEarnings: number;
+  avgHourlyRate: number;
+}
+
+export interface FreelancerProjectStatusDistribution {
+  active: number;
+  inactive: number;
+  completed: number;
+  "on-hold": number;
+}
+
+export interface FreelancerProjectTimelineEntry {
+  id: string;
+  projectName: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+}
+
+export interface FreelancerProjectCompany {
+  id: string;
+  companyName: string;
+}
+
+export interface FreelancerProjectListItem {
+  id: string;
+  projectName: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate: string | null;
+  hourlyRate: number;
+  fixedTotalAmount: number;
+  totalHours: number;
+  earnings?: number;
+  company?: FreelancerProjectCompany;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface FreelancerProjectsData {
+  pagination: PaginationMeta;
+  items: FreelancerProjectListItem[];
+}
+
+export interface CreateFreelancerProjectPayload {
+  projectName: string;
+  freelancerCompanyId: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate?: string | null;
+  hourlyRate: number;
+  fixedTotalAmount?: number;
+}
+
+export async function getFreelancerInvoiceSummary() {
+  return getRequest<ApiResponse<FreelancerInvoiceSummary>>(
+    "/freelancer/invoices/summary"
+  );
+}
+
+export async function getFreelancerInvoiceStatusDistribution() {
+  return getRequest<ApiResponse<FreelancerInvoiceStatusDistribution>>(
+    "/freelancer/invoices/status-distribution"
+  );
+}
+
+export async function getFreelancerInvoiceMonthlyTrend() {
+  return getRequest<ApiResponse<FreelancerInvoiceMonthlyTrendPoint[]>>(
+    "/freelancer/invoices/monthly-trend"
+  );
+}
+
+export interface CreateFreelancerInvoicePayload {
+  description: string;
+  amount: number;
+  dueDate: string;
+  projectId: string;
+  status: FreelancerInvoiceStatus;
+}
+
+export interface UpdateFreelancerInvoicePayload {
+  description?: string;
+  amount?: number;
+  dueDate?: string;
+  projectId?: string;
+  status?: FreelancerInvoiceStatus;
+}
+
+export async function getFreelancerInvoices(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: FreelancerInvoiceStatus | string;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (params) {
+    if (params.page) searchParams.set("page", params.page.toString());
+    if (params.limit) searchParams.set("limit", params.limit.toString());
+    if (params.search) searchParams.set("search", params.search);
+    if (params.status) searchParams.set("status", params.status.toString());
+  }
+
+  const query = searchParams.toString();
+  const route = query
+    ? `/freelancer/invoices?${query}`
+    : "/freelancer/invoices";
+
+  return getRequest<ApiResponse<FreelancerInvoicesData>>(route);
+}
+
+export async function createFreelancerInvoice(
+  payload: CreateFreelancerInvoicePayload
+) {
+  /**
+   * Sample payload:
+   * {
+   *   "description": "string",
+   *   "amount": 0,
+   *   "dueDate": "2025-11-25",
+   *   "projectId": "string",
+   *   "status": "draft"
+   * }
+   */
+  return postRequest<ApiResponse<unknown>>("/freelancer/invoices", payload);
+}
+
+export async function getFreelancerInvoiceById(id: string) {
+  return getRequest<ApiResponse<FreelancerInvoiceListItem>>(
+    `/freelancer/invoices/${id}`
+  );
+}
+
+export async function updateFreelancerInvoice(
+  id: string,
+  payload: UpdateFreelancerInvoicePayload
+) {
+  return putRequest<ApiResponse<FreelancerInvoiceListItem>>(
+    `/freelancer/invoices/${id}`,
+    payload
+  );
+}
+
+export async function deleteFreelancerInvoice(id: string) {
+  return deleteRequest<ApiResponse<null>>(`/freelancer/invoices/${id}`);
+}
+
+export async function getFreelancerProjectsSummary() {
+  return getRequest<ApiResponse<FreelancerProjectSummary>>(
+    "/freelancer/projects/summary"
+  );
+}
+
+export async function getFreelancerProjectStatusDistribution() {
+  return getRequest<ApiResponse<FreelancerProjectStatusDistribution>>(
+    "/freelancer/projects/status-distribution"
+  );
+}
+
+export async function getFreelancerProjectTimelines() {
+  return getRequest<ApiResponse<FreelancerProjectTimelineEntry[]>>(
+    "/freelancer/projects/timelines"
+  );
+}
+
+export async function getFreelancerProjects(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}) {
+  const searchParams = new URLSearchParams();
+
+  if (params) {
+    if (params.page) searchParams.set("page", params.page.toString());
+    if (params.limit) searchParams.set("limit", params.limit.toString());
+    if (params.search) searchParams.set("search", params.search);
+    if (params.status) searchParams.set("status", params.status);
+  }
+
+  const query = searchParams.toString();
+  const route = query
+    ? `/freelancer/projects?${query}`
+    : "/freelancer/projects";
+
+  return getRequest<ApiResponse<FreelancerProjectsData>>(route);
+}
+
+export async function createFreelancerProject(
+  payload: CreateFreelancerProjectPayload
+) {
+  return postRequest<ApiResponse<FreelancerProjectListItem>>(
+    "/freelancer/projects",
+    payload
+  );
+}
+
+export async function updateFreelancerProject(
+  id: string,
+  payload: CreateFreelancerProjectPayload
+) {
+  return putRequest<ApiResponse<FreelancerProjectListItem>>(
+    `/freelancer/projects/${id}`,
+    payload
+  );
+}
+
+export async function deleteFreelancerProject(id: string) {
+  return deleteRequest<ApiResponse<null>>(`/freelancer/projects/${id}`);
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   const data = await response.json();
 
@@ -299,6 +580,7 @@ export async function createPackage(payload: {
   durationType: "monthly" | "yearly";
   no_of_users: number;
   status: string;
+  url: string;
 }): Promise<any> {
   return postRequest("/super-admin/packages", payload);
 }

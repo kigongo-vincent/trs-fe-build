@@ -1,6 +1,27 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from "recharts"
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    LineChart,
+    Line,
+    AreaChart,
+    Area
+} from "recharts"
+import type {
+    FreelancerInvoiceMonthlyTrendPoint,
+    FreelancerInvoiceStatusDistribution,
+    FreelancerProjectStatusDistribution
+} from "@/services/api"
 
 type CompanyPerformanceDatum = {
     name: string
@@ -41,15 +62,27 @@ export function FreelancerCompaniesChart({ data }: FreelancerCompaniesChartProps
     )
 }
 
-// Freelancer Projects Status Chart
-const projectStatusData = [
-    { name: "Active", value: 3, color: "#F6931B" },
-    { name: "Completed", value: 9, color: "#111827" },
-    { name: "On Hold", value: 1, color: "#6b7280" },
-    { name: "Cancelled", value: 0, color: "#111827" },
+const DEFAULT_PROJECT_STATUS_DATA = [
+    { name: "Active", value: 0, color: "#F6931B" },
+    { name: "Completed", value: 0, color: "#111827" },
+    { name: "On Hold", value: 0, color: "#6b7280" },
+    { name: "Inactive", value: 0, color: "#9ca3af" }
 ]
 
-export function FreelancerProjectStatusChart() {
+interface FreelancerProjectStatusChartProps {
+    data?: FreelancerProjectStatusDistribution | null
+}
+
+export function FreelancerProjectStatusChart({ data }: FreelancerProjectStatusChartProps) {
+    const projectStatusData = data
+        ? [
+            { name: "Active", value: data.active ?? 0, color: "#F6931B" },
+            { name: "Completed", value: data.completed ?? 0, color: "#111827" },
+            { name: "On Hold", value: data["on-hold"] ?? 0, color: "#6b7280" },
+            { name: "Inactive", value: data.inactive ?? 0, color: "#9ca3af" }
+        ]
+        : DEFAULT_PROJECT_STATUS_DATA
+
     return (
         <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -58,7 +91,7 @@ export function FreelancerProjectStatusChart() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={false}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -108,20 +141,32 @@ export function FreelancerHoursChart() {
 }
 
 // Freelancer Earnings Chart
-const earningsData = [
+const DEFAULT_EARNINGS_DATA = [
     { month: "Jan", earnings: 4000 },
     { month: "Feb", earnings: 4500 },
     { month: "Mar", earnings: 5000 },
     { month: "Apr", earnings: 5500 },
     { month: "May", earnings: 6000 },
-    { month: "Jun", earnings: 6500 },
+    { month: "Jun", earnings: 6500 }
 ]
 
-export function FreelancerEarningsChart() {
+interface FreelancerEarningsChartProps {
+    data?: FreelancerInvoiceMonthlyTrendPoint[] | null
+}
+
+export function FreelancerEarningsChart({ data }: FreelancerEarningsChartProps) {
+    const chartData =
+        data && data.length
+            ? data.map(item => ({
+                month: item.month,
+                earnings: item.total
+            }))
+            : DEFAULT_EARNINGS_DATA
+
     return (
         <ResponsiveContainer width="100%" height={300}>
             <LineChart
-                data={earningsData}
+                data={chartData}
                 margin={{
                     top: 5,
                     right: 30,
@@ -140,28 +185,87 @@ export function FreelancerEarningsChart() {
 }
 
 // Freelancer Invoice Status Chart
-const invoiceStatusData = [
-    { name: "Paid", value: 8, color: "#F6931B" },
-    { name: "Sent", value: 3, color: "#111827" },
-    { name: "Draft", value: 2, color: "#6b7280" },
-    { name: "Overdue", value: 1, color: "#111827" },
+const DEFAULT_INVOICE_STATUS_DATA = [
+    { name: "Paid", value: 1, color: "#F6931B" },
+    { name: "Sent", value: 1, color: "#111827" },
+    { name: "Draft", value: 1, color: "#6b7280" },
+    { name: "Overdue", value: 1, color: "#EF4444" }
 ]
 
-export function FreelancerInvoiceStatusChart() {
+const STATUS_COLOR_MAP: Record<string, string> = {
+    paid: "#F6931B",
+    sent: "#111827",
+    active: "#3b82f6",
+    draft: "#6b7280",
+    overdue: "#EF4444"
+}
+
+interface FreelancerInvoiceStatusChartProps {
+    data?: FreelancerInvoiceStatusDistribution | null
+    loading?: boolean
+}
+
+export function FreelancerInvoiceStatusChart({ data, loading }: FreelancerInvoiceStatusChartProps) {
+    // Show skeleton when loading
+    if (loading || data === undefined) {
+        return (
+            <div className="w-full h-[300px] flex items-center justify-center">
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+                    <div className="w-32 h-32 rounded-full bg-muted animate-pulse" />
+                    <div className="space-y-2 w-full max-w-[200px]">
+                        <div className="h-4 bg-muted rounded animate-pulse" />
+                        <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+                        <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    // If data is null (API responded with null), show empty state
+    if (data === null) {
+        return (
+            <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>No data available</p>
+            </div>
+        )
+    }
+
+    // Use actual data from API
+    const chartData = [
+        { name: "Paid", value: data.paid ?? 0, color: STATUS_COLOR_MAP.paid },
+        { name: "Sent", value: data.sent ?? 0, color: STATUS_COLOR_MAP.sent },
+        { name: "Active", value: (data as any).active ?? 0, color: STATUS_COLOR_MAP.active },
+        { name: "Draft", value: data.draft ?? 0, color: STATUS_COLOR_MAP.draft },
+        { name: "Overdue", value: data.overdue ?? 0, color: STATUS_COLOR_MAP.overdue }
+    ]
+
+    // Filter out zero values to avoid equal partitioning
+    const filteredData = chartData.filter(item => item.value > 0)
+
+    // If all values are zero, show empty state
+    if (filteredData.length === 0) {
+        return (
+            <div className="w-full h-[300px] flex items-center justify-center text-muted-foreground">
+                <p>No invoices yet</p>
+            </div>
+        )
+    }
+
     return (
         <ResponsiveContainer width="100%" height={300}>
             <PieChart>
                 <Pie
-                    data={invoiceStatusData}
+                    data={filteredData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={false}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                 >
-                    {invoiceStatusData.map((entry, index) => (
+                    {filteredData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                 </Pie>

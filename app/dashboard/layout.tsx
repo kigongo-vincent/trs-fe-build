@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Loader2, Menu, X } from "lucide-react"
 import { getUserRole, isAuthenticated, isTokenExpired, getAuthUser, getDashboardPath } from "@/services/auth"
+import { fetchCurrentFreelancerSubscription } from "@/services/freelancer"
 import { Badge } from "@/components/ui/badge"
 import { Package } from "lucide-react"
 import Link from "next/link"
@@ -37,11 +38,24 @@ export default function DashboardLayout({
       try {
         const user = await getAuthUser()
         if (user) {
-          if (user.company?.package?.name) {
-            foundPlan = user.company.package.name
-          }
           if (user.role?.name) {
             setUserRole(user.role.name)
+            // For freelancers, fetch current subscription from API
+            if (user.role.name === "Freelancer") {
+              try {
+                const currentSubscription = await fetchCurrentFreelancerSubscription()
+                if (currentSubscription && currentSubscription.plan) {
+                  foundPlan = currentSubscription.plan.name
+                } else {
+                  foundPlan = "Trial"
+                }
+              } catch (err) {
+                console.error("Error fetching freelancer subscription:", err)
+                foundPlan = "Trial"
+              }
+            } else if (user.company?.package?.name) {
+              foundPlan = user.company.package.name
+            }
           }
         }
       } catch (err) {
@@ -59,6 +73,24 @@ export default function DashboardLayout({
   const router = useRouter()
   useEffect(() => {
     loadDefaults()
+
+    // Listen for plan name updates from packages page
+    const handlePlanNameUpdate = () => {
+      if (typeof window !== "undefined") {
+        const updatedPlanName = localStorage.getItem("freelancerPlanName")
+        if (updatedPlanName) {
+          setPlanName(updatedPlanName)
+        } else {
+          // Reload from API if localStorage is cleared
+          loadDefaults()
+        }
+      }
+    }
+
+    window.addEventListener("freelancerPlanNameUpdated", handlePlanNameUpdate)
+    return () => {
+      window.removeEventListener("freelancerPlanNameUpdated", handlePlanNameUpdate)
+    }
   }, [router])
 
   // Client-side role guard: read from localStorage via getAuthUser
@@ -110,6 +142,8 @@ export default function DashboardLayout({
   const handleUpgradeClick = () => {
     if (userRole === "Company Admin") {
       router.push("/dashboard/company-admin/packages")
+    } else if (userRole === "Freelancer") {
+      router.push("/dashboard/freelancer/packages")
     }
   }
 
@@ -188,15 +222,18 @@ export default function DashboardLayout({
         <main className={cn(`flex-1 mt-[4rem] p-4 md:p-6`, "md:ml-64")}>
 
           {/* alert component for the current plan */}
-          {loaded && showPlanAlert && userRole === "Company Admin" && ["trial", "free"].includes(planName.toLowerCase()) && (
-            <div className="flex bg-primary/10 font-[13.5px] p-4 text-primary items-center justify-between rounded mb-4">
-              <span className="flex items-center space-x-3">
-                <AlertCircle />
-                <span className="font-[13.5px]">You are on the <b>{planName}</b> plan, <button className="rounded-full text-primary underline font-[13.5px]" onClick={handleUpgradeClick}>upgrade</button></span>
-              </span>
-              <X size={20} className="cursor-pointer" onClick={handleDismissAlert} />
-            </div>
-          )}
+          {loaded && showPlanAlert && (
+            (userRole === "Company Admin" && ["trial", "free"].includes(planName.toLowerCase())) ||
+            (userRole === "Freelancer" && planName.toLowerCase() === "trial")
+          ) && (
+              <div className="flex bg-primary/10 font-[13.5px] p-4 text-primary items-center justify-between rounded mb-4">
+                <span className="flex items-center space-x-3">
+                  <AlertCircle />
+                  <span className="font-[13.5px]">You are on the <b>{planName}</b> plan, <button className="rounded-full text-primary underline font-[13.5px]" onClick={handleUpgradeClick}>upgrade</button></span>
+                </span>
+                <X size={20} className="cursor-pointer" onClick={handleDismissAlert} />
+              </div>
+            )}
 
           <Suspense fallback={<div className=" h-full flex items-center justify-center w-full">
             <div className="bg-paper flex flex-col items-center justify-center rounded p-10">

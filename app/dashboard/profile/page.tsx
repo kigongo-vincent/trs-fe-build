@@ -281,25 +281,27 @@ export default function ProfilePage() {
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="bg-pale rounded p-4">
-                                    <Label className="text-sm font-medium">Gross Pay</Label>
-                                    <div className="text-sm text-muted-foreground mt-1">
-                                        {user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}
+                            {userRole !== "Freelancer" && (
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="bg-pale rounded p-4">
+                                        <Label className="text-sm font-medium">Gross Pay</Label>
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            {user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="bg-pale rounded p-4">
-                                    <Label className="text-sm font-medium">Days in office</Label>
-                                    <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-2">
-                                        {user?.officeDays?.map((day: string) => (
-                                            <div key={day} className="border rounded-full px-3 py-1 text-xs">
-                                                {weekdayMap[day as keyof typeof weekdayMap] || day}
-                                            </div>
-                                        ))}
+                                    <div className="bg-pale rounded p-4">
+                                        <Label className="text-sm font-medium">Days in office</Label>
+                                        <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-2">
+                                            {user?.officeDays?.map((day: string) => (
+                                                <div key={day} className="border rounded-full px-3 py-1 text-xs">
+                                                    {weekdayMap[day as keyof typeof weekdayMap] || day}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Desktop Layout */}
@@ -324,30 +326,34 @@ export default function ProfilePage() {
                                     )}
                                 </span>
                             </div>
-                            <div className="flex-1 md:border-r">
-                                <CardContent className="space-y-2 w-full">
-                                    <div>
-                                        <Label>Gross Pay</Label>
-                                        <div className="text-muted-foreground">
-                                            {user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </div>
-                            <div className="flex-1">
-                                <CardContent className="space-y-2 w-full">
-                                    <div>
-                                        <Label>Days in office</Label>
-                                        <div className="text-muted-foreground flex gap-2 flex-wrap">
-                                            {user?.officeDays?.map((day: string) => (
-                                                <div key={day} className="border rounded-full px-6 text-sm py-1">
-                                                    {weekdayMap[day as keyof typeof weekdayMap] || day}
+                            {userRole !== "Freelancer" && (
+                                <>
+                                    <div className="flex-1 md:border-r">
+                                        <CardContent className="space-y-2 w-full">
+                                            <div>
+                                                <Label>Gross Pay</Label>
+                                                <div className="text-muted-foreground">
+                                                    {user.grossPay ? `${formatCurrency(user.grossPay, user?.currency)}` : "-"}
                                                 </div>
-                                            ))}
-                                        </div>
+                                            </div>
+                                        </CardContent>
                                     </div>
-                                </CardContent>
-                            </div>
+                                    <div className="flex-1">
+                                        <CardContent className="space-y-2 w-full">
+                                            <div>
+                                                <Label>Days in office</Label>
+                                                <div className="text-muted-foreground flex gap-2 flex-wrap">
+                                                    {user?.officeDays?.map((day: string) => (
+                                                        <div key={day} className="border rounded-full px-6 text-sm py-1">
+                                                            {weekdayMap[day as keyof typeof weekdayMap] || day}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

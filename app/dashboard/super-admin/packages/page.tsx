@@ -32,6 +32,7 @@ type PackageType = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  stripeUrl: string
 }
 
 type PackagesApiResponse = {
@@ -42,11 +43,13 @@ type PackagesApiResponse = {
 
 const createPackageSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  stripeUrl: z.string().min(1, "Stripe URL is required"),
   description: z.string().min(1, "Description is required"),
   price: z.coerce.number().min(0, "Price must be at least 0"),
   durationType: z.enum(["monthly", "yearly"]),
   no_of_users: z.coerce.number().min(1, "At least 1 user required"),
   status: z.string().min(1, "Status is required"),
+
 })
 type CreatePackageForm = z.infer<typeof createPackageSchema>
 
@@ -55,6 +58,7 @@ export default function PackagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<string>("all")
+  const [stripeUrl, setStripeUrl] = useState<string>("")
   const [search, setSearch] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -121,6 +125,7 @@ export default function PackagesPage() {
       durationType: "monthly",
       no_of_users: 1,
       status: "active",
+      stripeUrl: "",
     },
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -128,7 +133,7 @@ export default function PackagesPage() {
   const handleCreatePackage = async (data: CreatePackageForm) => {
     setIsSubmitting(true)
     try {
-      const created = await createPackage(data)
+      const created = await createPackage({ ...data, url: data.stripeUrl })
       toast.success("Package created!", { description: `Package '${data.name}' was created successfully.` })
       setModalOpen(false)
       form.reset()
@@ -165,6 +170,7 @@ export default function PackagesPage() {
         durationType: editingPackage.durationType as "monthly" | "yearly",
         no_of_users: editingPackage.no_of_users,
         status: editingPackage.status,
+        stripeUrl: editingPackage.stripeUrl,
       })
     }
   }, [editingPackage])
@@ -223,6 +229,20 @@ export default function PackagesPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  <FormField control={form.control} name="stripeUrl" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stripe URL</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://stripe.com/checkout/..."
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
                   <FormField control={form.control} name="description" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
@@ -310,6 +330,13 @@ export default function PackagesPage() {
                     <FormItem>
                       <FormLabel>Price</FormLabel>
                       <FormControl><Input type="number" min={0} step={0.01} placeholder="0.00" {...field} disabled={isEditSubmitting} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={editForm.control} name="price" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stripe url</FormLabel>
+                      <FormControl><Input type="string" placeholder="e.g https://stripe......" value={stripeUrl} onChange={(e) => setStripeUrl(e.target.value)} disabled={isEditSubmitting} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

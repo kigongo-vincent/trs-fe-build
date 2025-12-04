@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { BASE_URL, getImage, updateCompany } from "@/services/api"
 import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Checkbox } from "@/components/ui/checkbox"
 import dynamic from "next/dynamic"
 import "react-phone-input-2/lib/style.css"
 import { Camera, Image, Smartphone, X, Circle, Images } from "lucide-react"
@@ -119,8 +120,11 @@ interface Department {
   projects: any[];
 }
 
+type SettingsTab = "profile" | "password" | "preferences" | "company"
+
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [passwordForm, setPasswordForm] = useState<PasswordFormData>({
     currentPassword: "",
     newPassword: "",
@@ -185,6 +189,7 @@ export default function SettingsPage() {
   const [showTimeLogUrls, setShowTimeLogUrls] = useState(true);
   const [showTimeLogProjects, setShowTimeLogProjects] = useState(true);
   const [enableStayOnForm, setEnableStayOnForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   // Image cropper states
   const [showCropperModal, setShowCropperModal] = useState(false);
@@ -227,7 +232,19 @@ export default function SettingsPage() {
         const currentUser = getAuthUser();
         const authData = getAuthData();
 
-        if (!currentUser || !authData?.user?.company?.id) {
+        if (!currentUser || !authData) {
+          toast.error("User data not found", {
+            description: "Please log in again to access your settings.",
+          });
+          router.push("/");
+          return;
+        }
+
+        // Get user role first
+        const role = getUserRole();
+
+        // For non-freelancers, require company.id
+        if (role !== "Freelancer" && !authData?.user?.company?.id) {
           toast.error("User data not found", {
             description: "Please log in again to access your settings.",
           });
@@ -236,7 +253,7 @@ export default function SettingsPage() {
         }
 
         setUser(currentUser);
-        setUserRole(getUserRole());
+        setUserRole(role);
 
         // Initialize profile form with user data
         // Parse fullName to get firstName and lastName
@@ -275,17 +292,25 @@ export default function SettingsPage() {
             swiftCode: currentUser.bankDetails?.swiftCode || "",
             routingNumber: currentUser.bankDetails?.routingNumber || "",
           },
-          officeDays: currentUser.officeDays || "",
+          officeDays: currentUser.officeDays
+            ? (Array.isArray(currentUser.officeDays)
+              ? JSON.stringify(currentUser.officeDays)
+              : typeof currentUser.officeDays === 'string'
+                ? currentUser.officeDays
+                : "")
+            : "",
         });
 
-        // Fetch departments for the company
-        const companyId = authData.user.company.id;
-        const departmentsResponse = await getDepartments(companyId);
+        // Fetch departments only for non-freelancers (they have a company)
+        if (role !== "Freelancer" && authData.user.company?.id) {
+          const companyId = authData.user.company.id;
+          const departmentsResponse = await getDepartments(companyId);
 
-        if (departmentsResponse.status === 200) {
-          setDepartments(mapApiDepartments(departmentsResponse.data));
-        } else {
-          console.error("Failed to fetch departments:", departmentsResponse.message);
+          if (departmentsResponse.status === 200) {
+            setDepartments(mapApiDepartments(departmentsResponse.data));
+          } else {
+            console.error("Failed to fetch departments:", departmentsResponse.message);
+          }
         }
 
       } catch (error) {
@@ -370,6 +395,32 @@ export default function SettingsPage() {
     }
   }, [userRole, user]);
 
+  const availableTabs = useMemo<SettingsTab[]>(() => {
+    const tabs: SettingsTab[] = ["profile", "password", "preferences"];
+    if (userRole === "Company Admin") {
+      tabs.push("company");
+    }
+    return tabs;
+  }, [userRole]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab") as SettingsTab | null;
+    if (tabParam && availableTabs.includes(tabParam)) {
+      setActiveTab(prev => (prev === tabParam ? prev : tabParam));
+    } else if (!availableTabs.includes(activeTab)) {
+      setActiveTab("profile");
+    }
+  }, [searchParams, availableTabs, activeTab]);
+
+  const handleTabChange = (value: string) => {
+    const nextTab = value as SettingsTab;
+    setActiveTab(nextTab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextTab);
+    const query = params.toString();
+    router.replace(query ? `/dashboard/settings?${query}` : "/dashboard/settings", { scroll: false });
+  };
+
   const validatePasswordForm = (): boolean => {
     const errors: PasswordFormErrors = {};
 
@@ -438,8 +489,11 @@ export default function SettingsPage() {
     }
   };
 
-  const handleProfileChange = (field: keyof ProfileFormData, value: string) => {
-    setProfileForm(prev => ({ ...prev, [field]: value }));
+  const handleProfileChange = (field: keyof ProfileFormData, value: string | number) => {
+    setProfileForm(prev => ({
+      ...prev,
+      [field]: field === "grossPay" ? (value === "" ? 0 : Number(value)) : value
+    }));
     // Clear error when user starts typing
     if (profileErrors[field]) {
       setProfileErrors(prev => ({ ...prev, [field]: undefined }));
@@ -552,7 +606,7 @@ export default function SettingsPage() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
-      
+
       if (fullPage) {
         setShowFullPageCamera(true);
       }
@@ -658,6 +712,43 @@ export default function SettingsPage() {
           : `+${profileForm.phoneNumber.trim()}`;
       }
 
+      // Add freelancer-specific fields
+      if (userRole === "Freelancer") {
+        if (profileForm.nextOfKin && (
+          profileForm.nextOfKin.name ||
+          profileForm.nextOfKin.relationship ||
+          profileForm.nextOfKin.phoneNumber ||
+          profileForm.nextOfKin.email
+        )) {
+          requestData.nextOfKin = {
+            name: profileForm.nextOfKin.name || null,
+            relationship: profileForm.nextOfKin.relationship || null,
+            phoneNumber: profileForm.nextOfKin.phoneNumber
+              ? (profileForm.nextOfKin.phoneNumber.startsWith('+')
+                ? profileForm.nextOfKin.phoneNumber.trim()
+                : `+${profileForm.nextOfKin.phoneNumber.trim()}`)
+              : null,
+            email: profileForm.nextOfKin.email || null,
+          };
+        }
+
+        if (profileForm.bankDetails && (
+          profileForm.bankDetails.accountName ||
+          profileForm.bankDetails.accountNumber ||
+          profileForm.bankDetails.bankName ||
+          profileForm.bankDetails.swiftCode ||
+          profileForm.bankDetails.routingNumber
+        )) {
+          requestData.bankDetails = {
+            accountName: profileForm.bankDetails.accountName || "",
+            accountNumber: profileForm.bankDetails.accountNumber || "",
+            bankName: profileForm.bankDetails.bankName || "",
+            swiftCode: profileForm.bankDetails.swiftCode || "",
+            routingNumber: profileForm.bankDetails.routingNumber || "",
+          };
+        }
+      }
+
       // Only add profileImage if a new avatar is selected
       if (selectedAvatarFile && avatarPreview) {
         // avatarPreview is like: data:image/png;base64,iVBORw0KGgo...
@@ -694,9 +785,9 @@ export default function SettingsPage() {
           phoneNumber: profileForm.phoneNumber, // Keep existing phoneNumber
           grossPay: currentUser.grossPay, // Keep existing grossPay
           dateOfBirth: currentUser.dateOfBirth, // Keep existing dateOfBirth
-          nextOfKin: currentUser.nextOfKin, // Keep existing nextOfKin
+          nextOfKin: userRole === "Freelancer" ? (profileForm.nextOfKin || currentUser.nextOfKin) : currentUser.nextOfKin,
           address: currentUser.address, // Keep existing address
-          bankDetails: currentUser.bankDetails, // Keep existing bankDetails
+          bankDetails: userRole === "Freelancer" ? (profileForm.bankDetails || currentUser.bankDetails) : currentUser.bankDetails,
           officeDays: currentUser.officeDays, // Keep existing officeDays
           profileImage: (selectedAvatarFile && avatarPreview) ? avatarPreview : currentUser.profileImage,
         };
@@ -915,8 +1006,7 @@ export default function SettingsPage() {
   };
 
   // Add handleNestedProfileChange above component return
-  const handleNestedProfileChange = (field: string, value: string) => {
-    const [parent, child] = field.split(".");
+  const handleNestedProfileChange = (parent: string, child: string, value: string) => {
     setProfileForm(prev => {
       const parentValue = prev[parent as keyof ProfileFormData];
       if (typeof parentValue === "object" && parentValue !== null) {
@@ -1073,7 +1163,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl p-4">
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="password">Password</TabsTrigger>
@@ -1263,6 +1353,120 @@ export default function SettingsPage() {
                       />
                       {profileErrors.bio && <p className="text-red-500 text-sm">{profileErrors.bio}</p>}
                     </div>
+                    {userRole === "Freelancer" && (
+                      <>
+                        <Separator className="my-4" />
+                        <div>
+                          <Label className="text-lg font-semibold mb-4 block">Next of Kin</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="nextOfKinName">Name</Label>
+                              <Input
+                                id="nextOfKinName"
+                                value={profileForm.nextOfKin?.name || ""}
+                                onChange={e => handleNestedProfileChange("nextOfKin", "name", e.target.value)}
+                                placeholder="Enter name"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="nextOfKinRelationship">Relationship</Label>
+                              <Input
+                                id="nextOfKinRelationship"
+                                value={profileForm.nextOfKin?.relationship || ""}
+                                onChange={e => handleNestedProfileChange("nextOfKin", "relationship", e.target.value)}
+                                placeholder="Enter relationship"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="nextOfKinPhone">Phone Number</Label>
+                              <div className="w-full">
+                                <PhoneInput
+                                  country={"us"}
+                                  value={profileForm.nextOfKin?.phoneNumber || ""}
+                                  onChange={(value) => handleNestedProfileChange("nextOfKin", "phoneNumber", value)}
+                                  inputProps={{ name: "nextOfKinPhone", required: false, autoFocus: false }}
+                                  inputClass="w-full !w-full h-10 !h-10 !pl-12 !pr-3 !rounded-md !border !border-input !bg-transparent !text-base !focus:outline-none !focus:ring-2 !focus:ring-ring !focus:ring-offset-2 !dark:!text-white !text-[#181c32]"
+                                  buttonClass="!border-none !bg-transparent"
+                                  dropdownClass="!bg-background dark:!bg-[#23272f] !text-base custom-phone-dropdown-shadow"
+                                  enableSearch
+                                  disableSearchIcon={false}
+                                  specialLabel=""
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="nextOfKinEmail">Email</Label>
+                              <Input
+                                id="nextOfKinEmail"
+                                type="email"
+                                value={profileForm.nextOfKin?.email || ""}
+                                onChange={e => handleNestedProfileChange("nextOfKin", "email", e.target.value)}
+                                placeholder="Enter email"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <Separator className="my-4" />
+                        <div>
+                          <Label className="text-lg font-semibold mb-4 block">Bank Details</Label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="bankAccountName">Account Name</Label>
+                              <Input
+                                id="bankAccountName"
+                                value={profileForm.bankDetails?.accountName || ""}
+                                onChange={e => handleNestedProfileChange("bankDetails", "accountName", e.target.value)}
+                                placeholder="Enter account name"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankAccountNumber">Account Number</Label>
+                              <Input
+                                id="bankAccountNumber"
+                                value={profileForm.bankDetails?.accountNumber || ""}
+                                onChange={e => handleNestedProfileChange("bankDetails", "accountNumber", e.target.value)}
+                                placeholder="Enter account number"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankName">Bank Name</Label>
+                              <Input
+                                id="bankName"
+                                value={profileForm.bankDetails?.bankName || ""}
+                                onChange={e => handleNestedProfileChange("bankDetails", "bankName", e.target.value)}
+                                placeholder="Enter bank name"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankSwiftCode">SWIFT Code</Label>
+                              <Input
+                                id="bankSwiftCode"
+                                value={profileForm.bankDetails?.swiftCode || ""}
+                                onChange={e => handleNestedProfileChange("bankDetails", "swiftCode", e.target.value)}
+                                placeholder="Enter SWIFT code"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="bankRoutingNumber">Routing Number</Label>
+                              <Input
+                                id="bankRoutingNumber"
+                                value={profileForm.bankDetails?.routingNumber || ""}
+                                onChange={e => handleNestedProfileChange("bankDetails", "routingNumber", e.target.value)}
+                                placeholder="Enter routing number"
+                                disabled={isUpdatingProfile}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
