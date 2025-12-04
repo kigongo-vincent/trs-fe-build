@@ -463,9 +463,9 @@ export default function ProjectsPage() {
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {!Array.isArray(companies) || companies.length === 0 ? (
-                                                        <SelectItem value="" disabled>
+                                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
                                                             {tableLoading ? "Loading companies..." : "No companies available"}
-                                                        </SelectItem>
+                                                        </div>
                                                     ) : (
                                                         companies
                                                             .filter(company => company && company.id && company.name)

@@ -34,7 +34,7 @@ export default function DashboardLayout({
 
   const loadDefaults = async () => {
     if (typeof window !== "undefined") {
-      let foundPlan = "Trial"
+      let foundPlan = "Free"
       try {
         const user = await getAuthUser()
         if (user) {
@@ -47,11 +47,11 @@ export default function DashboardLayout({
                 if (currentSubscription && currentSubscription.plan) {
                   foundPlan = currentSubscription.plan.name
                 } else {
-                  foundPlan = "Trial"
+                  foundPlan = "Free"
                 }
               } catch (err) {
                 console.error("Error fetching freelancer subscription:", err)
-                foundPlan = "Trial"
+                foundPlan = "Free"
               }
             } else if (user.company?.package?.name) {
               foundPlan = user.company.package.name

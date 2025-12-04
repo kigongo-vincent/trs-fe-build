@@ -25,11 +25,11 @@ export default function FreelancerPackagesPage() {
     const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false)
     const [pendingUpgrade, setPendingUpgrade] = useState<PackageType | null>(null)
 
-    // Hardcoded current plan for freelancer (Trial)
+    // Hardcoded current plan for freelancer (Free)
     const currentPlan: PackageType = {
-        id: "trial",
-        name: "Trial",
-        description: "Free trial plan for freelancers",
+        id: "free",
+        name: "Free",
+        description: "Free plan for freelancers",
         price: "0",
         currency: "usd",
         durationType: "monthly",
@@ -100,7 +100,7 @@ export default function FreelancerPackagesPage() {
                         window.dispatchEvent(new Event("freelancerPlanNameUpdated"))
                     }
                 } else {
-                    // Default to trial plan if no subscription found
+                    // Default to free plan if no subscription found
                     setCurrentSubscription(null)
                     setSelectedPlan(currentPlan)
                     // Update localStorage for banner
@@ -111,7 +111,7 @@ export default function FreelancerPackagesPage() {
                 }
             } catch (err: any) {
                 console.error("Current subscription error:", err)
-                // Default to trial plan on error
+                // Default to free plan on error
                 setCurrentSubscription(null)
                 setSelectedPlan(currentPlan)
                 // Update localStorage for banner
@@ -279,7 +279,7 @@ export default function FreelancerPackagesPage() {
                                     <div className="border-t pt-4">
                                         <div>
                                             <p className="text-sm text-muted-foreground">Expiry Date</p>
-                                            <p className="text-base font-semibold">No expiry (Trial)</p>
+                                            <p className="text-base font-semibold">No expiry (Free)</p>
                                         </div>
                                     </div>
                                 )}
